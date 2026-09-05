@@ -62,6 +62,30 @@ async function fetchProfile(user: User | null): Promise<Profile | null> {
   };
 }
 
+async function ensureProfile(user: User): Promise<string | null> {
+  const { error } = await supabase.from('profiles').upsert(
+    {
+      id: user.id,
+      full_name: user.user_metadata?.full_name ?? null,
+      phone: user.user_metadata?.phone ?? null,
+      role: normalizeRole(user.user_metadata?.role),
+    },
+    { onConflict: 'id' },
+  );
+
+  if (error) {
+    console.error('[Dame Pon] No se pudo sincronizar profiles:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return error.message;
+  }
+
+  return null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -99,10 +123,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       isLoading,
       signIn: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
+        if (!error && data.user) {
+          await ensureProfile(data.user);
+        }
         return { error: error?.message ?? null };
       },
       signUp: async ({ email, password, fullName, phone, role }) => {
@@ -116,17 +143,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (error) return { error: error.message, needsEmailConfirmation: false };
 
-        if (data.user) {
-          const { error: profileError } = await supabase.from('profiles').upsert({
-            id: data.user.id,
-            full_name: fullName.trim(),
-            phone: phone.trim() || null,
-            role,
-          });
-
-          if (profileError) {
-            return { error: profileError.message, needsEmailConfirmation: false };
-          }
+        // When email confirmation is enabled, Supabase intentionally returns
+        // no session here. Do not write to profiles yet: RLS policies that
+        // require auth.uid() will reject an anonymous insert. The profile is
+        // synchronized after the user confirms the email and signs in.
+        if (data.user && data.session) {
+          await ensureProfile(data.user);
         }
 
         return {

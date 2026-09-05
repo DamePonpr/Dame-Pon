@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
@@ -32,12 +32,23 @@ export default function RegisterScreen() {
     const result = await signUp({ fullName, phone, email, password, role });
     setLoading(false);
     if (result.error) {
-      setError('No pudimos crear tu cuenta. Verifica tus datos e inténtalo de nuevo.');
+      console.error('[Dame Pon] Error real al crear la cuenta:', result.error);
+      const normalizedError = result.error.toLowerCase();
+      if (normalizedError.includes('already registered') || normalizedError.includes('already been registered')) {
+        setError('Este correo ya tiene una cuenta. Intenta iniciar sesión.');
+      } else if (normalizedError.includes('password')) {
+        setError('La contraseña no cumple los requisitos de Supabase.');
+      } else {
+        setError('No pudimos crear tu cuenta. Verifica tus datos e inténtalo de nuevo.');
+      }
       return;
     }
     if (result.needsEmailConfirmation) {
-      setError('Cuenta creada. Revisa tu correo para confirmar tu cuenta y luego inicia sesión.');
-      router.replace('/auth/login');
+      Alert.alert(
+        'Cuenta creada',
+        'Revisa tu correo para confirmar tu cuenta. Después podrás iniciar sesión como conductor.',
+        [{ text: 'Ir a iniciar sesión', onPress: () => router.replace('/auth/login') }],
+      );
       return;
     }
     router.replace('/');
