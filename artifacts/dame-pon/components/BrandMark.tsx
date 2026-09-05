@@ -6,7 +6,11 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
   const colors = useColors();
   return (
     <View style={styles.row}>
-      <Image source={require('@/assets/images/dame-pon-icon.png')} style={[styles.icon, compact && styles.compactIcon]} />
+      <Image
+        source={require('@/assets/images/dame-pon-logo.png')}
+        resizeMode="contain"
+        style={[styles.icon, compact && styles.compactIcon]}
+      />
       <View>
         <Text style={[styles.name, { color: colors.foreground }, compact && styles.compactName]}>Dame Pon</Text>
         {!compact ? <Text style={[styles.tagline, { color: colors.mutedForeground }]}>Muévete a tu manera</Text> : null}

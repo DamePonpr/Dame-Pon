@@ -4,7 +4,7 @@
     "slug": "dame-pon",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/dame-pon-icon.png",
+    "icon": "./assets/images/dame-pon-logo.png",
     "scheme": "dame-pon",
     "userInterfaceStyle": "light",
     "ios": {
@@ -12,9 +12,11 @@
     },
     "android": {},
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/dame-pon-logo.png"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router"
+    ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
