@@ -1,30 +1,184 @@
-import React, { useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, type UserRole } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { AppButton } from '@/components/AppButton';
 import { BrandMark } from '@/components/BrandMark';
+import {
+  acceptTrip,
+  getDriverSetup,
+  getOpenTrips,
+  getPassengerActiveTrip,
+  requestTrip,
+  saveDriverSetup,
+  setDriverAvailability,
+  tripDestination,
+  type DriverSetup,
+  type Trip,
+  type VehicleDraft,
+} from '@/lib/rideService';
+
+const emptyVehicle: VehicleDraft = {
+  make: '',
+  model: '',
+  year: '',
+  color: '',
+  licensePlate: '',
+};
 
 export function RoleHome({ role }: { role: UserRole }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { profile, signOut } = useAuth();
+  const { profile, user, signOut } = useAuth();
   const isDriver = role === 'driver';
   const [isAvailable, setIsAvailable] = useState(false);
+  const [driverSetup, setDriverSetup] = useState<DriverSetup | null>(null);
+  const [driverTrips, setDriverTrips] = useState<Trip[]>([]);
+  const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [showDestination, setShowDestination] = useState(false);
+  const [showVehicle, setShowVehicle] = useState(false);
   const [destination, setDestination] = useState('');
   const [savedDestination, setSavedDestination] = useState('');
+  const [vehicle, setVehicle] = useState<VehicleDraft>(emptyVehicle);
+  const [loading, setLoading] = useState(true);
+  const [savingVehicle, setSavingVehicle] = useState(false);
+  const [requestingTrip, setRequestingTrip] = useState(false);
+  const [setupError, setSetupError] = useState('');
+  const [requestError, setRequestError] = useState('');
 
   const firstName = profile?.full_name?.trim().split(' ')[0] || (isDriver ? 'conductor' : 'viajero');
+  const driverReady = Boolean(driverSetup?.driver && driverSetup?.vehicle);
 
-  const confirmDestination = () => {
-    if (!destination.trim()) return;
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    setLoading(true);
+
+    const load = async () => {
+      if (isDriver) {
+        const result = await getDriverSetup(user.id);
+        if (active) {
+          setDriverSetup(result.data);
+          const storedAvailability = result.data?.driver?.is_available ?? result.data?.driver?.available;
+          setIsAvailable(storedAvailability === true);
+          setSetupError(result.error ?? '');
+          setLoading(false);
+        }
+      } else {
+        const result = await getPassengerActiveTrip(user.id);
+        if (active) {
+          setActiveTrip(result.data);
+          setRequestError(result.error ?? '');
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [isDriver, user?.id]);
+
+  useEffect(() => {
+    if (!isDriver || !isAvailable) {
+      setDriverTrips([]);
+      return;
+    }
+    let active = true;
+    const loadOpenTrips = async () => {
+      const result = await getOpenTrips();
+      if (active) {
+        setDriverTrips(result.data ?? []);
+        if (result.error) setSetupError(result.error);
+      }
+    };
+    void loadOpenTrips();
+    return () => {
+      active = false;
+    };
+  }, [isAvailable, isDriver]);
+
+  const handleAvailability = async () => {
+    if (!user?.id) return;
+    if (!driverReady) {
+      setShowVehicle(true);
+      return;
+    }
+    const nextValue = !isAvailable;
+    const result = await setDriverAvailability(user.id, nextValue);
+    if (result.error) {
+      setSetupError(result.error);
+      return;
+    }
+    setIsAvailable(nextValue);
+    void Haptics.selectionAsync();
+  };
+
+  const handleSaveVehicle = async () => {
+    if (!user?.id) return;
+    if (!vehicle.make.trim() || !vehicle.model.trim() || !vehicle.year.trim() || !vehicle.color.trim() || !vehicle.licensePlate.trim()) {
+      setSetupError('Completa todos los datos del vehículo para continuar.');
+      return;
+    }
+    setSavingVehicle(true);
+    setSetupError('');
+    const result = await saveDriverSetup(user.id, vehicle);
+    setSavingVehicle(false);
+    if (result.error) {
+      setSetupError(result.error);
+      return;
+    }
+    setDriverSetup(result.data);
+    setShowVehicle(false);
+    setVehicle(emptyVehicle);
+    Alert.alert('Vehículo guardado', 'Ya puedes activar tu disponibilidad y empezar a recibir solicitudes.');
+  };
+
+  const handleRequestTrip = async () => {
+    if (!user?.id || !destination.trim()) return;
+    setRequestingTrip(true);
+    setRequestError('');
+    let pickupLocation = 'Ubicación actual';
+
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.granted) {
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        pickupLocation = `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
+      }
+    } catch {
+      pickupLocation = 'Ubicación actual';
+    }
+
+    const result = await requestTrip(user.id, destination, pickupLocation);
+    setRequestingTrip(false);
+    if (result.error) {
+      setRequestError(result.error);
+      return;
+    }
+    setActiveTrip(result.data);
     setSavedDestination(destination.trim());
     setDestination('');
     setShowDestination(false);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleAcceptTrip = async (trip: Trip) => {
+    if (!user?.id) return;
+    const result = await acceptTrip(trip.id, user.id);
+    if (result.error) {
+      setSetupError(result.error);
+      return;
+    }
+    setDriverTrips((current) => current.filter((item) => item.id !== trip.id));
+    setActiveTrip(result.data);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -45,7 +199,10 @@ export function RoleHome({ role }: { role: UserRole }) {
         </Pressable>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.greeting}>
           <Text style={[styles.eyebrow, { color: colors.mutedForeground }]}>{isDriver ? 'PANEL DEL CONDUCTOR' : 'BUEN DÍA'}</Text>
           <Text style={[styles.title, { color: colors.foreground }]}>Hola, {firstName}</Text>
@@ -54,112 +211,368 @@ export function RoleHome({ role }: { role: UserRole }) {
           </Text>
         </View>
 
-        {isDriver ? (
-          <>
-            <View style={[styles.availabilityCard, { backgroundColor: colors.primary }]}>
-              <View style={styles.availabilityCopy}>
-                <Text style={styles.inverseEyebrow}>ESTADO DE CONEXIÓN</Text>
-                <Text style={styles.inverseTitle}>{isAvailable ? 'Estás disponible' : 'Estás desconectado'}</Text>
-                <Text style={styles.inverseSubtitle}>
-                  {isAvailable ? 'Podrás recibir solicitudes cercanas.' : 'Actívate cuando quieras comenzar.'}
-                </Text>
-              </View>
-              <Pressable
-                testID="availability-toggle"
-                onPress={() => {
-                  void Haptics.selectionAsync();
-                  setIsAvailable((current) => !current);
-                }}
-                style={[styles.toggle, { backgroundColor: isAvailable ? '#B7E3C5' : 'rgba(255,255,255,0.16)' }]}
-              >
-                <View style={[styles.toggleThumb, { backgroundColor: isAvailable ? '#247A48' : '#FFFFFF', alignSelf: isAvailable ? 'flex-end' : 'flex-start' }]} />
-              </Pressable>
-            </View>
-            <View style={styles.statsRow}>
-              <Stat label="Viajes hoy" value="0" icon="navigation" />
-              <Stat label="Calificación" value="—" icon="star" />
-            </View>
-            <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.infoIcon, { backgroundColor: colors.secondary }]}>
-                <Feather name="shield" size={18} color={colors.primary} />
-              </View>
-              <View style={styles.infoCopy}>
-                <Text style={[styles.infoTitle, { color: colors.foreground }]}>Tu seguridad primero</Text>
-                <Text style={[styles.infoText, { color: colors.mutedForeground }]}>Completa tu vehículo y documentos para empezar a aceptar viajes.</Text>
-              </View>
-              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-            </View>
-          </>
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : isDriver ? (
+          <DriverContent
+            colors={colors}
+            isAvailable={isAvailable}
+            driverReady={driverReady}
+            driverTrips={driverTrips}
+            setupError={setupError}
+            onAvailability={handleAvailability}
+            onVehicle={() => {
+              setSetupError('');
+              setShowVehicle(true);
+            }}
+            onAccept={handleAcceptTrip}
+          />
         ) : (
-          <>
-            <View style={[styles.mapCard, { backgroundColor: colors.primary }]}>
-              <View style={styles.mapGrid}>
-                <View style={[styles.mapLine, styles.mapLineOne]} />
-                <View style={[styles.mapLine, styles.mapLineTwo]} />
-                <View style={[styles.routeLine, { backgroundColor: '#FFFFFF' }]} />
-                <View style={[styles.mapPin, styles.startPin, { backgroundColor: '#FFFFFF' }]}>
-                  <View style={[styles.pinDot, { backgroundColor: colors.primary }]} />
-                </View>
-                <View style={[styles.mapPin, styles.endPin, { backgroundColor: '#B7E3C5' }]}>
-                  <Feather name="map-pin" size={15} color="#247A48" />
-                </View>
-              </View>
-              <View style={styles.mapOverlay}>
-                <Text style={styles.mapLabel}>Dame Pon está cerca</Text>
-                <Text style={styles.mapMeta}>Conductores disponibles en tu zona</Text>
-              </View>
-            </View>
-            <Pressable
-              testID="destination-button"
-              onPress={() => setShowDestination(true)}
-              style={({ pressed }) => [styles.destinationCard, { backgroundColor: colors.card, borderColor: colors.border }, pressed && { opacity: 0.82 }]}
-            >
-              <View style={[styles.searchIcon, { backgroundColor: colors.secondary }]}>
-                <Feather name="search" size={18} color={colors.primary} />
-              </View>
-              <View style={styles.destinationCopy}>
-                <Text style={[styles.destinationLabel, { color: colors.mutedForeground }]}>¿A dónde vas?</Text>
-                <Text style={[styles.destinationValue, { color: savedDestination ? colors.foreground : colors.mutedForeground }]}>
-                  {savedDestination || 'Busca un destino'}
-                </Text>
-              </View>
-              <Feather name="arrow-up-right" size={19} color={colors.primary} />
-            </Pressable>
-            <View style={[styles.reassurance, { backgroundColor: colors.secondary }]}>
-              <Feather name="clock" size={17} color={colors.primary} />
-              <Text style={[styles.reassuranceText, { color: colors.primary }]}>Viajes confiables, tarifas claras y apoyo cuando lo necesites.</Text>
-            </View>
-          </>
+          <PassengerContent
+            colors={colors}
+            activeTrip={activeTrip}
+            savedDestination={savedDestination}
+            requestError={requestError}
+            onDestination={() => {
+              setRequestError('');
+              setShowDestination(true);
+            }}
+          />
         )}
-      </View>
+      </ScrollView>
 
-      <Modal transparent visible={showDestination} animationType="slide" onRequestClose={() => setShowDestination(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowDestination(false)}>
-          <Pressable style={[styles.modalCard, { backgroundColor: colors.background, paddingBottom: insets.bottom + 22 }]} onPress={(event) => event.stopPropagation()}>
-            <View style={styles.modalHandle} />
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>¿A dónde vas?</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>Escribe tu destino para preparar tu solicitud.</Text>
-            <View style={[styles.modalInputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name="map-pin" size={18} color={colors.primary} />
-              <TextInput
-                autoFocus
-                value={destination}
-                onChangeText={setDestination}
-                placeholder="Ej. Plaza Las Américas"
-                placeholderTextColor={colors.mutedForeground}
-                style={[styles.modalInput, { color: colors.foreground }]}
-              />
-            </View>
-            <AppButton label="Continuar" onPress={confirmDestination} disabled={!destination.trim()} testID="confirm-destination" />
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <DestinationModal
+        colors={colors}
+        insetsBottom={insets.bottom}
+        visible={showDestination}
+        destination={destination}
+        loading={requestingTrip}
+        error={requestError}
+        onChange={setDestination}
+        onClose={() => setShowDestination(false)}
+        onSubmit={handleRequestTrip}
+      />
+      <VehicleModal
+        colors={colors}
+        insetsBottom={insets.bottom}
+        visible={showVehicle}
+        vehicle={vehicle}
+        loading={savingVehicle}
+        error={setupError}
+        onChange={setVehicle}
+        onClose={() => setShowVehicle(false)}
+        onSubmit={handleSaveVehicle}
+      />
     </View>
   );
 }
 
-function Stat({ label, value, icon }: { label: string; value: string; icon: keyof typeof Feather.glyphMap }) {
-  const colors = useColors();
+function PassengerContent({
+  colors,
+  activeTrip,
+  savedDestination,
+  requestError,
+  onDestination,
+}: {
+  colors: ReturnType<typeof useColors>;
+  activeTrip: Trip | null;
+  savedDestination: string;
+  requestError: string;
+  onDestination: () => void;
+}) {
+  return (
+    <>
+      <View style={[styles.mapCard, { backgroundColor: colors.primary }]}>
+        <View style={styles.mapGrid}>
+          <View style={[styles.mapLine, styles.mapLineOne]} />
+          <View style={[styles.mapLine, styles.mapLineTwo]} />
+          <View style={[styles.routeLine, { backgroundColor: '#FFFFFF' }]} />
+          <View style={[styles.mapPin, styles.startPin, { backgroundColor: '#FFFFFF' }]}>
+            <View style={[styles.pinDot, { backgroundColor: colors.primary }]} />
+          </View>
+          <View style={[styles.mapPin, styles.endPin, { backgroundColor: '#B7E3C5' }]}>
+            <Feather name="map-pin" size={15} color="#247A48" />
+          </View>
+        </View>
+        <View style={styles.mapOverlay}>
+          <Text style={styles.mapLabel}>Dame Pon está cerca</Text>
+          <Text style={styles.mapMeta}>Conductores disponibles en tu zona</Text>
+        </View>
+      </View>
+
+      {activeTrip ? (
+        <View style={[styles.activeTripCard, { backgroundColor: colors.primary }]}>
+          <View style={styles.activeTripHeader}>
+            <View>
+              <Text style={styles.inverseEyebrow}>VIAJE ACTIVO</Text>
+              <Text style={styles.inverseTitle}>{tripStatusLabel(activeTrip.status)}</Text>
+            </View>
+            <Feather name="navigation" size={21} color="#FFFFFF" />
+          </View>
+          <Text style={styles.inverseSubtitle}>Destino: {tripDestination(activeTrip)}</Text>
+        </View>
+      ) : (
+        <Pressable
+          testID="destination-button"
+          onPress={onDestination}
+          style={({ pressed }) => [styles.destinationCard, { backgroundColor: colors.card, borderColor: colors.border }, pressed && { opacity: 0.82 }]}
+        >
+          <View style={[styles.searchIcon, { backgroundColor: colors.secondary }]}>
+            <Feather name="search" size={18} color={colors.primary} />
+          </View>
+          <View style={styles.destinationCopy}>
+            <Text style={[styles.destinationLabel, { color: colors.mutedForeground }]}>¿A dónde vas?</Text>
+            <Text style={[styles.destinationValue, { color: savedDestination ? colors.foreground : colors.mutedForeground }]}>
+              {savedDestination || 'Busca un destino'}
+            </Text>
+          </View>
+          <Feather name="arrow-up-right" size={19} color={colors.primary} />
+        </Pressable>
+      )}
+
+      {requestError ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{requestError}</Text> : null}
+      <View style={[styles.reassurance, { backgroundColor: colors.secondary }]}>
+        <Feather name="shield" size={17} color={colors.primary} />
+        <Text style={[styles.reassuranceText, { color: colors.primary }]}>Viajes confiables, tarifas claras y apoyo cuando lo necesites.</Text>
+      </View>
+    </>
+  );
+}
+
+function DriverContent({
+  colors,
+  isAvailable,
+  driverReady,
+  driverTrips,
+  setupError,
+  onAvailability,
+  onVehicle,
+  onAccept,
+}: {
+  colors: ReturnType<typeof useColors>;
+  isAvailable: boolean;
+  driverReady: boolean;
+  driverTrips: Trip[];
+  setupError: string;
+  onAvailability: () => void;
+  onVehicle: () => void;
+  onAccept: (trip: Trip) => void;
+}) {
+  return (
+    <>
+      <View style={[styles.availabilityCard, { backgroundColor: colors.primary }]}>
+        <View style={styles.availabilityCopy}>
+          <Text style={styles.inverseEyebrow}>ESTADO DE CONEXIÓN</Text>
+          <Text style={styles.inverseTitle}>{isAvailable ? 'Estás disponible' : 'Estás desconectado'}</Text>
+          <Text style={styles.inverseSubtitle}>
+            {isAvailable ? 'Podrás recibir solicitudes cercanas.' : 'Actívate cuando quieras comenzar.'}
+          </Text>
+        </View>
+        <Pressable
+          testID="availability-toggle"
+          onPress={onAvailability}
+          style={[styles.toggle, { backgroundColor: isAvailable ? '#B7E3C5' : 'rgba(255,255,255,0.16)' }]}
+        >
+          <View style={[styles.toggleThumb, { backgroundColor: isAvailable ? '#247A48' : '#FFFFFF', alignSelf: isAvailable ? 'flex-end' : 'flex-start' }]} />
+        </Pressable>
+      </View>
+
+      <View style={styles.statsRow}>
+        <Stat label={isAvailable ? 'Solicitudes' : 'Viajes hoy'} value={String(driverTrips.length)} icon="navigation" colors={colors} />
+        <Stat label="Calificación" value="—" icon="star" colors={colors} />
+      </View>
+
+      <Pressable
+        testID="vehicle-setup"
+        onPress={onVehicle}
+        style={({ pressed }) => [styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }, pressed && { opacity: 0.8 }]}
+      >
+        <View style={[styles.infoIcon, { backgroundColor: colors.secondary }]}>
+          <Feather name={driverReady ? 'check' : 'truck'} size={18} color={colors.primary} />
+        </View>
+        <View style={styles.infoCopy}>
+          <Text style={[styles.infoTitle, { color: colors.foreground }]}>{driverReady ? 'Vehículo listo' : 'Completa tu vehículo'}</Text>
+          <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+            {driverReady ? 'Puedes actualizar tus datos cuando quieras.' : 'Necesitas estos datos para recibir viajes.'}
+          </Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+      </Pressable>
+
+      {setupError ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{setupError}</Text> : null}
+
+      {isAvailable ? (
+        <View style={styles.requestsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Solicitudes disponibles</Text>
+            <Text style={[styles.sectionMeta, { color: colors.mutedForeground }]}>{driverTrips.length}</Text>
+          </View>
+          {driverTrips.length ? (
+            driverTrips.map((trip) => (
+              <View key={trip.id} style={[styles.tripCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={[styles.tripIcon, { backgroundColor: colors.secondary }]}>
+                  <Feather name="map-pin" size={17} color={colors.primary} />
+                </View>
+                <View style={styles.tripCopy}>
+                  <Text style={[styles.tripLabel, { color: colors.mutedForeground }]}>NUEVA SOLICITUD</Text>
+                  <Text style={[styles.tripDestination, { color: colors.foreground }]}>{tripDestination(trip)}</Text>
+                </View>
+                <Pressable
+                  testID={`accept-trip-${trip.id}`}
+                  onPress={() => onAccept(trip)}
+                  style={({ pressed }) => [styles.acceptButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
+                >
+                  <Text style={styles.acceptLabel}>Aceptar</Text>
+                </Pressable>
+              </View>
+            ))
+          ) : (
+            <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="inbox" size={20} color={colors.mutedForeground} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Aún no hay solicitudes</Text>
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Te avisaremos cuando haya un viaje cerca.</Text>
+            </View>
+          )}
+        </View>
+      ) : null}
+    </>
+  );
+}
+
+function DestinationModal({
+  colors,
+  insetsBottom,
+  visible,
+  destination,
+  loading,
+  error,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  colors: ReturnType<typeof useColors>;
+  insetsBottom: number;
+  visible: boolean;
+  destination: string;
+  loading: boolean;
+  error: string;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable style={[styles.modalCard, { backgroundColor: colors.background, paddingBottom: insetsBottom + 22 }]} onPress={(event) => event.stopPropagation()}>
+          <View style={styles.modalHandle} />
+          <Text style={[styles.modalTitle, { color: colors.foreground }]}>¿A dónde vas?</Text>
+          <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>Usaremos tu ubicación actual como punto de recogida.</Text>
+          <View style={[styles.modalInputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="map-pin" size={18} color={colors.primary} />
+            <TextInput
+              autoFocus
+              value={destination}
+              onChangeText={onChange}
+              placeholder="Ej. Plaza Las Américas"
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.modalInput, { color: colors.foreground }]}
+            />
+          </View>
+          {error ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{error}</Text> : null}
+          <AppButton label="Solicitar viaje" onPress={onSubmit} disabled={!destination.trim()} loading={loading} testID="confirm-destination" />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function VehicleModal({
+  colors,
+  insetsBottom,
+  visible,
+  vehicle,
+  loading,
+  error,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  colors: ReturnType<typeof useColors>;
+  insetsBottom: number;
+  visible: boolean;
+  vehicle: VehicleDraft;
+  loading: boolean;
+  error: string;
+  onChange: (vehicle: VehicleDraft) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.modalCard, { backgroundColor: colors.background, paddingBottom: insetsBottom + 22 }]}
+          onTouchStart={(event) => event.stopPropagation()}
+        >
+          <View style={styles.modalHandle} />
+          <Text style={[styles.modalTitle, { color: colors.foreground }]}>Tu vehículo</Text>
+          <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>Estos datos se mostrarán al pasajero antes del viaje.</Text>
+          <ModalInput label="Marca" value={vehicle.make} placeholder="Toyota" colors={colors} onChangeText={(value) => onChange({ ...vehicle, make: value })} />
+          <ModalInput label="Modelo" value={vehicle.model} placeholder="Corolla" colors={colors} onChangeText={(value) => onChange({ ...vehicle, model: value })} />
+          <View style={styles.twoInputs}>
+            <View style={styles.halfInput}>
+              <ModalInput label="Año" value={vehicle.year} placeholder="2022" keyboardType="number-pad" colors={colors} onChangeText={(value) => onChange({ ...vehicle, year: value })} />
+            </View>
+            <View style={styles.halfInput}>
+              <ModalInput label="Color" value={vehicle.color} placeholder="Blanco" colors={colors} onChangeText={(value) => onChange({ ...vehicle, color: value })} />
+            </View>
+          </View>
+          <ModalInput label="Matrícula" value={vehicle.licensePlate} placeholder="ABC-123" autoCapitalize="characters" colors={colors} onChangeText={(value) => onChange({ ...vehicle, licensePlate: value })} />
+          {error ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{error}</Text> : null}
+          <AppButton label="Guardar vehículo" onPress={onSubmit} loading={loading} testID="save-vehicle" />
+        </ScrollView>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function ModalInput({
+  label,
+  value,
+  placeholder,
+  colors,
+  onChangeText,
+  keyboardType,
+  autoCapitalize,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  colors: ReturnType<typeof useColors>;
+  onChangeText: (value: string) => void;
+  keyboardType?: 'default' | 'number-pad';
+  autoCapitalize?: 'none' | 'characters' | 'words';
+}) {
+  return (
+    <View style={styles.modalField}>
+      <Text style={[styles.modalFieldLabel, { color: colors.foreground }]}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.mutedForeground}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        style={[styles.modalInput, styles.vehicleInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+      />
+    </View>
+  );
+}
+
+function Stat({ label, value, icon, colors }: { label: string; value: string; icon: keyof typeof Feather.glyphMap; colors: ReturnType<typeof useColors> }) {
   return (
     <View style={[styles.stat, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <Feather name={icon} size={17} color={colors.primary} />
@@ -169,15 +582,22 @@ function Stat({ label, value, icon }: { label: string; value: string; icon: keyo
   );
 }
 
+function tripStatusLabel(status: string) {
+  if (status === 'accepted') return 'Conductor en camino';
+  if (status === 'in_progress') return 'Viaje en curso';
+  return 'Buscando conductor';
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { paddingHorizontal: 22, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   iconButton: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  content: { flex: 1, paddingHorizontal: 22, gap: 18 },
+  content: { flexGrow: 1, paddingHorizontal: 22, gap: 18 },
   greeting: { gap: 5, paddingTop: 8 },
   eyebrow: { fontFamily: 'Inter_600SemiBold', fontSize: 11, letterSpacing: 1.3 },
   title: { fontFamily: 'Inter_700Bold', fontSize: 29, letterSpacing: -0.8 },
   subtitle: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 20 },
+  loadingState: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
   availabilityCard: { borderRadius: 22, padding: 20, minHeight: 165, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   availabilityCopy: { flex: 1, gap: 7, paddingRight: 12 },
   inverseEyebrow: { color: 'rgba(255,255,255,0.63)', fontFamily: 'Inter_600SemiBold', fontSize: 10, letterSpacing: 1.2 },
@@ -212,8 +632,25 @@ const styles = StyleSheet.create({
   destinationCopy: { flex: 1, gap: 4 },
   destinationLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 11 },
   destinationValue: { fontFamily: 'Inter_400Regular', fontSize: 14 },
+  activeTripCard: { borderRadius: 22, padding: 20, gap: 15 },
+  activeTripHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   reassurance: { borderRadius: 15, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 10 },
   reassuranceText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 12, lineHeight: 17 },
+  requestsSection: { gap: 12 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { fontFamily: 'Inter_700Bold', fontSize: 17 },
+  sectionMeta: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
+  tripCard: { borderWidth: 1, borderRadius: 18, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tripIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  tripCopy: { flex: 1, gap: 4 },
+  tripLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 10, letterSpacing: 0.8 },
+  tripDestination: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
+  acceptButton: { borderRadius: 11, paddingVertical: 10, paddingHorizontal: 12 },
+  acceptLabel: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 12 },
+  emptyCard: { borderWidth: 1, borderRadius: 18, padding: 20, alignItems: 'center', gap: 7 },
+  emptyTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
+  emptyText: { fontFamily: 'Inter_400Regular', fontSize: 12, textAlign: 'center' },
+  inlineError: { fontFamily: 'Inter_500Medium', fontSize: 12, lineHeight: 17 },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(11,28,38,0.5)' },
   modalCard: { borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 22, gap: 14 },
   modalHandle: { width: 42, height: 4, borderRadius: 3, backgroundColor: '#D6E1E6', alignSelf: 'center', marginBottom: 6 },
@@ -221,4 +658,9 @@ const styles = StyleSheet.create({
   modalSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 18 },
   modalInputRow: { minHeight: 54, borderWidth: 1, borderRadius: 15, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10 },
   modalInput: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 15 },
+  modalField: { gap: 7 },
+  modalFieldLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
+  vehicleInput: { flex: undefined, minHeight: 51, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14 },
+  twoInputs: { flexDirection: 'row', gap: 10 },
+  halfInput: { flex: 1 },
 });
