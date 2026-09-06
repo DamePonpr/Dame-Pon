@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const requiredEnvironment = [
   'EXPO_PUBLIC_SUPABASE_URL',
-  'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+  'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_RLS_PASSENGER_EMAIL',
   'SUPABASE_RLS_PASSENGER_PASSWORD',
   'SUPABASE_RLS_DRIVER_EMAIL',
@@ -10,13 +10,13 @@ const requiredEnvironment = [
 ];
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const plate = `RLS-${runId.slice(-6).toUpperCase()}`;
 const created = { tripId: null, vehicleId: null };
 
 function client() {
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(supabaseUrl, supabasePublishableKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 }
