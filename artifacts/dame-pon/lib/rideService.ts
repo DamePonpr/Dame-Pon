@@ -281,10 +281,17 @@ export async function requestTrip(
   dropoffAddress: string,
   pickup: {
     address: string;
-    latitude: number | null;
-    longitude: number | null;
+    latitude: number;
+    longitude: number;
   },
 ): Promise<ServiceResult<Trip>> {
+  if (!Number.isFinite(pickup.latitude) || !Number.isFinite(pickup.longitude)) {
+    return {
+      data: null,
+      error: 'Necesitamos una ubicación válida antes de solicitar el viaje.',
+    };
+  }
+
   const result = await supabase
     .from('trips')
     .insert({

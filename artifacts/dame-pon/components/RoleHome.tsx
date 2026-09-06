@@ -52,6 +52,9 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [loading, setLoading] = useState(true);
   const [savingVehicle, setSavingVehicle] = useState(false);
   const [requestingTrip, setRequestingTrip] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [pickupCoordinates, setPickupCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationError, setLocationError] = useState('');
   const [tripActionLoading, setTripActionLoading] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -168,28 +171,55 @@ export function RoleHome({ role }: { role: UserRole }) {
     Alert.alert('Vehículo guardado', 'Ya puedes activar tu disponibilidad y empezar a recibir solicitudes.');
   };
 
-  const handleRequestTrip = async () => {
-    if (!user?.id || !destination.trim()) return;
-    setRequestingTrip(true);
-    setRequestError('');
-    const pickup = {
-      address: 'Ubicación actual',
-      latitude: null as number | null,
-      longitude: null as number | null,
-    };
-
+  const preparePickupLocation = async () => {
+    setLocationLoading(true);
+    setLocationError('');
+    setPickupCoordinates(null);
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
-      if (permission.granted) {
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        pickup.latitude = position.coords.latitude;
-        pickup.longitude = position.coords.longitude;
+      if (!permission.granted) {
+        setLocationError('Necesitamos permiso de ubicación para indicar dónde recogerte. Actívalo e inténtalo de nuevo.');
+        return;
       }
-    } catch {}
 
-    const result = await requestTrip(user.id, destination, pickup);
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        setLocationError('No pudimos obtener una ubicación válida. Verifica que la ubicación del dispositivo esté activa.');
+        return;
+      }
+      setPickupCoordinates({ latitude, longitude });
+    } catch {
+      setLocationError('No pudimos obtener tu ubicación. Verifica que la ubicación del dispositivo esté activa e inténtalo de nuevo.');
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const handleOpenDestination = () => {
+    setRequestError('');
+    setLocationError('');
+    setShowDestination(true);
+    void preparePickupLocation();
+  };
+
+  const handleRequestTrip = async () => {
+    if (!user?.id || !destination.trim()) return;
+    if (!pickupCoordinates) {
+      setLocationError('Espera a que podamos confirmar tu ubicación antes de solicitar el viaje.');
+      return;
+    }
+    setRequestingTrip(true);
+    setRequestError('');
+    const result = await requestTrip(user.id, destination, {
+      address: 'Ubicación actual',
+      latitude: pickupCoordinates.latitude,
+      longitude: pickupCoordinates.longitude,
+    });
     setRequestingTrip(false);
     if (result.error) {
       setRequestError(result.error);
@@ -310,10 +340,7 @@ export function RoleHome({ role }: { role: UserRole }) {
             ratingLoading={ratingLoading}
             ratingSubmitted={ratingSubmitted}
             onRating={handleRating}
-            onDestination={() => {
-              setRequestError('');
-              setShowDestination(true);
-            }}
+            onDestination={handleOpenDestination}
           />
         )}
       </ScrollView>
@@ -324,9 +351,13 @@ export function RoleHome({ role }: { role: UserRole }) {
         visible={showDestination}
         destination={destination}
         loading={requestingTrip}
+        locationLoading={locationLoading}
+        locationReady={pickupCoordinates !== null}
+        locationError={locationError}
         error={requestError}
         onChange={setDestination}
         onClose={() => setShowDestination(false)}
+        onRetryLocation={() => void preparePickupLocation()}
         onSubmit={handleRequestTrip}
       />
       <VehicleModal
@@ -558,9 +589,13 @@ function DestinationModal({
   visible,
   destination,
   loading,
+  locationLoading,
+  locationReady,
+  locationError,
   error,
   onChange,
   onClose,
+  onRetryLocation,
   onSubmit,
 }: {
   colors: ReturnType<typeof useColors>;
@@ -568,9 +603,13 @@ function DestinationModal({
   visible: boolean;
   destination: string;
   loading: boolean;
+  locationLoading: boolean;
+  locationReady: boolean;
+  locationError: string;
   error: string;
   onChange: (value: string) => void;
   onClose: () => void;
+  onRetryLocation: () => void;
   onSubmit: () => void;
 }) {
   return (
@@ -591,8 +630,37 @@ function DestinationModal({
               style={[styles.modalInput, { color: colors.foreground }]}
             />
           </View>
+          <View style={[styles.locationStatus, { backgroundColor: colors.secondary }]}>
+            {locationLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather
+                name={locationReady ? 'check-circle' : 'alert-circle'}
+                size={17}
+                color={locationReady ? colors.primary : colors.destructive}
+              />
+            )}
+            <Text style={[styles.locationStatusText, { color: locationReady ? colors.primary : colors.mutedForeground }]}>
+              {locationLoading
+                ? 'Obteniendo tu ubicación…'
+                : locationReady
+                  ? 'Ubicación confirmada'
+                  : locationError || 'Necesitamos confirmar tu ubicación.'}
+            </Text>
+          </View>
+          {locationError && !locationLoading ? (
+            <Pressable onPress={onRetryLocation} style={styles.retryLocation}>
+              <Text style={[styles.retryLocationText, { color: colors.primary }]}>Intentar obtener ubicación nuevamente</Text>
+            </Pressable>
+          ) : null}
           {error ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{error}</Text> : null}
-          <AppButton label="Solicitar viaje" onPress={onSubmit} disabled={!destination.trim()} loading={loading} testID="confirm-destination" />
+          <AppButton
+            label="Solicitar viaje"
+            onPress={onSubmit}
+            disabled={!destination.trim() || !locationReady || locationLoading}
+            loading={loading}
+            testID="confirm-destination"
+          />
         </Pressable>
       </Pressable>
     </Modal>
@@ -810,6 +878,10 @@ const styles = StyleSheet.create({
   modalSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 18 },
   modalInputRow: { minHeight: 54, borderWidth: 1, borderRadius: 15, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10 },
   modalInput: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 15 },
+  locationStatus: { minHeight: 46, borderRadius: 13, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  locationStatusText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 12, lineHeight: 17 },
+  retryLocation: { alignSelf: 'flex-start', paddingVertical: 2 },
+  retryLocationText: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
   modalField: { gap: 7 },
   modalFieldLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
   vehicleInput: { flex: undefined, minHeight: 51, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14 },
