@@ -74,7 +74,10 @@ type RideAction =
   | 'request-trip'
   | 'load-passenger-trip'
   | 'load-open-trips'
-  | 'accept-trip';
+  | 'load-rating'
+  | 'accept-trip'
+  | 'update-trip'
+  | 'rate-trip';
 
 const DRIVER_COLUMNS = 'id,status,is_online,updated_at';
 const VEHICLE_COLUMNS = 'id,driver_id,make,model,year,color,plate';
@@ -88,7 +91,10 @@ const actionFallbacks: Record<RideAction, string> = {
   'request-trip': 'No pudimos solicitar el viaje.',
   'load-passenger-trip': 'No pudimos cargar tu viaje activo.',
   'load-open-trips': 'No pudimos cargar las solicitudes disponibles.',
+  'load-rating': 'No pudimos comprobar si este viaje ya fue calificado.',
   'accept-trip': 'No pudimos aceptar este viaje.',
+  'update-trip': 'No pudimos actualizar el estado del viaje.',
+  'rate-trip': 'No pudimos guardar tu calificación.',
 };
 
 function logServiceError(action: RideAction, error: SupabaseErrorLike) {
@@ -304,7 +310,7 @@ export async function requestTrip(
 }
 
 export async function getPassengerActiveTrip(passengerId: string): Promise<ServiceResult<Trip>> {
-  const result = await supabase
+  const activeResult = await supabase
     .from('trips')
     .select(TRIP_COLUMNS)
     .eq('passenger_id', passengerId)
@@ -313,11 +319,66 @@ export async function getPassengerActiveTrip(passengerId: string): Promise<Servi
     .limit(1)
     .maybeSingle();
 
-  if (result.error) {
-    return serviceError('load-passenger-trip', result.error);
+  if (activeResult.error) {
+    return serviceError('load-passenger-trip', activeResult.error);
+  }
+  if (activeResult.data) return { data: activeResult.data as Trip, error: null };
+
+  return getUnratedCompletedTrip(passengerId, 'passenger_id');
+}
+
+export async function getDriverActiveTrip(driverId: string): Promise<ServiceResult<Trip>> {
+  const activeResult = await supabase
+    .from('trips')
+    .select(TRIP_COLUMNS)
+    .eq('driver_id', driverId)
+    .in('status', ['aceptado', 'en_curso'] satisfies TripStatus[])
+    .order('requested_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeResult.error) {
+    return serviceError('load-open-trips', activeResult.error);
+  }
+  if (activeResult.data) return { data: activeResult.data as Trip, error: null };
+
+  return getUnratedCompletedTrip(driverId, 'driver_id');
+}
+
+async function getUnratedCompletedTrip(
+  userId: string,
+  participantColumn: 'passenger_id' | 'driver_id',
+): Promise<ServiceResult<Trip>> {
+  const tripsResult = await supabase
+    .from('trips')
+    .select(TRIP_COLUMNS)
+    .eq(participantColumn, userId)
+    .eq('status', 'completado' satisfies TripStatus)
+    .order('completed_at', { ascending: false })
+    .limit(10);
+
+  if (tripsResult.error) {
+    return serviceError('load-rating', tripsResult.error);
   }
 
-  return { data: (result.data as Trip | null) ?? null, error: null };
+  const completedTrips = (tripsResult.data as Trip[] | null) ?? [];
+  if (!completedTrips.length) return { data: null, error: null };
+
+  const ratingsResult = await supabase
+    .from('ratings')
+    .select('trip_id')
+    .eq('rated_by', userId)
+    .in('trip_id', completedTrips.map((trip) => trip.id));
+
+  if (ratingsResult.error) {
+    return serviceError('load-rating', ratingsResult.error);
+  }
+
+  const ratedTripIds = new Set((ratingsResult.data ?? []).map((rating) => rating.trip_id as string));
+  return {
+    data: completedTrips.find((trip) => !ratedTripIds.has(trip.id)) ?? null,
+    error: null,
+  };
 }
 
 export async function getOpenTrips(): Promise<ServiceResult<Trip[]>> {
@@ -360,6 +421,86 @@ export async function acceptTrip(tripId: string, driverId: string): Promise<Serv
   }
 
   return { data: result.data as Trip, error: null };
+}
+
+export async function updateTripStatus(
+  tripId: string,
+  driverId: string,
+  status: Extract<TripStatus, 'en_curso' | 'completado'>,
+): Promise<ServiceResult<Trip>> {
+  const timestamp = new Date().toISOString();
+  const result = await supabase
+    .from('trips')
+    .update({
+      status,
+      ...(status === 'en_curso' ? { started_at: timestamp } : { completed_at: timestamp }),
+    })
+    .eq('id', tripId)
+    .eq('driver_id', driverId)
+    .select(TRIP_COLUMNS)
+    .maybeSingle();
+
+  if (result.error) {
+    return serviceError('update-trip', result.error);
+  }
+  if (!result.data) {
+    return { data: null, error: 'Este viaje ya no está disponible para actualizarse.' };
+  }
+  return { data: result.data as Trip, error: null };
+}
+
+export async function rateTrip(
+  trip: Trip,
+  userId: string,
+  score: number,
+): Promise<ServiceResult<boolean>> {
+  const ratedUser = trip.passenger_id === userId ? trip.driver_id : trip.passenger_id;
+  if (!ratedUser || trip.status !== 'completado') {
+    return { data: null, error: 'Solo puedes calificar a la otra persona cuando el viaje haya terminado.' };
+  }
+
+  const result = await supabase.from('ratings').insert({
+    trip_id: trip.id,
+    rated_by: userId,
+    rated_user: ratedUser,
+    score,
+  });
+
+  if (result.error) {
+    return serviceError('rate-trip', result.error);
+  }
+  return { data: true, error: null };
+}
+
+export function subscribeToTrips(
+  userId: string,
+  role: 'passenger' | 'driver',
+  onChange: () => void,
+) {
+  const column = role === 'driver' ? 'driver_id' : 'passenger_id';
+  const channel = supabase
+    .channel(`trips:${role}:${userId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'trips', filter: `${column}=eq.${userId}` },
+      onChange,
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToOpenTrips(onChange: () => void) {
+  const channel = supabase
+    .channel('trips:open')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, onChange)
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 export function tripDestination(trip: Trip) {

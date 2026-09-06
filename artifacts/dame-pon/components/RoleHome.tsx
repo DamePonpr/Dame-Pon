@@ -10,16 +10,21 @@ import { AppButton } from '@/components/AppButton';
 import { BrandMark } from '@/components/BrandMark';
 import {
   acceptTrip,
+  getDriverActiveTrip,
   getDriverSetup,
   getOpenTrips,
   getPassengerActiveTrip,
+  rateTrip,
   requestTrip,
   saveDriverSetup,
   setDriverAvailability,
+  subscribeToOpenTrips,
+  subscribeToTrips,
   tripDestination,
   type DriverSetup,
   type Trip,
   type VehicleDraft,
+  updateTripStatus,
 } from '@/lib/rideService';
 
 const emptyVehicle: VehicleDraft = {
@@ -47,6 +52,9 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [loading, setLoading] = useState(true);
   const [savingVehicle, setSavingVehicle] = useState(false);
   const [requestingTrip, setRequestingTrip] = useState(false);
+  const [tripActionLoading, setTripActionLoading] = useState(false);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [setupError, setSetupError] = useState('');
   const [requestError, setRequestError] = useState('');
 
@@ -60,11 +68,15 @@ export function RoleHome({ role }: { role: UserRole }) {
 
     const load = async () => {
       if (isDriver) {
-        const result = await getDriverSetup(user.id);
+        const [result, tripResult] = await Promise.all([
+          getDriverSetup(user.id),
+          getDriverActiveTrip(user.id),
+        ]);
         if (active) {
           setDriverSetup(result.data);
           setIsAvailable(result.data?.driver?.is_online === true);
-          setSetupError(result.error ?? '');
+          setActiveTrip(tripResult.data);
+          setSetupError(result.error ?? tripResult.error ?? '');
           setLoading(false);
         }
       } else {
@@ -84,6 +96,20 @@ export function RoleHome({ role }: { role: UserRole }) {
   }, [isDriver, user?.id]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    const refresh = async () => {
+      const result = isDriver
+        ? await getDriverActiveTrip(user.id)
+        : await getPassengerActiveTrip(user.id);
+      setActiveTrip(result.data);
+      setRatingSubmitted(false);
+    };
+    return subscribeToTrips(user.id, isDriver ? 'driver' : 'passenger', () => {
+      void refresh();
+    });
+  }, [isDriver, user?.id]);
+
+  useEffect(() => {
     if (!isDriver || !isAvailable) {
       setDriverTrips([]);
       return;
@@ -97,8 +123,12 @@ export function RoleHome({ role }: { role: UserRole }) {
       }
     };
     void loadOpenTrips();
+    const unsubscribe = subscribeToOpenTrips(() => {
+      void loadOpenTrips();
+    });
     return () => {
       active = false;
+      unsubscribe();
     };
   }, [isAvailable, isDriver]);
 
@@ -184,6 +214,40 @@ export function RoleHome({ role }: { role: UserRole }) {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
+  const handleTripStatus = async (status: 'en_curso' | 'completado') => {
+    if (!user?.id || !activeTrip) return;
+    setTripActionLoading(true);
+    setSetupError('');
+    const result = await updateTripStatus(activeTrip.id, user.id, status);
+    setTripActionLoading(false);
+    if (result.error) {
+      setSetupError(result.error);
+      return;
+    }
+    setActiveTrip(result.data);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleRating = async (score: number) => {
+    if (!user?.id || !activeTrip) return;
+    setRatingLoading(true);
+    const result = await rateTrip(activeTrip, user.id, score);
+    setRatingLoading(false);
+    if (result.error) {
+      isDriver ? setSetupError(result.error) : setRequestError(result.error);
+      return;
+    }
+    setActiveTrip(null);
+    setRatingSubmitted(false);
+    if (isDriver && isAvailable) {
+      const openTripsResult = await getOpenTrips();
+      setDriverTrips(openTripsResult.data ?? []);
+      if (openTripsResult.error) setSetupError(openTripsResult.error);
+    }
+    Alert.alert('Calificación enviada', 'Gracias por compartir cómo estuvo el viaje.');
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
@@ -223,6 +287,10 @@ export function RoleHome({ role }: { role: UserRole }) {
             isAvailable={isAvailable}
             driverReady={driverReady}
             driverTrips={driverTrips}
+            activeTrip={activeTrip}
+            tripActionLoading={tripActionLoading}
+            ratingLoading={ratingLoading}
+            ratingSubmitted={ratingSubmitted}
             setupError={setupError}
             onAvailability={handleAvailability}
             onVehicle={() => {
@@ -230,6 +298,8 @@ export function RoleHome({ role }: { role: UserRole }) {
               setShowVehicle(true);
             }}
             onAccept={handleAcceptTrip}
+            onTripStatus={handleTripStatus}
+            onRating={handleRating}
           />
         ) : (
           <PassengerContent
@@ -237,6 +307,9 @@ export function RoleHome({ role }: { role: UserRole }) {
             activeTrip={activeTrip}
             savedDestination={savedDestination}
             requestError={requestError}
+            ratingLoading={ratingLoading}
+            ratingSubmitted={ratingSubmitted}
+            onRating={handleRating}
             onDestination={() => {
               setRequestError('');
               setShowDestination(true);
@@ -276,12 +349,18 @@ function PassengerContent({
   activeTrip,
   savedDestination,
   requestError,
+  ratingLoading,
+  ratingSubmitted,
+  onRating,
   onDestination,
 }: {
   colors: ReturnType<typeof useColors>;
   activeTrip: Trip | null;
   savedDestination: string;
   requestError: string;
+  ratingLoading: boolean;
+  ratingSubmitted: boolean;
+  onRating: (score: number) => void;
   onDestination: () => void;
 }) {
   return (
@@ -314,6 +393,9 @@ function PassengerContent({
             <Feather name="navigation" size={21} color="#FFFFFF" />
           </View>
           <Text style={styles.inverseSubtitle}>Destino: {tripDestination(activeTrip)}</Text>
+          {activeTrip.status === 'completado' ? (
+            <RatingControl loading={ratingLoading} submitted={ratingSubmitted} onRating={onRating} />
+          ) : null}
         </View>
       ) : (
         <Pressable
@@ -348,19 +430,31 @@ function DriverContent({
   isAvailable,
   driverReady,
   driverTrips,
+  activeTrip,
+  tripActionLoading,
+  ratingLoading,
+  ratingSubmitted,
   setupError,
   onAvailability,
   onVehicle,
   onAccept,
+  onTripStatus,
+  onRating,
 }: {
   colors: ReturnType<typeof useColors>;
   isAvailable: boolean;
   driverReady: boolean;
   driverTrips: Trip[];
+  activeTrip: Trip | null;
+  tripActionLoading: boolean;
+  ratingLoading: boolean;
+  ratingSubmitted: boolean;
   setupError: string;
   onAvailability: () => void;
   onVehicle: () => void;
   onAccept: (trip: Trip) => void;
+  onTripStatus: (status: 'en_curso' | 'completado') => void;
+  onRating: (score: number) => void;
 }) {
   return (
     <>
@@ -405,7 +499,22 @@ function DriverContent({
 
       {setupError ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{setupError}</Text> : null}
 
-      {isAvailable ? (
+      {activeTrip ? (
+        <View style={[styles.driverActiveTrip, { backgroundColor: colors.primary }]}>
+          <Text style={styles.inverseEyebrow}>VIAJE ACTUAL</Text>
+          <Text style={styles.inverseTitle}>{tripStatusLabel(activeTrip.status)}</Text>
+          <Text style={styles.inverseSubtitle}>Destino: {tripDestination(activeTrip)}</Text>
+          {activeTrip.status === 'aceptado' ? (
+            <AppButton label="Iniciar viaje" onPress={() => onTripStatus('en_curso')} loading={tripActionLoading} testID="start-trip" />
+          ) : activeTrip.status === 'en_curso' ? (
+            <AppButton label="Completar viaje" onPress={() => onTripStatus('completado')} loading={tripActionLoading} testID="complete-trip" />
+          ) : (
+            <RatingControl loading={ratingLoading} submitted={ratingSubmitted} onRating={onRating} />
+          )}
+        </View>
+      ) : null}
+
+      {isAvailable && !activeTrip ? (
         <View style={styles.requestsSection}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Solicitudes disponibles</Text>
@@ -584,7 +693,42 @@ function Stat({ label, value, icon, colors }: { label: string; value: string; ic
   );
 }
 
+function RatingControl({
+  loading,
+  submitted,
+  onRating,
+}: {
+  loading: boolean;
+  submitted: boolean;
+  onRating: (score: number) => void;
+}) {
+  if (submitted) {
+    return <Text style={styles.ratingThanks}>Gracias por tu calificación.</Text>;
+  }
+  return (
+    <View style={styles.ratingBlock}>
+      <Text style={styles.ratingLabel}>¿Cómo estuvo el viaje?</Text>
+      <View style={styles.ratingRow}>
+        {[1, 2, 3, 4, 5].map((score) => (
+          <Pressable
+            key={score}
+            testID={`rate-trip-${score}`}
+            disabled={loading}
+            accessibilityLabel={`Calificar con ${score} estrellas`}
+            onPress={() => onRating(score)}
+            style={({ pressed }) => [styles.starButton, pressed && { opacity: 0.65 }]}
+          >
+            <Feather name="star" size={24} color="#F6C453" />
+          </Pressable>
+        ))}
+      </View>
+      {loading ? <ActivityIndicator color="#FFFFFF" /> : null}
+    </View>
+  );
+}
+
 function tripStatusLabel(status: string) {
+  if (status === 'completado') return 'Viaje completado';
   if (status === 'aceptado') return 'Conductor en camino';
   if (status === 'en_curso') return 'Viaje en curso';
   return 'Buscando conductor';
@@ -636,6 +780,12 @@ const styles = StyleSheet.create({
   destinationValue: { fontFamily: 'Inter_400Regular', fontSize: 14 },
   activeTripCard: { borderRadius: 22, padding: 20, gap: 15 },
   activeTripHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  driverActiveTrip: { borderRadius: 22, padding: 20, gap: 13 },
+  ratingBlock: { gap: 9 },
+  ratingLabel: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 13 },
+  ratingRow: { flexDirection: 'row', gap: 8 },
+  starButton: { paddingVertical: 3 },
+  ratingThanks: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 13 },
   reassurance: { borderRadius: 15, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 10 },
   reassuranceText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 12, lineHeight: 17 },
   requestsSection: { gap: 12 },
