@@ -5,10 +5,11 @@
   "main": "expo-router/entry",
   "scripts": {
     "dev": "node scripts/validate-supabase-config.mjs && sh -c 'if [ -n \"$REPLIT_EXPO_SESSION_SECRET\" ]; then pnpm exec create-launch login --session \"$REPLIT_EXPO_SESSION_SECRET\" || true; fi' && EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --localhost --port $PORT",
-    "build": "node scripts/build.js",
+    "build": "pnpm run test:supabase-config && node scripts/build.js",
     "build:publish": "pnpm run verify:supabase-rls && pnpm run build",
     "serve": "node server/serve.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "pnpm run test:supabase-config && tsc -p tsconfig.json --noEmit",
+    "test:supabase-config": "node --test scripts/validate-supabase-config.test.mjs",
     "verify:supabase-config": "node scripts/validate-supabase-config.mjs",
     "verify:supabase-rls": "pnpm run verify:supabase-config && node scripts/verify-supabase-rls.mjs",
     "verify:trip-realtime": "pnpm run verify:supabase-config && node scripts/verify-trip-realtime.mjs"
