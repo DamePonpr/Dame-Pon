@@ -7,11 +7,19 @@ export interface Trip {
   status: string;
   passenger_id?: string | null;
   driver_id?: string | null;
-  pickup_location?: string | null;
-  dropoff_location?: string | null;
-  origin?: string | null;
-  destination?: string | null;
-  created_at?: string | null;
+  pickup_address?: string | null;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
+  dropoff_address?: string | null;
+  dropoff_lat?: number | null;
+  dropoff_lng?: number | null;
+  fare_estimate?: number | null;
+  fare_final?: number | null;
+  distance_km?: number | null;
+  requested_at?: string | null;
+  accepted_at?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
 }
 
 export interface VehicleDraft {
@@ -151,60 +159,48 @@ export async function setDriverAvailability(
 
 export async function requestTrip(
   passengerId: string,
-  destination: string,
-  pickupLocation = 'Ubicación actual',
+  dropoffAddress: string,
+  pickup: {
+    address: string;
+    latitude: number | null;
+    longitude: number | null;
+  },
 ): Promise<ServiceResult<Trip>> {
-  const payloads: Record<string, unknown>[] = [
-    {
+  const result = await supabase
+    .from('trips')
+    .insert({
       passenger_id: passengerId,
-      pickup_location: pickupLocation,
-      dropoff_location: destination.trim(),
+      driver_id: null,
+      pickup_address: pickup.address,
+      pickup_lat: pickup.latitude,
+      pickup_lng: pickup.longitude,
+      dropoff_address: dropoffAddress.trim(),
+      dropoff_lat: null,
+      dropoff_lng: null,
       status: 'requested',
-    },
-    {
-      rider_id: passengerId,
-      origin: pickupLocation,
-      destination: destination.trim(),
-      status: 'requested',
-    },
-  ];
+      requested_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
 
-  let lastError: string | null = null;
-  for (const payload of payloads) {
-    const result = await supabase.from('trips').insert(payload).select().single();
-    if (!result.error) {
-      return { data: result.data as Trip, error: null };
-    }
-    lastError = result.error.message;
-    if (!isColumnMismatch(result.error.message)) break;
+  if (result.error) {
+    console.error('[Dame Pon] Error creando trip:', result.error.message);
+    return { data: null, error: getErrorMessage(result.error) };
   }
-
-  console.error('[Dame Pon] Error creando trip:', lastError);
-  return { data: null, error: lastError ?? 'No pudimos solicitar el viaje.' };
+  return { data: result.data as Trip, error: null };
 }
 
 export async function getPassengerActiveTrip(passengerId: string): Promise<ServiceResult<Trip>> {
-  let result = await supabase
+  const result = await supabase
     .from('trips')
     .select('*')
     .eq('passenger_id', passengerId)
     .in('status', ['requested', 'accepted', 'in_progress'])
-    .order('created_at', { ascending: false })
+    .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (result.error && isColumnMismatch(result.error.message)) {
-    result = await supabase
-      .from('trips')
-      .select('*')
-      .eq('rider_id', passengerId)
-      .in('status', ['requested', 'accepted', 'in_progress'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-  }
-
-  if (result.error && !isColumnMismatch(result.error.message)) {
+  if (result.error) {
     return { data: null, error: getErrorMessage(result.error) };
   }
   return { data: (result.data as Trip | null) ?? null, error: null };
@@ -215,7 +211,7 @@ export async function getOpenTrips(): Promise<ServiceResult<Trip[]>> {
     .from('trips')
     .select('*')
     .eq('status', 'requested')
-    .order('created_at', { ascending: false })
+    .order('requested_at', { ascending: false })
     .limit(10);
 
   if (result.error) {
@@ -227,7 +223,11 @@ export async function getOpenTrips(): Promise<ServiceResult<Trip[]>> {
 export async function acceptTrip(tripId: string, driverId: string): Promise<ServiceResult<Trip>> {
   const result = await supabase
     .from('trips')
-    .update({ driver_id: driverId, status: 'accepted' })
+    .update({
+      driver_id: driverId,
+      status: 'accepted',
+      accepted_at: new Date().toISOString(),
+    })
     .eq('id', tripId)
     .eq('status', 'requested')
     .select()
@@ -241,5 +241,5 @@ export async function acceptTrip(tripId: string, driverId: string): Promise<Serv
 }
 
 export function tripDestination(trip: Trip) {
-  return trip.dropoff_location ?? trip.destination ?? 'Destino sin especificar';
+  return trip.dropoff_address ?? 'Destino sin especificar';
 }

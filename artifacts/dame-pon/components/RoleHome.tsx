@@ -143,7 +143,11 @@ export function RoleHome({ role }: { role: UserRole }) {
     if (!user?.id || !destination.trim()) return;
     setRequestingTrip(true);
     setRequestError('');
-    let pickupLocation = 'Ubicación actual';
+    const pickup = {
+      address: 'Ubicación actual',
+      latitude: null as number | null,
+      longitude: null as number | null,
+    };
 
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
@@ -151,13 +155,12 @@ export function RoleHome({ role }: { role: UserRole }) {
         const position = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-        pickupLocation = `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
+        pickup.latitude = position.coords.latitude;
+        pickup.longitude = position.coords.longitude;
       }
-    } catch {
-      pickupLocation = 'Ubicación actual';
-    }
+    } catch {}
 
-    const result = await requestTrip(user.id, destination, pickupLocation);
+    const result = await requestTrip(user.id, destination, pickup);
     setRequestingTrip(false);
     if (result.error) {
       setRequestError(result.error);
