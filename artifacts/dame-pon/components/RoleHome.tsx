@@ -690,11 +690,17 @@ function VehicleModal({
 }) {
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+      <View style={styles.modalBackdrop}>
+        <Pressable
+          accessibilityLabel="Cerrar formulario de vehículo"
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+        />
         <ScrollView
+          style={styles.vehicleModalScroll}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           contentContainerStyle={[styles.modalCard, { backgroundColor: colors.background, paddingBottom: insetsBottom + 22 }]}
-          onTouchStart={(event) => event.stopPropagation()}
         >
           <View style={styles.modalHandle} />
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>Tu vehículo</Text>
@@ -713,7 +719,7 @@ function VehicleModal({
           {error ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{error}</Text> : null}
           <AppButton label="Guardar vehículo" onPress={onSubmit} loading={loading} testID="save-vehicle" />
         </ScrollView>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -872,6 +878,7 @@ const styles = StyleSheet.create({
   emptyText: { fontFamily: 'Inter_400Regular', fontSize: 12, textAlign: 'center' },
   inlineError: { fontFamily: 'Inter_500Medium', fontSize: 12, lineHeight: 17 },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(11,28,38,0.5)' },
+  vehicleModalScroll: { width: '100%', maxHeight: '92%' },
   modalCard: { borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 22, gap: 14 },
   modalHandle: { width: 42, height: 4, borderRadius: 3, backgroundColor: '#D6E1E6', alignSelf: 'center', marginBottom: 6 },
   modalTitle: { fontFamily: 'Inter_700Bold', fontSize: 24, letterSpacing: -0.5 },
