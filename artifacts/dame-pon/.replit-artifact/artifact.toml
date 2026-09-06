@@ -16,7 +16,7 @@ localPort = 22076
 run = "pnpm --filter @workspace/dame-pon run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/dame-pon", "run", "build" ]
+build = [ "pnpm", "--filter", "@workspace/dame-pon", "run", "build:publish" ]
 run = [ "pnpm", "--filter", "@workspace/dame-pon", "run", "serve" ]
 
 [services.env]

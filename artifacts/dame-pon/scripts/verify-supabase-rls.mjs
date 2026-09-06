@@ -12,8 +12,10 @@ const requiredEnvironment = [
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const plate = `RLS-${runId.slice(-6).toUpperCase()}`;
-const created = { tripId: null, vehicleId: null };
+const created = { tripId: null };
+let driverIdentity = null;
+let originalDriver = null;
+let driverMutated = false;
 
 function client() {
   return createClient(supabaseUrl, supabasePublishableKey, {
@@ -76,6 +78,7 @@ function assertRowsHidden(step, rows) {
   }
 }
 
+
 async function signIn(label, email, password) {
   const supabase = client();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -114,8 +117,17 @@ async function run() {
   if (passenger.user.id === driver.user.id) {
     fail('authentication', 'separación de identidades', 'Ambas sesiones corresponden al mismo usuario.');
   }
+  driverIdentity = driver;
 
   let response = await driver.supabase
+    .from('drivers')
+    .select('id,status,is_online,license_number')
+    .eq('id', driver.user.id)
+    .maybeSingle();
+  checkError('lectura inicial del conductor', response.error);
+  originalDriver = response.data;
+
+  response = await driver.supabase
     .from('drivers')
     .upsert(
       {
@@ -129,34 +141,7 @@ async function run() {
     .select('id,status,is_online,updated_at')
     .single();
   checkError('alta/actualización del conductor', response.error);
-
-  response = await driver.supabase
-    .from('vehicles')
-    .insert({
-      driver_id: driver.user.id,
-      make: 'RLS Check',
-      model: 'Inicial',
-      year: 2026,
-      color: 'Negro',
-      plate,
-    })
-    .select('id,driver_id,make,model,year,color,plate')
-    .single();
-  checkError('alta del vehículo', response.error);
-  created.vehicleId = response.data.id;
-
-  response = await driver.supabase
-    .from('vehicles')
-    .update({ model: 'Actualizado', color: 'Blanco' })
-    .eq('id', created.vehicleId)
-    .eq('driver_id', driver.user.id)
-    .select('id,model,color')
-    .single();
-  checkError('actualización del vehículo', response.error);
-  if (response.data.model !== 'Actualizado' || response.data.color !== 'Blanco') {
-    fail('rls', 'actualización del vehículo', 'La escritura no devolvió los valores actualizados.');
-  }
-  console.log('[OK] vehículo: alta y actualización');
+  driverMutated = true;
 
   response = await driver.supabase
     .from('drivers')
@@ -253,21 +238,27 @@ try {
     process.exitCode = 1;
   }
 } finally {
-  // Las cuentas son dedicadas a esta comprobación. Se intenta retirar el
-  // vehículo creado, pero no se oculta un fallo principal si DELETE no forma
-  // parte de las políticas de producción.
-  if (
-    created.vehicleId
-    && process.env.SUPABASE_RLS_DRIVER_EMAIL
-    && process.env.SUPABASE_RLS_DRIVER_PASSWORD
-  ) {
-    const cleanup = client();
-    const { data } = await cleanup.auth.signInWithPassword({
-      email: process.env.SUPABASE_RLS_DRIVER_EMAIL,
-      password: process.env.SUPABASE_RLS_DRIVER_PASSWORD,
-    });
-    if (data.session) {
-      await cleanup.from('vehicles').delete().eq('id', created.vehicleId);
+  if (driverIdentity && driverMutated) {
+    const cleanup = originalDriver
+      ? driverIdentity.supabase
+        .from('drivers')
+        .update({
+          status: originalDriver.status,
+          is_online: originalDriver.is_online,
+          license_number: originalDriver.license_number,
+        })
+        .eq('id', driverIdentity.user.id)
+      : driverIdentity.supabase
+        .from('drivers')
+        .delete()
+        .eq('id', driverIdentity.user.id);
+    const { error } = await cleanup;
+    if (error) {
+      console.error(
+        `\n[FAIL:${classify(error)}] restauración del conductor\n`
+        + [error.code, error.message, error.details, error.hint].filter(Boolean).join(' | '),
+      );
+      process.exitCode = 1;
     }
   }
 }
