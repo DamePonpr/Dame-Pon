@@ -117,7 +117,15 @@ async function run() {
 
   let response = await driver.supabase
     .from('drivers')
-    .upsert({ id: driver.user.id, is_online: false }, { onConflict: 'id' })
+    .upsert(
+      {
+        id: driver.user.id,
+        is_online: false,
+        license_number: `RLS-${runId.slice(-10).toUpperCase()}`,
+        status: 'aprobado',
+      },
+      { onConflict: 'id' },
+    )
     .select('id,status,is_online,updated_at')
     .single();
   checkError('alta/actualización del conductor', response.error);
@@ -168,11 +176,11 @@ async function run() {
       passenger_id: passenger.user.id,
       driver_id: null,
       pickup_address: `RLS origen ${runId}`,
-      pickup_lat: null,
-      pickup_lng: null,
+      pickup_lat: 18.4655,
+      pickup_lng: -66.1057,
       dropoff_address: `RLS destino ${runId}`,
-      dropoff_lat: null,
-      dropoff_lng: null,
+      dropoff_lat: 18.4064,
+      dropoff_lng: -66.0644,
       status: 'buscando_conductor',
       requested_at: new Date().toISOString(),
     })
@@ -198,17 +206,12 @@ async function run() {
   checkError('visibilidad de solicitudes abiertas', response.error);
 
   response = await driver.supabase
-    .from('trips')
-    .update({
-      driver_id: driver.user.id,
-      status: 'aceptado',
-      accepted_at: new Date().toISOString(),
-    })
-    .eq('id', created.tripId)
-    .eq('status', 'buscando_conductor')
-    .select('id,status,passenger_id,driver_id,accepted_at')
-    .single();
+    .rpc('accept_trip', { p_trip_id: created.tripId })
+    .maybeSingle();
   checkError('aceptación del viaje', response.error);
+  if (!response.data) {
+    fail('rls', 'aceptación del viaje', 'El RPC no devolvió un viaje; pudo haber sido aceptado previamente.');
+  }
   if (response.data.driver_id !== driver.user.id || response.data.passenger_id !== passenger.user.id) {
     fail('rls', 'aceptación del viaje', 'El viaje aceptado no conserva a sus participantes correctos.');
   }

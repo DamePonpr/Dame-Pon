@@ -83,6 +83,7 @@ const DRIVER_COLUMNS = 'id,status,is_online,updated_at';
 const VEHICLE_COLUMNS = 'id,driver_id,make,model,year,color,plate';
 const TRIP_COLUMNS = 'id,status,passenger_id,driver_id,pickup_address,pickup_lat,pickup_lng,dropoff_address,dropoff_lat,dropoff_lng,fare_estimate,fare_final,distance_km,requested_at,accepted_at,started_at,completed_at';
 
+const TRIP_RECONCILIATION_INTERVAL_MS = 3_000;
 const actionFallbacks: Record<RideAction, string> = {
   'load-driver': 'No pudimos cargar tu información de conductor.',
   'save-driver': 'No pudimos preparar tu perfil de conductor.',
@@ -405,15 +406,7 @@ export async function getOpenTrips(): Promise<ServiceResult<Trip[]>> {
 
 export async function acceptTrip(tripId: string, driverId: string): Promise<ServiceResult<Trip>> {
   const result = await supabase
-    .from('trips')
-    .update({
-      driver_id: driverId,
-      status: 'aceptado' satisfies TripStatus,
-      accepted_at: new Date().toISOString(),
-    })
-    .eq('id', tripId)
-    .eq('status', 'buscando_conductor')
-    .select(TRIP_COLUMNS)
+    .rpc('accept_trip', { p_trip_id: tripId })
     .maybeSingle();
 
   if (result.error) {
@@ -427,7 +420,11 @@ export async function acceptTrip(tripId: string, driverId: string): Promise<Serv
     };
   }
 
-  return { data: result.data as Trip, error: null };
+  const trip = result.data as Trip;
+  if (trip.driver_id !== driverId) {
+    return { data: null, error: 'Supabase devolvió una asignación de viaje inválida.' };
+  }
+  return { data: trip, error: null };
 }
 
 export async function updateTripStatus(
@@ -495,8 +492,10 @@ export function subscribeToTrips(
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') onChange();
     });
+  const reconciliationTimer = setInterval(onChange, TRIP_RECONCILIATION_INTERVAL_MS);
 
   return () => {
+    clearInterval(reconciliationTimer);
     void supabase.removeChannel(channel);
   };
 }
@@ -508,8 +507,10 @@ export function subscribeToOpenTrips(onChange: () => void) {
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') onChange();
     });
+  const reconciliationTimer = setInterval(onChange, TRIP_RECONCILIATION_INTERVAL_MS);
 
   return () => {
+    clearInterval(reconciliationTimer);
     void supabase.removeChannel(channel);
   };
 }

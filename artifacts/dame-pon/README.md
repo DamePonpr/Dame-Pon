@@ -19,3 +19,57 @@ Puedes comprobar únicamente el formato de la configuración, sin imprimir sus v
 ```sh
 pnpm --filter @workspace/dame-pon run verify:supabase-config
 ```
+
+## Comprobación integral del viaje en tiempo real
+
+La prueba usa dos cuentas de Supabase Auth dedicadas y distintas. Ambas deben existir,
+tener el correo confirmado y usar los roles `passenger` y `driver`, respectivamente.
+Guarda sus credenciales únicamente en Replit Secrets:
+
+- `SUPABASE_RLS_PASSENGER_EMAIL`
+- `SUPABASE_RLS_PASSENGER_PASSWORD`
+- `SUPABASE_RLS_DRIVER_EMAIL`
+- `SUPABASE_RLS_DRIVER_PASSWORD`
+
+Para verificar solicitud, aceptación, inicio, finalización y calificación sin recargas
+manuales:
+
+```sh
+pnpm --filter @workspace/dame-pon run verify:trip-realtime
+```
+
+La prueba falla si un canal no queda suscrito o si una actualización no llega a ambas
+sesiones dentro del tiempo límite. Cada paso informa si se observó mediante el evento
+Realtime o mediante la reconciliación automática. La garantía comprobada es que las
+pantallas convergen sin una recarga manual incluso si Realtime pierde un evento.
+
+Si el conductor aprobado y conectado no puede leer solicitudes con estado
+`buscando_conductor`, aplica primero la migración:
+
+```text
+supabase/migrations/20260906120000_allow_approved_drivers_to_view_open_trips.sql
+```
+
+La política solo amplía la lectura de solicitudes todavía abiertas; no expone viajes
+aceptados, en curso ni completados a usuarios ajenos.
+
+Para permitir que ese conductor reclame una solicitud abierta mediante una función
+controlada que conserva pasajero, ruta y tarifa, aplica también:
+
+```text
+supabase/migrations/20260906121000_allow_approved_drivers_to_accept_open_trips.sql
+```
+
+Si anteriormente se aplicó una política `UPDATE` para la aceptación, aplica la
+migración correctiva que la elimina y crea el RPC seguro:
+
+```text
+supabase/migrations/20260906123000_secure_trip_acceptance.sql
+```
+
+Para que cada participante pueda calificar únicamente a la otra persona después de
+completar el viaje, aplica:
+
+```text
+supabase/migrations/20260906122000_allow_trip_participants_to_rate_each_other.sql
+```
