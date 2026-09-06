@@ -1,0 +1,1 @@
+- [Supabase schema probing](supabase-schema-probing.md) — validate PostgREST columns and enums with zero-row probes when OpenAPI requires a secret key.

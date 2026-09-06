@@ -1,25 +1,43 @@
 import { supabase } from '@/lib/supabase';
 
-export type TripStatus = 'requested' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+export type TripStatus = 'buscando_conductor' | 'aceptado' | 'en_curso' | 'completado' | 'cancelado';
+export type DriverStatus = 'pendiente' | 'aprobado' | 'suspendido';
 
 export interface Trip {
   id: string;
-  status: string;
-  passenger_id?: string | null;
-  driver_id?: string | null;
-  pickup_address?: string | null;
-  pickup_lat?: number | null;
-  pickup_lng?: number | null;
-  dropoff_address?: string | null;
-  dropoff_lat?: number | null;
-  dropoff_lng?: number | null;
+  status: TripStatus;
+  passenger_id: string;
+  driver_id: string | null;
+  pickup_address: string;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_address: string;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
   fare_estimate?: number | null;
   fare_final?: number | null;
   distance_km?: number | null;
-  requested_at?: string | null;
-  accepted_at?: string | null;
-  started_at?: string | null;
-  completed_at?: string | null;
+  requested_at: string;
+  accepted_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface Driver {
+  id: string;
+  status: DriverStatus;
+  is_online: boolean;
+  updated_at: string;
+}
+
+export interface Vehicle {
+  id: string;
+  driver_id: string;
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  plate: string;
 }
 
 export interface VehicleDraft {
@@ -31,8 +49,8 @@ export interface VehicleDraft {
 }
 
 export interface DriverSetup {
-  driver: Record<string, unknown> | null;
-  vehicle: Record<string, unknown> | null;
+  driver: Driver | null;
+  vehicle: Vehicle | null;
 }
 
 interface ServiceResult<T> {
@@ -40,35 +58,130 @@ interface ServiceResult<T> {
   error: string | null;
 }
 
-function getErrorMessage(error: { message?: string } | null) {
-  return error?.message || 'No pudimos completar esta acción.';
+interface SupabaseErrorLike {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+  status?: number;
 }
 
-function isColumnMismatch(message: string) {
-  const normalized = message.toLowerCase();
-  return normalized.includes('column') || normalized.includes('schema cache') || normalized.includes('does not exist');
+type RideAction =
+  | 'load-driver'
+  | 'save-driver'
+  | 'save-vehicle'
+  | 'availability'
+  | 'request-trip'
+  | 'load-passenger-trip'
+  | 'load-open-trips'
+  | 'accept-trip';
+
+const DRIVER_COLUMNS = 'id,status,is_online,updated_at';
+const VEHICLE_COLUMNS = 'id,driver_id,make,model,year,color,plate';
+const TRIP_COLUMNS = 'id,status,passenger_id,driver_id,pickup_address,pickup_lat,pickup_lng,dropoff_address,dropoff_lat,dropoff_lng,fare_estimate,fare_final,distance_km,requested_at,accepted_at,started_at,completed_at';
+
+const actionFallbacks: Record<RideAction, string> = {
+  'load-driver': 'No pudimos cargar tu información de conductor.',
+  'save-driver': 'No pudimos preparar tu perfil de conductor.',
+  'save-vehicle': 'No pudimos guardar los datos del vehículo.',
+  availability: 'No pudimos actualizar tu disponibilidad.',
+  'request-trip': 'No pudimos solicitar el viaje.',
+  'load-passenger-trip': 'No pudimos cargar tu viaje activo.',
+  'load-open-trips': 'No pudimos cargar las solicitudes disponibles.',
+  'accept-trip': 'No pudimos aceptar este viaje.',
+};
+
+function logServiceError(action: RideAction, error: SupabaseErrorLike) {
+  console.error(`[Dame Pon] ${action}:`, {
+    code: error.code,
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    status: error.status,
+  });
+}
+
+function toUserMessage(error: SupabaseErrorLike, action: RideAction) {
+  const code = error.code?.toUpperCase() ?? '';
+  const message = error.message?.toLowerCase() ?? '';
+  const details = error.details?.toLowerCase() ?? '';
+  const combined = `${message} ${details}`;
+
+  if (
+    error.status === 401
+    || combined.includes('invalid api key')
+    || combined.includes('invalid jwt')
+    || combined.includes('jwt expired')
+  ) {
+    return 'La conexión con Supabase necesita una clave pública válida. Actualiza la configuración del proyecto e inténtalo de nuevo.';
+  }
+
+  if (
+    code === '42501'
+    || code === 'PGRST301'
+    || combined.includes('row-level security')
+    || combined.includes('permission denied')
+    || combined.includes('not authorized')
+  ) {
+    return 'Supabase bloqueó esta acción por permisos. Revisa las políticas RLS para el usuario autenticado.';
+  }
+
+  if (
+    code === '42703'
+    || code === '42P01'
+    || code === 'PGRST204'
+    || combined.includes('schema cache')
+    || combined.includes('column') && combined.includes('does not exist')
+    || combined.includes('relation') && combined.includes('does not exist')
+  ) {
+    return 'El esquema de Supabase no coincide con el esperado. Revisa drivers.is_online, vehicles.plate y las direcciones de trips.';
+  }
+
+  if (code === '23505' || combined.includes('duplicate key')) {
+    if (action === 'save-vehicle') {
+      return 'Ya existe un vehículo con esos datos. Revisa la matrícula e inténtalo de nuevo.';
+    }
+    return 'Este registro ya existe y no se puede duplicar.';
+  }
+
+  if (code === '23503' || combined.includes('foreign key')) {
+    return 'Falta un registro relacionado en Supabase. Cierra sesión, vuelve a entrar e inténtalo de nuevo.';
+  }
+
+  return actionFallbacks[action];
+}
+
+function serviceError<T>(action: RideAction, error: SupabaseErrorLike): ServiceResult<T> {
+  logServiceError(action, error);
+  return { data: null, error: toUserMessage(error, action) };
 }
 
 export async function getDriverSetup(userId: string): Promise<ServiceResult<DriverSetup>> {
-  const driverResult = await supabase.from('drivers').select('*').eq('id', userId).maybeSingle();
-  const driver = driverResult.data as Record<string, unknown> | null;
+  const driverResult = await supabase
+    .from('drivers')
+    .select(DRIVER_COLUMNS)
+    .eq('id', userId)
+    .maybeSingle();
 
-  if (driverResult.error && !isColumnMismatch(driverResult.error.message)) {
-    return { data: null, error: getErrorMessage(driverResult.error) };
+  if (driverResult.error) {
+    return serviceError('load-driver', driverResult.error);
   }
 
-  const driverId = typeof driver?.id === 'string' ? driver.id : userId;
-  let vehicleResult = await supabase.from('vehicles').select('*').eq('driver_id', driverId).maybeSingle();
-  if (vehicleResult.error && isColumnMismatch(vehicleResult.error.message)) {
-    vehicleResult = await supabase.from('vehicles').select('*').eq('user_id', userId).maybeSingle();
-  }
+  const vehicleResult = await supabase
+    .from('vehicles')
+    .select(VEHICLE_COLUMNS)
+    .eq('driver_id', userId)
+    .maybeSingle();
 
-  if (vehicleResult.error && !isColumnMismatch(vehicleResult.error.message)) {
-    return { data: null, error: getErrorMessage(vehicleResult.error) };
+  if (vehicleResult.error) {
+    return serviceError('load-driver', vehicleResult.error);
   }
 
   return {
-    data: { driver, vehicle: vehicleResult.data as Record<string, unknown> | null },
+    data: {
+      driver: driverResult.data as Driver | null,
+      vehicle: vehicleResult.data as Vehicle | null,
+    },
     error: null,
   };
 }
@@ -77,83 +190,83 @@ export async function saveDriverSetup(
   userId: string,
   draft: VehicleDraft,
 ): Promise<ServiceResult<DriverSetup>> {
-  const driverPayloads: Record<string, unknown>[] = [
-    { id: userId, is_available: false },
-    { profile_id: userId, is_available: false },
-    { user_id: userId, is_available: false },
-  ];
+  const driverResult = await supabase
+    .from('drivers')
+    .upsert({ id: userId, is_online: false }, { onConflict: 'id' })
+    .select(DRIVER_COLUMNS)
+    .single();
 
-  let driver: Record<string, unknown> | null = null;
-  let lastDriverError: string | null = null;
-
-  for (const payload of driverPayloads) {
-    const result = await supabase.from('drivers').upsert(payload, { onConflict: 'id' }).select().maybeSingle();
-    if (!result.error) {
-      driver = result.data as Record<string, unknown> | null;
-      break;
-    }
-    lastDriverError = result.error.message;
-    if (!isColumnMismatch(result.error.message)) break;
+  if (driverResult.error) {
+    return serviceError('save-driver', driverResult.error);
   }
 
-  if (!driver && lastDriverError) {
-    console.error('[Dame Pon] Error guardando drivers:', lastDriverError);
-    return { data: null, error: lastDriverError };
+  const vehiclePayload = {
+    driver_id: userId,
+    make: draft.make.trim(),
+    model: draft.model.trim(),
+    year: Number(draft.year),
+    color: draft.color.trim(),
+    plate: draft.licensePlate.trim().toUpperCase(),
+  };
+
+  const existingVehicle = await supabase
+    .from('vehicles')
+    .select('id')
+    .eq('driver_id', userId)
+    .maybeSingle();
+
+  if (existingVehicle.error) {
+    return serviceError('save-vehicle', existingVehicle.error);
   }
 
-  const driverId = typeof driver?.id === 'string' ? driver.id : userId;
-  const vehiclePayloads: Record<string, unknown>[] = [
-    {
-      driver_id: driverId,
-      make: draft.make.trim(),
-      model: draft.model.trim(),
-      year: Number(draft.year),
-      color: draft.color.trim(),
-      license_plate: draft.licensePlate.trim().toUpperCase(),
+  const vehicleResult = existingVehicle.data?.id
+    ? await supabase
+        .from('vehicles')
+        .update(vehiclePayload)
+        .eq('id', existingVehicle.data.id)
+        .select(VEHICLE_COLUMNS)
+        .single()
+    : await supabase
+        .from('vehicles')
+        .insert(vehiclePayload)
+        .select(VEHICLE_COLUMNS)
+        .single();
+
+  if (vehicleResult.error) {
+    return serviceError('save-vehicle', vehicleResult.error);
+  }
+
+  return {
+    data: {
+      driver: driverResult.data as Driver,
+      vehicle: vehicleResult.data as Vehicle,
     },
-    {
-      user_id: userId,
-      brand: draft.make.trim(),
-      model: draft.model.trim(),
-      year: Number(draft.year),
-      color: draft.color.trim(),
-      plate_number: draft.licensePlate.trim().toUpperCase(),
-    },
-  ];
-
-  let vehicle: Record<string, unknown> | null = null;
-  let lastVehicleError: string | null = null;
-
-  for (const payload of vehiclePayloads) {
-    const result = await supabase.from('vehicles').insert(payload).select().maybeSingle();
-    if (!result.error) {
-      vehicle = result.data as Record<string, unknown> | null;
-      break;
-    }
-    lastVehicleError = result.error.message;
-    if (!isColumnMismatch(result.error.message)) break;
-  }
-
-  if (!vehicle && lastVehicleError) {
-    console.error('[Dame Pon] Error guardando vehicles:', lastVehicleError);
-    return { data: null, error: lastVehicleError };
-  }
-
-  return { data: { driver, vehicle }, error: null };
+    error: null,
+  };
 }
 
 export async function setDriverAvailability(
   userId: string,
   isAvailable: boolean,
 ): Promise<ServiceResult<boolean>> {
-  let result = await supabase.from('drivers').update({ is_available: isAvailable }).eq('id', userId);
-  if (result.error && isColumnMismatch(result.error.message)) {
-    result = await supabase.from('drivers').update({ available: isAvailable }).eq('profile_id', userId);
-  }
+  const result = await supabase
+    .from('drivers')
+    .update({ is_online: isAvailable })
+    .eq('id', userId)
+    .select('id')
+    .maybeSingle();
+
   if (result.error) {
-    console.error('[Dame Pon] Error actualizando disponibilidad:', result.error.message);
-    return { data: null, error: getErrorMessage(result.error) };
+    return serviceError('availability', result.error);
   }
+
+  if (!result.data) {
+    return {
+      data: null,
+      error: 'No encontramos tu perfil de conductor. Guarda primero los datos de tu vehículo.',
+    };
+  }
+
   return { data: true, error: null };
 }
 
@@ -177,46 +290,48 @@ export async function requestTrip(
       dropoff_address: dropoffAddress.trim(),
       dropoff_lat: null,
       dropoff_lng: null,
-      status: 'requested',
+      status: 'buscando_conductor' satisfies TripStatus,
       requested_at: new Date().toISOString(),
     })
-    .select()
+    .select(TRIP_COLUMNS)
     .single();
 
   if (result.error) {
-    console.error('[Dame Pon] Error creando trip:', result.error.message);
-    return { data: null, error: getErrorMessage(result.error) };
+    return serviceError('request-trip', result.error);
   }
+
   return { data: result.data as Trip, error: null };
 }
 
 export async function getPassengerActiveTrip(passengerId: string): Promise<ServiceResult<Trip>> {
   const result = await supabase
     .from('trips')
-    .select('*')
+    .select(TRIP_COLUMNS)
     .eq('passenger_id', passengerId)
-    .in('status', ['requested', 'accepted', 'in_progress'])
+    .in('status', ['buscando_conductor', 'aceptado', 'en_curso'] satisfies TripStatus[])
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (result.error) {
-    return { data: null, error: getErrorMessage(result.error) };
+    return serviceError('load-passenger-trip', result.error);
   }
+
   return { data: (result.data as Trip | null) ?? null, error: null };
 }
 
 export async function getOpenTrips(): Promise<ServiceResult<Trip[]>> {
   const result = await supabase
     .from('trips')
-    .select('*')
-    .eq('status', 'requested')
+    .select(TRIP_COLUMNS)
+    .eq('status', 'buscando_conductor' satisfies TripStatus)
     .order('requested_at', { ascending: false })
     .limit(10);
 
   if (result.error) {
-    return { data: null, error: getErrorMessage(result.error) };
+    return serviceError('load-open-trips', result.error);
   }
+
   return { data: (result.data as Trip[]) ?? [], error: null };
 }
 
@@ -225,21 +340,28 @@ export async function acceptTrip(tripId: string, driverId: string): Promise<Serv
     .from('trips')
     .update({
       driver_id: driverId,
-      status: 'accepted',
+      status: 'aceptado' satisfies TripStatus,
       accepted_at: new Date().toISOString(),
     })
     .eq('id', tripId)
-    .eq('status', 'requested')
-    .select()
-    .single();
+    .eq('status', 'buscando_conductor')
+    .select(TRIP_COLUMNS)
+    .maybeSingle();
 
   if (result.error) {
-    console.error('[Dame Pon] Error aceptando trip:', result.error.message);
-    return { data: null, error: getErrorMessage(result.error) };
+    return serviceError('accept-trip', result.error);
   }
+
+  if (!result.data) {
+    return {
+      data: null,
+      error: 'Este viaje ya fue aceptado por otro conductor o ya no está disponible.',
+    };
+  }
+
   return { data: result.data as Trip, error: null };
 }
 
 export function tripDestination(trip: Trip) {
-  return trip.dropoff_address ?? 'Destino sin especificar';
+  return trip.dropoff_address || 'Destino sin especificar';
 }

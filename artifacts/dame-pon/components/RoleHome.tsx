@@ -63,8 +63,7 @@ export function RoleHome({ role }: { role: UserRole }) {
         const result = await getDriverSetup(user.id);
         if (active) {
           setDriverSetup(result.data);
-          const storedAvailability = result.data?.driver?.is_available ?? result.data?.driver?.available;
-          setIsAvailable(storedAvailability === true);
+          setIsAvailable(result.data?.driver?.is_online === true);
           setSetupError(result.error ?? '');
           setLoading(false);
         }
@@ -586,8 +585,8 @@ function Stat({ label, value, icon, colors }: { label: string; value: string; ic
 }
 
 function tripStatusLabel(status: string) {
-  if (status === 'accepted') return 'Conductor en camino';
-  if (status === 'in_progress') return 'Viaje en curso';
+  if (status === 'aceptado') return 'Conductor en camino';
+  if (status === 'en_curso') return 'Viaje en curso';
   return 'Buscando conductor';
 }
 
