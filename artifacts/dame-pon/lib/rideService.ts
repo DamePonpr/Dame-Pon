@@ -92,6 +92,7 @@ type RideAction =
   | 'update-driver-location'
   | 'load-rating'
   | 'accept-trip'
+  | 'cancel-trip'
   | 'update-trip'
   | 'rate-trip';
 
@@ -113,6 +114,7 @@ const actionFallbacks: Record<RideAction, string> = {
   'update-driver-location': 'No pudimos compartir tu ubicación con el pasajero.',
   'load-rating': 'No pudimos comprobar si este viaje ya fue calificado.',
   'accept-trip': 'No pudimos aceptar este viaje.',
+  'cancel-trip': 'No pudimos cancelar este viaje.',
   'update-trip': 'No pudimos actualizar el estado del viaje.',
   'rate-trip': 'No pudimos guardar tu calificación.',
 };
@@ -564,6 +566,28 @@ export async function updateTripStatus(
   }
   if (!result.data) {
     return { data: null, error: 'Este viaje ya no está disponible para actualizarse.' };
+  }
+  return { data: result.data as Trip, error: null };
+}
+
+export async function cancelTrip(
+  tripId: string,
+  passengerId: string,
+): Promise<ServiceResult<Trip>> {
+  const result = await supabase
+    .from('trips')
+    .update({ status: 'cancelado' satisfies TripStatus })
+    .eq('id', tripId)
+    .eq('passenger_id', passengerId)
+    .in('status', ['buscando_conductor', 'aceptado'] satisfies TripStatus[])
+    .select(TRIP_COLUMNS)
+    .maybeSingle();
+
+  if (result.error) {
+    return serviceError('cancel-trip', result.error);
+  }
+  if (!result.data) {
+    return { data: null, error: 'Este viaje ya no puede cancelarse.' };
   }
   return { data: result.data as Trip, error: null };
 }

@@ -11,6 +11,7 @@ import { BrandMark } from '@/components/BrandMark';
 import { LiveRideMap } from '@/components/LiveRideMap';
 import {
   acceptTrip,
+  cancelTrip,
   getDriverActiveTrip,
   getDriverLocation,
   getDriverSetup,
@@ -32,6 +33,7 @@ import {
   updateDriverLocation,
   updateTripStatus,
 } from '@/lib/rideService';
+import { sendTripPush } from '@/lib/pushService';
 
 const emptyVehicle: VehicleDraft = {
   make: '',
@@ -317,6 +319,27 @@ export function RoleHome({ role }: { role: UserRole }) {
       return;
     }
     const nextValue = !isAvailable;
+    if (nextValue) {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) {
+        setSetupError('Necesitamos tu ubicación para mostrarte solicitudes cercanas mientras estás en línea.');
+        return;
+      }
+      try {
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const locationResult = await updateDriverLocation(user.id, {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        if (locationResult.error) {
+          setSetupError(locationResult.error);
+          return;
+        }
+      } catch {
+        setSetupError('No pudimos confirmar tu ubicación. Verifica que el GPS esté activo antes de ponerte en línea.');
+        return;
+      }
+    }
     const result = await setDriverAvailability(user.id, nextValue);
     if (result.error) {
       setSetupError(result.error);
@@ -401,6 +424,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       return;
     }
     setActiveTrip(result.data);
+    if (result.data) void sendTripPush('new_trip', result.data.id);
     setSavedDestination(destination.trim());
     setDestination('');
     setShowDestination(false);
@@ -416,6 +440,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     }
     setDriverTrips((current) => current.filter((item) => item.id !== trip.id));
     setActiveTrip(result.data);
+    if (result.data) void sendTripPush('driver_accept', result.data.id);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -430,7 +455,25 @@ export function RoleHome({ role }: { role: UserRole }) {
       return;
     }
     setActiveTrip(result.data);
+    if (result.data && status === 'en_curso') {
+      void sendTripPush('driver_start', result.data.id);
+    }
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleCancelTrip = async () => {
+    if (!user?.id || !activeTrip) return;
+    setTripActionLoading(true);
+    setRequestError('');
+    const result = await cancelTrip(activeTrip.id, user.id);
+    setTripActionLoading(false);
+    if (result.error) {
+      setRequestError(result.error);
+      return;
+    }
+    if (result.data) void sendTripPush('passenger_cancel', result.data.id);
+    setActiveTrip(null);
+    Alert.alert('Viaje cancelado', 'La solicitud fue cancelada correctamente.');
   };
 
   const handleRating = async (score: number) => {
@@ -535,8 +578,10 @@ export function RoleHome({ role }: { role: UserRole }) {
             mapLocationError={mapLocationError}
             ratingLoading={ratingLoading}
             ratingSubmitted={ratingSubmitted}
+            tripActionLoading={tripActionLoading}
             onRating={handleRating}
             onDestination={handleOpenDestination}
+            onCancelTrip={handleCancelTrip}
             onEnableLocation={() => void loadPassengerLocation(true)}
           />
         )}
@@ -611,9 +656,11 @@ function PassengerContent({
   mapLocationError,
   ratingLoading,
   ratingSubmitted,
+  tripActionLoading,
   onRating,
   onDestination,
   onEnableLocation,
+  onCancelTrip,
 }: {
   colors: ReturnType<typeof useColors>;
   activeTrip: Trip | null;
@@ -625,9 +672,11 @@ function PassengerContent({
   mapLocationError: string;
   ratingLoading: boolean;
   ratingSubmitted: boolean;
+  tripActionLoading: boolean;
   onRating: (score: number) => void;
   onDestination: () => void;
   onEnableLocation: () => void;
+  onCancelTrip: () => void;
 }) {
   const pickupLocation = activeTrip
     && Number.isFinite(activeTrip.pickup_lat)
@@ -681,6 +730,14 @@ function PassengerContent({
           <Text style={styles.inverseSubtitle}>Destino: {tripDestination(activeTrip)}</Text>
           {activeTrip.status === 'completado' ? (
             <RatingControl loading={ratingLoading} submitted={ratingSubmitted} onRating={onRating} />
+          ) : activeTrip.status === 'buscando_conductor' || activeTrip.status === 'aceptado' ? (
+            <AppButton
+              label="Cancelar viaje"
+              variant="secondary"
+              onPress={onCancelTrip}
+              loading={tripActionLoading}
+              testID="cancel-trip"
+            />
           ) : null}
         </View>
       ) : (

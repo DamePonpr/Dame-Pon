@@ -21,6 +21,12 @@
         {
           "locationWhenInUsePermission": "Dame Pon usa tu ubicación para coordinar el punto de recogida y mostrar el conductor en el mapa durante el viaje."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0B1C26"
+        }
       ]
     ],
     "experiments": {

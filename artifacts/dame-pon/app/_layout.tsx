@@ -14,6 +14,7 @@ import {
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '@/context/AuthContext';
+import { PushNotificationRegistration } from '@/components/PushNotificationRegistration';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -52,6 +53,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <AuthProvider>
+          <PushNotificationRegistration />
           <QueryClientProvider client={queryClient}>
             <GestureHandlerRootView style={{ flex: 1 }}>
               <KeyboardProvider>
