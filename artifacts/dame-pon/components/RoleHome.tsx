@@ -14,6 +14,7 @@ import {
   getDriverSetup,
   getOpenTrips,
   getPassengerActiveTrip,
+  getTripHistory,
   rateTrip,
   requestTrip,
   saveDriverSetup,
@@ -23,6 +24,7 @@ import {
   tripDestination,
   type DriverSetup,
   type Trip,
+  type TripHistoryItem,
   type VehicleDraft,
   updateTripStatus,
 } from '@/lib/rideService';
@@ -46,6 +48,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [showDestination, setShowDestination] = useState(false);
   const [showVehicle, setShowVehicle] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [destination, setDestination] = useState('');
   const [savedDestination, setSavedDestination] = useState('');
   const [vehicle, setVehicle] = useState<VehicleDraft>(emptyVehicle);
@@ -58,6 +61,9 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [tripActionLoading, setTripActionLoading] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [history, setHistory] = useState<TripHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
   const [setupError, setSetupError] = useState('');
   const [requestError, setRequestError] = useState('');
   const activeTripRefreshInFlight = useRef(false);
@@ -313,6 +319,20 @@ export function RoleHome({ role }: { role: UserRole }) {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
+  const handleOpenHistory = async () => {
+    if (!user?.id) return;
+    setShowHistory(true);
+    setHistoryLoading(true);
+    setHistoryError('');
+    const result = await getTripHistory(user.id, isDriver ? 'driver' : 'passenger');
+    setHistoryLoading(false);
+    if (result.error) {
+      setHistoryError(result.error);
+      return;
+    }
+    setHistory(result.data ?? []);
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
@@ -378,6 +398,24 @@ export function RoleHome({ role }: { role: UserRole }) {
             onDestination={handleOpenDestination}
           />
         )}
+
+        {!loading ? (
+          <Pressable
+            testID="trip-history-button"
+            accessibilityLabel="Abrir historial de viajes"
+            onPress={() => void handleOpenHistory()}
+            style={({ pressed }) => [styles.historyButton, { backgroundColor: colors.card, borderColor: colors.border }, pressed && { opacity: 0.8 }]}
+          >
+            <View style={[styles.infoIcon, { backgroundColor: colors.secondary }]}>
+              <Feather name="clock" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.infoCopy}>
+              <Text style={[styles.infoTitle, { color: colors.foreground }]}>Historial de viajes</Text>
+              <Text style={[styles.infoText, { color: colors.mutedForeground }]}>Consulta tus trayectos y calificaciones anteriores.</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <DestinationModal
@@ -405,6 +443,16 @@ export function RoleHome({ role }: { role: UserRole }) {
         onChange={setVehicle}
         onClose={() => setShowVehicle(false)}
         onSubmit={handleSaveVehicle}
+      />
+      <HistoryModal
+        colors={colors}
+        insetsBottom={insets.bottom}
+        visible={showHistory}
+        history={history}
+        loading={historyLoading}
+        error={historyError}
+        onClose={() => setShowHistory(false)}
+        onRetry={() => void handleOpenHistory()}
       />
     </View>
   );
@@ -759,6 +807,118 @@ function VehicleModal({
   );
 }
 
+function HistoryModal({
+  colors,
+  insetsBottom,
+  visible,
+  history,
+  loading,
+  error,
+  onClose,
+  onRetry,
+}: {
+  colors: ReturnType<typeof useColors>;
+  insetsBottom: number;
+  visible: boolean;
+  history: TripHistoryItem[];
+  loading: boolean;
+  error: string;
+  onClose: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={[styles.historyScreen, { backgroundColor: colors.background, paddingBottom: insetsBottom }]}>
+        <View style={[styles.historyHeader, { borderBottomColor: colors.border }]}>
+          <View>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Viajes anteriores</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>Tus trayectos completados y sus valoraciones.</Text>
+          </View>
+          <Pressable
+            testID="close-trip-history"
+            accessibilityLabel="Cerrar historial"
+            onPress={onClose}
+            style={styles.historyClose}
+          >
+            <Feather name="x" size={22} color={colors.foreground} />
+          </Pressable>
+        </View>
+
+        {loading ? (
+          <View style={styles.historyState}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : error ? (
+          <View style={styles.historyState}>
+            <Feather name="alert-circle" size={24} color={colors.destructive} />
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No pudimos abrir tu historial</Text>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>{error}</Text>
+            <Pressable onPress={onRetry} style={[styles.retryHistory, { backgroundColor: colors.primary }]}>
+              <Text style={styles.acceptLabel}>Intentar de nuevo</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.historyList}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={history.length > 0}
+          >
+            {history.length ? history.map((item) => (
+              <HistoryCard key={item.trip.id} item={item} colors={colors} />
+            )) : (
+              <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Feather name="clock" size={22} color={colors.mutedForeground} />
+                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Aún no tienes viajes completados</Text>
+                <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Cuando termines un viaje, aparecerá aquí.</Text>
+              </View>
+            )}
+          </ScrollView>
+        )}
+      </View>
+    </Modal>
+  );
+}
+
+function HistoryCard({ item, colors }: { item: TripHistoryItem; colors: ReturnType<typeof useColors> }) {
+  const date = new Date(item.trip.completed_at ?? item.trip.requested_at);
+  const formattedDate = Number.isNaN(date.getTime())
+    ? 'Fecha no disponible'
+    : new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(date);
+
+  return (
+    <View style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.historyCardTop}>
+        <View style={[styles.tripIcon, { backgroundColor: colors.secondary }]}>
+          <Feather name="map-pin" size={17} color={colors.primary} />
+        </View>
+        <View style={styles.tripCopy}>
+          <Text style={[styles.tripDestination, { color: colors.foreground }]}>{tripDestination(item.trip)}</Text>
+          <Text style={[styles.historyDate, { color: colors.mutedForeground }]}>{formattedDate}</Text>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: colors.secondary }]}>
+          <Text style={[styles.statusBadgeText, { color: colors.primary }]}>Completado</Text>
+        </View>
+      </View>
+      <View style={[styles.historyRatings, { borderTopColor: colors.border }]}>
+        <RatingSummary label="Enviada" score={item.sentRating} colors={colors} />
+        <RatingSummary label="Recibida" score={item.receivedRating} colors={colors} />
+      </View>
+    </View>
+  );
+}
+
+function RatingSummary({ label, score, colors }: { label: string; score: number | null; colors: ReturnType<typeof useColors> }) {
+  return (
+    <View style={styles.ratingSummary}>
+      <Text style={[styles.ratingSummaryLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      <View style={styles.ratingSummaryValue}>
+        <Feather name="star" size={15} color={score === null ? colors.mutedForeground : colors.primary} />
+        <Text style={[styles.ratingSummaryScore, { color: colors.foreground }]}>{score === null ? 'Sin calificar' : `${score}/5`}</Text>
+      </View>
+    </View>
+  );
+}
+
 function ModalInput({
   label,
   value,
@@ -865,6 +1025,7 @@ const styles = StyleSheet.create({
   statValue: { fontFamily: 'Inter_700Bold', fontSize: 24 },
   statLabel: { fontFamily: 'Inter_400Regular', fontSize: 12 },
   infoCard: { borderWidth: 1, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  historyButton: { borderWidth: 1, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   infoIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   infoCopy: { flex: 1, gap: 4 },
   infoTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
@@ -929,4 +1090,20 @@ const styles = StyleSheet.create({
   vehicleInput: { flex: undefined, minHeight: 51, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14 },
   twoInputs: { flexDirection: 'row', gap: 10 },
   halfInput: { flex: 1 },
+  historyScreen: { flex: 1 },
+  historyHeader: { paddingHorizontal: 22, paddingTop: 22, paddingBottom: 18, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
+  historyClose: { padding: 4 },
+  historyState: { flex: 1, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  historyList: { padding: 22, gap: 12, flexGrow: 1 },
+  historyCard: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 13 },
+  historyCardTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  historyDate: { fontFamily: 'Inter_400Regular', fontSize: 11 },
+  statusBadge: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5 },
+  statusBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 10 },
+  historyRatings: { borderTopWidth: 1, paddingTop: 12, flexDirection: 'row', gap: 18 },
+  ratingSummary: { flex: 1, gap: 5 },
+  ratingSummaryLabel: { fontFamily: 'Inter_500Medium', fontSize: 10 },
+  ratingSummaryValue: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  ratingSummaryScore: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
+  retryHistory: { borderRadius: 12, paddingHorizontal: 15, paddingVertical: 11, marginTop: 4 },
 });

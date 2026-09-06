@@ -23,6 +23,12 @@ export interface Trip {
   completed_at: string | null;
 }
 
+export interface TripHistoryItem {
+  trip: Trip;
+  sentRating: number | null;
+  receivedRating: number | null;
+}
+
 export interface Driver {
   id: string;
   status: DriverStatus;
@@ -73,6 +79,7 @@ type RideAction =
   | 'availability'
   | 'request-trip'
   | 'load-passenger-trip'
+  | 'load-history'
   | 'load-open-trips'
   | 'load-rating'
   | 'accept-trip'
@@ -91,6 +98,7 @@ const actionFallbacks: Record<RideAction, string> = {
   availability: 'No pudimos actualizar tu disponibilidad.',
   'request-trip': 'No pudimos solicitar el viaje.',
   'load-passenger-trip': 'No pudimos cargar tu viaje activo.',
+  'load-history': 'No pudimos cargar tu historial de viajes.',
   'load-open-trips': 'No pudimos cargar las solicitudes disponibles.',
   'load-rating': 'No pudimos comprobar si este viaje ya fue calificado.',
   'accept-trip': 'No pudimos aceptar este viaje.',
@@ -351,6 +359,56 @@ export async function getDriverActiveTrip(driverId: string): Promise<ServiceResu
   if (activeResult.data) return { data: activeResult.data as Trip, error: null };
 
   return getUnratedCompletedTrip(driverId, 'driver_id');
+}
+
+export async function getTripHistory(
+  userId: string,
+  role: 'passenger' | 'driver',
+): Promise<ServiceResult<TripHistoryItem[]>> {
+  const participantColumn = role === 'driver' ? 'driver_id' : 'passenger_id';
+  const tripsResult = await supabase
+    .from('trips')
+    .select(TRIP_COLUMNS)
+    .eq(participantColumn, userId)
+    .eq('status', 'completado' satisfies TripStatus)
+    .order('completed_at', { ascending: false });
+
+  if (tripsResult.error) {
+    return serviceError('load-history', tripsResult.error);
+  }
+
+  const trips = (tripsResult.data as Trip[] | null) ?? [];
+  if (!trips.length) return { data: [], error: null };
+
+  const ratingsResult = await supabase
+    .from('ratings')
+    .select('trip_id,rated_by,rated_user,score')
+    .in('trip_id', trips.map((trip) => trip.id))
+    .or(`rated_by.eq.${userId},rated_user.eq.${userId}`);
+
+  if (ratingsResult.error) {
+    return serviceError('load-history', ratingsResult.error);
+  }
+
+  const ratings = (ratingsResult.data ?? []) as Array<{
+    trip_id: string;
+    rated_by: string;
+    rated_user: string;
+    score: number;
+  }>;
+
+  return {
+    data: trips.map((trip) => {
+      const sent = ratings.find((rating) => rating.trip_id === trip.id && rating.rated_by === userId);
+      const received = ratings.find((rating) => rating.trip_id === trip.id && rating.rated_user === userId);
+      return {
+        trip,
+        sentRating: sent?.score ?? null,
+        receivedRating: received?.score ?? null,
+      };
+    }),
+    error: null,
+  };
 }
 
 async function getUnratedCompletedTrip(
