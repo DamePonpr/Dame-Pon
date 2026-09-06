@@ -13,6 +13,8 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const timeoutMs = 12_000;
+const offlineAssertionMs = 1_000;
+const reconnectDelayMs = 2_500;
 const created = { tripId: null };
 const clients = [];
 const channels = [];
@@ -28,19 +30,28 @@ function checkError(step, error) {
 }
 
 function client() {
+  const network = { online: true };
   const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+    realtime: { reconnectAfterMs: () => reconnectDelayMs },
+    global: {
+      fetch: (...args) => (
+        network.online
+          ? globalThis.fetch(...args)
+          : Promise.reject(new TypeError('Sesión temporalmente sin conexión'))
+      ),
+    },
   });
   clients.push(supabase);
-  return supabase;
+  return { supabase, network };
 }
 
 async function signIn(label, email, password) {
-  const supabase = client();
+  const { supabase, network } = client();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   checkError(`autenticación de ${label}`, error);
   if (!data.user || !data.session) fail(`autenticación de ${label}`, 'Supabase no devolvió una sesión.');
-  return { supabase, user: data.user };
+  return { supabase, user: data.user, network };
 }
 
 function deferredEvent(label) {
@@ -84,10 +95,11 @@ async function subscribe(label, channel) {
   });
 }
 
-function watchTrip(clientInstance, channelName, filter, expectedStatus, event = 'UPDATE') {
+function watchTrip(clientInstance, channelName, filter, expectedStatus, event = 'UPDATE', isOnline = () => true) {
   const observed = deferredEvent(`${channelName} → ${expectedStatus}`);
   observations.push(observed);
   let polling = false;
+  let settled = false;
   const matchesExpectedTrip = (row) => (
     row
     && row.status === expectedStatus
@@ -98,6 +110,8 @@ function watchTrip(clientInstance, channelName, filter, expectedStatus, event = 
     )
   );
   const resolveObserved = (row, source) => {
+    if (!isOnline() || settled) return;
+    settled = true;
     clearInterval(reconciliationTimer);
     observed.resolve({ row, source });
   };
@@ -112,7 +126,7 @@ function watchTrip(clientInstance, channelName, filter, expectedStatus, event = 
       },
     );
   const reconcile = async () => {
-    if (polling) return;
+    if (!isOnline() || settled || polling) return;
     polling = true;
     let query = clientInstance
       .from('trips')
@@ -124,8 +138,10 @@ function watchTrip(clientInstance, channelName, filter, expectedStatus, event = 
     const response = await query.maybeSingle();
     polling = false;
     if (response.error) {
-      clearInterval(reconciliationTimer);
-      observed.reject(new Error(`[FAIL] ${channelName}: ${response.error.message}`));
+      if (isOnline()) {
+        clearInterval(reconciliationTimer);
+        observed.reject(new Error(`[FAIL] ${channelName}: ${response.error.message}`));
+      }
     } else if (matchesExpectedTrip(response.data)) {
       resolveObserved(response.data, 'reconciliation');
     }
@@ -133,6 +149,7 @@ function watchTrip(clientInstance, channelName, filter, expectedStatus, event = 
   const reconciliationTimer = setInterval(() => void reconcile(), 500);
   const cancelObservation = observed.cancel;
   observed.cancel = () => {
+    settled = true;
     clearInterval(reconciliationTimer);
     cancelObservation();
   };
@@ -152,6 +169,35 @@ async function updateStatus(driver, status, timestampColumn) {
     .select('id,status')
     .single();
   checkError(`cambiar viaje a ${status}`, response.error);
+}
+
+async function assertStillOffline(observation, label) {
+  const delivery = await Promise.race([
+    observation.promise.then((result) => ({ result })),
+    new Promise((resolve) => setTimeout(() => resolve(null), offlineAssertionMs)),
+  ]);
+  if (delivery) {
+    fail(label, `la sesión observó el cambio por ${deliveryLabel(delivery.result)} mientras estaba desconectada.`);
+  }
+}
+
+async function waitForConnection(label, predicate) {
+  const startedAt = Date.now();
+  while (!predicate()) {
+    if (Date.now() - startedAt >= timeoutMs) {
+      fail(label, 'el canal no alcanzó el estado esperado antes del límite.');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
+function interruptRealtimeConnection(clientInstance) {
+  const phoenixSocket = clientInstance.realtime.socketAdapter?.getSocket?.();
+  const connection = phoenixSocket?.conn;
+  if (!connection || connection.readyState !== 1) {
+    fail('reconexión', 'no se encontró un transporte Realtime abierto para interrumpir.');
+  }
+  connection.close();
 }
 
 async function run() {
@@ -269,6 +315,8 @@ async function run() {
     'pasajero-inicio',
     `passenger_id=eq.${passenger.user.id}`,
     'en_curso',
+    'UPDATE',
+    () => passenger.network.online,
   );
   const driverStartedWatch = watchTrip(
     driver.supabase,
@@ -280,14 +328,36 @@ async function run() {
     subscribe('inicio para pasajero', passengerStartedWatch.channel),
     subscribe('inicio para conductor', driverStartedWatch.channel),
   ]);
+  passenger.network.online = false;
+  interruptRealtimeConnection(passenger.supabase);
+  await waitForConnection(
+    'reconexión',
+    () => (
+      passenger.supabase.realtime.connectionState() === 'closed'
+      && ['closed', 'errored'].includes(passengerStartedWatch.channel.state)
+    ),
+  );
+  console.log(`[OK] reconexión: socket cerrado y canal en estado ${passengerStartedWatch.channel.state}`);
   await updateStatus(driver, 'en_curso', 'started_at');
-  const [passengerStartedDelivery, driverStartedDelivery] = await Promise.all([
-    passengerStartedWatch.observed.promise,
-    driverStartedWatch.observed.promise,
-  ]);
+  const driverStartedDelivery = await driverStartedWatch.observed.promise;
+  await assertStillOffline(passengerStartedWatch.observed, 'reconexión');
+  await waitForConnection(
+    'reconexión',
+    () => (
+      passenger.supabase.realtime.connectionState() === 'open'
+      && passengerStartedWatch.channel.state === 'joined'
+    ),
+  );
+  console.log('[OK] reconexión: socket y canal se recuperaron automáticamente');
+  passenger.network.online = true;
+  const passengerStartedDelivery = await passengerStartedWatch.observed.promise;
+  if (passengerStartedDelivery.source !== 'reconciliation') {
+    fail('reconexión', `se esperaba reconciliación automática y llegó por ${deliveryLabel(passengerStartedDelivery)}.`);
+  }
   console.log(
     `[OK] inicio: pasajero por ${deliveryLabel(passengerStartedDelivery)}; conductor por ${deliveryLabel(driverStartedDelivery)}`,
   );
+  console.log('[OK] reconexión: la sesión atrasada recuperó el viaje sin recarga manual');
 
   const passengerCompletedWatch = watchTrip(
     passenger.supabase,
