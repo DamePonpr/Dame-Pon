@@ -15,7 +15,13 @@
       "favicon": "./assets/images/dame-pon-logo.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Dame Pon usa tu ubicación para coordinar el punto de recogida y mostrar el conductor en el mapa durante el viaje."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

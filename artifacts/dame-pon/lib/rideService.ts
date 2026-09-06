@@ -33,7 +33,14 @@ export interface Driver {
   id: string;
   status: DriverStatus;
   is_online: boolean;
+  current_lat: number | null;
+  current_lng: number | null;
   updated_at: string;
+}
+
+export interface DriverLocation {
+  latitude: number;
+  longitude: number;
 }
 
 export interface Vehicle {
@@ -81,12 +88,14 @@ type RideAction =
   | 'load-passenger-trip'
   | 'load-history'
   | 'load-open-trips'
+  | 'load-driver-location'
+  | 'update-driver-location'
   | 'load-rating'
   | 'accept-trip'
   | 'update-trip'
   | 'rate-trip';
 
-const DRIVER_COLUMNS = 'id,status,is_online,updated_at';
+const DRIVER_COLUMNS = 'id,status,is_online,current_lat,current_lng,updated_at';
 const VEHICLE_COLUMNS = 'id,driver_id,make,model,year,color,plate';
 const TRIP_COLUMNS = 'id,status,passenger_id,driver_id,pickup_address,pickup_lat,pickup_lng,dropoff_address,dropoff_lat,dropoff_lng,fare_estimate,fare_final,distance_km,requested_at,accepted_at,started_at,completed_at';
 
@@ -100,6 +109,8 @@ const actionFallbacks: Record<RideAction, string> = {
   'load-passenger-trip': 'No pudimos cargar tu viaje activo.',
   'load-history': 'No pudimos cargar tu historial de viajes.',
   'load-open-trips': 'No pudimos cargar las solicitudes disponibles.',
+  'load-driver-location': 'No pudimos cargar la ubicación del conductor.',
+  'update-driver-location': 'No pudimos compartir tu ubicación con el pasajero.',
   'load-rating': 'No pudimos comprobar si este viaje ya fue calificado.',
   'accept-trip': 'No pudimos aceptar este viaje.',
   'update-trip': 'No pudimos actualizar el estado del viaje.',
@@ -282,6 +293,52 @@ export async function setDriverAvailability(
     };
   }
 
+  return { data: true, error: null };
+}
+
+export async function getDriverLocation(driverId: string): Promise<ServiceResult<DriverLocation>> {
+  const result = await supabase
+    .from('drivers')
+    .select('current_lat,current_lng')
+    .eq('id', driverId)
+    .maybeSingle();
+
+  if (result.error) {
+    return serviceError('load-driver-location', result.error);
+  }
+
+  const latitude = result.data?.current_lat;
+  const longitude = result.data?.current_lng;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return { data: null, error: null };
+  }
+
+  return {
+    data: { latitude: Number(latitude), longitude: Number(longitude) },
+    error: null,
+  };
+}
+
+export async function updateDriverLocation(
+  driverId: string,
+  location: DriverLocation,
+): Promise<ServiceResult<boolean>> {
+  if (!Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) {
+    return { data: null, error: 'No pudimos obtener coordenadas válidas para compartir.' };
+  }
+
+  const result = await supabase
+    .from('drivers')
+    .update({
+      current_lat: location.latitude,
+      current_lng: location.longitude,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', driverId);
+
+  if (result.error) {
+    return serviceError('update-driver-location', result.error);
+  }
   return { data: true, error: null };
 }
 
@@ -569,6 +626,23 @@ export function subscribeToOpenTrips(onChange: () => void) {
 
   return () => {
     clearInterval(reconciliationTimer);
+    void supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToDriverLocation(driverId: string, onChange: () => void) {
+  const channel = supabase
+    .channel(`driver-location:${driverId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'drivers', filter: `id=eq.${driverId}` },
+      onChange,
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') onChange();
+    });
+
+  return () => {
     void supabase.removeChannel(channel);
   };
 }

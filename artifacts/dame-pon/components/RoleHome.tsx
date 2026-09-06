@@ -8,9 +8,11 @@ import { useAuth, type UserRole } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { AppButton } from '@/components/AppButton';
 import { BrandMark } from '@/components/BrandMark';
+import { LiveRideMap } from '@/components/LiveRideMap';
 import {
   acceptTrip,
   getDriverActiveTrip,
+  getDriverLocation,
   getDriverSetup,
   getOpenTrips,
   getPassengerActiveTrip,
@@ -20,12 +22,14 @@ import {
   saveDriverSetup,
   setDriverAvailability,
   subscribeToOpenTrips,
+  subscribeToDriverLocation,
   subscribeToTrips,
   tripDestination,
   type DriverSetup,
   type Trip,
   type TripHistoryItem,
   type VehicleDraft,
+  updateDriverLocation,
   updateTripStatus,
 } from '@/lib/rideService';
 
@@ -58,6 +62,12 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [locationLoading, setLocationLoading] = useState(false);
   const [pickupCoordinates, setPickupCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState('');
+  const [passengerLocation, setPassengerLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [mapLocationLoading, setMapLocationLoading] = useState(false);
+  const [mapLocationError, setMapLocationError] = useState('');
+  const [driverTrackingActive, setDriverTrackingActive] = useState(false);
+  const [driverTrackingError, setDriverTrackingError] = useState('');
   const [tripActionLoading, setTripActionLoading] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -175,6 +185,130 @@ export function RoleHome({ role }: { role: UserRole }) {
       unsubscribe();
     };
   }, [isAvailable, isDriver, refreshOpenTrips]);
+
+  const loadPassengerLocation = useCallback(async (requestPermission: boolean) => {
+    if (isDriver) return;
+    setMapLocationLoading(true);
+    setMapLocationError('');
+    try {
+      const permission = requestPermission
+        ? await Location.requestForegroundPermissionsAsync()
+        : await Location.getForegroundPermissionsAsync();
+      if (!permission.granted) {
+        setMapLocationError('Activa la ubicación para verte en el mapa y facilitar el punto de recogida.');
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const location = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      setPassengerLocation(location);
+      setPickupCoordinates(location);
+    } catch {
+      setMapLocationError('No pudimos obtener tu ubicación. Verifica que el GPS esté activo e inténtalo de nuevo.');
+    } finally {
+      setMapLocationLoading(false);
+    }
+  }, [isDriver]);
+
+  useEffect(() => {
+    if (!isDriver) void loadPassengerLocation(false);
+  }, [isDriver, loadPassengerLocation]);
+
+  useEffect(() => {
+    if (isDriver || !activeTrip?.driver_id || !['aceptado', 'en_curso'].includes(activeTrip.status)) {
+      setDriverLocation(null);
+      return;
+    }
+    let refreshInFlight = false;
+    const refresh = async () => {
+      if (refreshInFlight || !activeTrip.driver_id) return;
+      refreshInFlight = true;
+      try {
+        const result = await getDriverLocation(activeTrip.driver_id);
+        if (result.error) {
+          setMapLocationError(result.error);
+          return;
+        }
+        setDriverLocation(result.data);
+      } finally {
+        refreshInFlight = false;
+      }
+    };
+    void refresh();
+    const unsubscribe = subscribeToDriverLocation(activeTrip.driver_id, () => void refresh());
+    const poll = setInterval(() => void refresh(), 12_000);
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refresh();
+    });
+    return () => {
+      clearInterval(poll);
+      appStateSubscription.remove();
+      unsubscribe();
+    };
+  }, [activeTrip?.driver_id, activeTrip?.status, isDriver]);
+
+  const enableDriverTracking = useCallback(async () => {
+    setDriverTrackingError('');
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (!permission.granted) {
+      setDriverTrackingActive(false);
+      setDriverTrackingError('Necesitamos tu ubicación para que el pasajero pueda verte mientras vas a recogerlo.');
+      return;
+    }
+    setDriverTrackingActive(true);
+  }, []);
+
+  useEffect(() => {
+    const shouldTrack = isDriver && isAvailable && activeTrip?.status === 'aceptado';
+    if (!shouldTrack) {
+      setDriverTrackingActive(false);
+      setDriverTrackingError('');
+      return;
+    }
+    void Location.getForegroundPermissionsAsync().then((permission) => {
+      if (permission.granted) {
+        setDriverTrackingActive(true);
+      } else {
+        setDriverTrackingError('Comparte tu ubicación para que el pasajero pueda seguir tu llegada en el mapa.');
+      }
+    });
+  }, [activeTrip?.id, activeTrip?.status, isAvailable, isDriver]);
+
+  useEffect(() => {
+    if (!user?.id || !driverTrackingActive || !isDriver || !isAvailable || activeTrip?.status !== 'aceptado') return;
+    let updateInFlight = false;
+    const publishLocation = async () => {
+      if (updateInFlight) return;
+      updateInFlight = true;
+      try {
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const result = await updateDriverLocation(user.id, {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        if (result.error) {
+          setDriverTrackingError(result.error);
+          return;
+        }
+        setDriverTrackingError('');
+      } catch {
+        setDriverTrackingError('No pudimos actualizar tu ubicación. Verifica que el GPS siga activo.');
+      } finally {
+        updateInFlight = false;
+      }
+    };
+    void publishLocation();
+    const interval = setInterval(() => void publishLocation(), 12_000);
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void publishLocation();
+    });
+    return () => {
+      clearInterval(interval);
+      appStateSubscription.remove();
+    };
+  }, [activeTrip?.status, driverTrackingActive, isAvailable, isDriver, user?.id]);
 
   const handleAvailability = async () => {
     if (!user?.id) return;
@@ -377,6 +511,8 @@ export function RoleHome({ role }: { role: UserRole }) {
             ratingLoading={ratingLoading}
             ratingSubmitted={ratingSubmitted}
             setupError={setupError}
+            driverTrackingActive={driverTrackingActive}
+            driverTrackingError={driverTrackingError}
             onAvailability={handleAvailability}
             onVehicle={() => {
               setSetupError('');
@@ -385,6 +521,7 @@ export function RoleHome({ role }: { role: UserRole }) {
             onAccept={handleAcceptTrip}
             onTripStatus={handleTripStatus}
             onRating={handleRating}
+            onEnableTracking={() => void enableDriverTracking()}
           />
         ) : (
           <PassengerContent
@@ -392,10 +529,15 @@ export function RoleHome({ role }: { role: UserRole }) {
             activeTrip={activeTrip}
             savedDestination={savedDestination}
             requestError={requestError}
+            passengerLocation={passengerLocation}
+            driverLocation={driverLocation}
+            mapLocationLoading={mapLocationLoading}
+            mapLocationError={mapLocationError}
             ratingLoading={ratingLoading}
             ratingSubmitted={ratingSubmitted}
             onRating={handleRating}
             onDestination={handleOpenDestination}
+            onEnableLocation={() => void loadPassengerLocation(true)}
           />
         )}
 
@@ -463,38 +605,68 @@ function PassengerContent({
   activeTrip,
   savedDestination,
   requestError,
+  passengerLocation,
+  driverLocation,
+  mapLocationLoading,
+  mapLocationError,
   ratingLoading,
   ratingSubmitted,
   onRating,
   onDestination,
+  onEnableLocation,
 }: {
   colors: ReturnType<typeof useColors>;
   activeTrip: Trip | null;
   savedDestination: string;
   requestError: string;
+  passengerLocation: { latitude: number; longitude: number } | null;
+  driverLocation: { latitude: number; longitude: number } | null;
+  mapLocationLoading: boolean;
+  mapLocationError: string;
   ratingLoading: boolean;
   ratingSubmitted: boolean;
   onRating: (score: number) => void;
   onDestination: () => void;
+  onEnableLocation: () => void;
 }) {
+  const pickupLocation = activeTrip
+    && Number.isFinite(activeTrip.pickup_lat)
+    && Number.isFinite(activeTrip.pickup_lng)
+    ? { latitude: Number(activeTrip.pickup_lat), longitude: Number(activeTrip.pickup_lng) }
+    : null;
+
   return (
     <>
       <View style={[styles.mapCard, { backgroundColor: colors.primary }]}>
-        <View style={styles.mapGrid}>
-          <View style={[styles.mapLine, styles.mapLineOne]} />
-          <View style={[styles.mapLine, styles.mapLineTwo]} />
-          <View style={[styles.routeLine, { backgroundColor: '#FFFFFF' }]} />
-          <View style={[styles.mapPin, styles.startPin, { backgroundColor: '#FFFFFF' }]}>
-            <View style={[styles.pinDot, { backgroundColor: colors.primary }]} />
-          </View>
-          <View style={[styles.mapPin, styles.endPin, { backgroundColor: '#B7E3C5' }]}>
-            <Feather name="map-pin" size={15} color="#247A48" />
-          </View>
-        </View>
+        <LiveRideMap
+          passengerLocation={passengerLocation}
+          driverLocation={driverLocation}
+          pickupLocation={pickupLocation}
+        />
         <View style={styles.mapOverlay}>
-          <Text style={styles.mapLabel}>Dame Pon está cerca</Text>
-          <Text style={styles.mapMeta}>Conductores disponibles en tu zona</Text>
+          <Text style={styles.mapLabel}>{driverLocation ? 'Tu conductor está en camino' : 'Tu ubicación en Dame Pon'}</Text>
+          <Text style={styles.mapMeta}>
+            {driverLocation ? 'La posición se actualiza automáticamente' : 'El conductor aparecerá aquí cuando acepte'}
+          </Text>
         </View>
+        {!passengerLocation ? (
+          <View style={styles.mapPermissionOverlay}>
+            <Text style={styles.mapPermissionText}>
+              {mapLocationError || 'Necesitamos tu ubicación para mostrarte en el mapa.'}
+            </Text>
+            <Pressable
+              onPress={onEnableLocation}
+              disabled={mapLocationLoading}
+              style={({ pressed }) => [styles.mapPermissionButton, pressed && { opacity: 0.8 }]}
+            >
+              {mapLocationLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={[styles.mapPermissionButtonText, { color: colors.primary }]}>Activar ubicación</Text>
+              )}
+            </Pressable>
+          </View>
+        ) : null}
       </View>
 
       {activeTrip ? (
@@ -549,11 +721,14 @@ function DriverContent({
   ratingLoading,
   ratingSubmitted,
   setupError,
+  driverTrackingActive,
+  driverTrackingError,
   onAvailability,
   onVehicle,
   onAccept,
   onTripStatus,
   onRating,
+  onEnableTracking,
 }: {
   colors: ReturnType<typeof useColors>;
   isAvailable: boolean;
@@ -564,11 +739,14 @@ function DriverContent({
   ratingLoading: boolean;
   ratingSubmitted: boolean;
   setupError: string;
+  driverTrackingActive: boolean;
+  driverTrackingError: string;
   onAvailability: () => void;
   onVehicle: () => void;
   onAccept: (trip: Trip) => void;
   onTripStatus: (status: 'en_curso' | 'completado') => void;
   onRating: (score: number) => void;
+  onEnableTracking: () => void;
 }) {
   return (
     <>
@@ -618,6 +796,30 @@ function DriverContent({
           <Text style={styles.inverseEyebrow}>VIAJE ACTUAL</Text>
           <Text style={styles.inverseTitle}>{tripStatusLabel(activeTrip.status)}</Text>
           <Text style={styles.inverseSubtitle}>Destino: {tripDestination(activeTrip)}</Text>
+          {activeTrip.status === 'aceptado' ? (
+            <View style={styles.trackingCard}>
+              <Feather
+                name={driverTrackingActive ? 'radio' : 'map-pin'}
+                size={18}
+                color={driverTrackingActive ? '#B7E3C5' : '#FFFFFF'}
+              />
+              <View style={styles.trackingCopy}>
+                <Text style={styles.trackingTitle}>
+                  {driverTrackingActive ? 'Ubicación compartida' : 'Comparte tu ubicación'}
+                </Text>
+                <Text style={styles.trackingText}>
+                  {driverTrackingError || (driverTrackingActive
+                    ? 'El pasajero puede seguir tu llegada en el mapa.'
+                    : 'La necesitamos para mostrarle al pasajero que vas en camino.')}
+                </Text>
+              </View>
+              {!driverTrackingActive ? (
+                <Pressable onPress={onEnableTracking} style={styles.trackingButton}>
+                  <Text style={[styles.trackingButtonText, { color: colors.primary }]}>Activar</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
           {activeTrip.status === 'aceptado' ? (
             <AppButton label="Iniciar viaje" onPress={() => onTripStatus('en_curso')} loading={tripActionLoading} testID="start-trip" />
           ) : activeTrip.status === 'en_curso' ? (
@@ -1043,6 +1245,10 @@ const styles = StyleSheet.create({
   mapOverlay: { position: 'absolute', left: 18, bottom: 18, gap: 4 },
   mapLabel: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 14 },
   mapMeta: { color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter_400Regular', fontSize: 11 },
+  mapPermissionOverlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 26, backgroundColor: 'rgba(11,28,38,0.92)' },
+  mapPermissionText: { color: '#FFFFFF', fontFamily: 'Inter_500Medium', fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  mapPermissionButton: { minHeight: 42, paddingHorizontal: 18, borderRadius: 13, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  mapPermissionButtonText: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
   destinationCard: { borderWidth: 1, borderRadius: 18, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
   searchIcon: { width: 41, height: 41, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   destinationCopy: { flex: 1, gap: 4 },
@@ -1051,6 +1257,12 @@ const styles = StyleSheet.create({
   activeTripCard: { borderRadius: 22, padding: 20, gap: 15 },
   activeTripHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   driverActiveTrip: { borderRadius: 22, padding: 20, gap: 13 },
+  trackingCard: { borderRadius: 15, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.12)' },
+  trackingCopy: { flex: 1, gap: 3 },
+  trackingTitle: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 12 },
+  trackingText: { color: 'rgba(255,255,255,0.74)', fontFamily: 'Inter_400Regular', fontSize: 11, lineHeight: 16 },
+  trackingButton: { minHeight: 36, paddingHorizontal: 13, borderRadius: 11, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  trackingButtonText: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
   ratingBlock: { gap: 9 },
   ratingLabel: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 13 },
   ratingRow: { flexDirection: 'row', gap: 8 },
