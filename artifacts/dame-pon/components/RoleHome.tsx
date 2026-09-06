@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
@@ -60,9 +60,45 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [setupError, setSetupError] = useState('');
   const [requestError, setRequestError] = useState('');
+  const activeTripRefreshInFlight = useRef(false);
+  const openTripsRefreshInFlight = useRef(false);
 
   const firstName = profile?.full_name?.trim().split(' ')[0] || (isDriver ? 'conductor' : 'viajero');
   const driverReady = Boolean(driverSetup?.driver && driverSetup?.vehicle);
+
+  const refreshActiveTrip = useCallback(async () => {
+    if (!user?.id || activeTripRefreshInFlight.current) return;
+    activeTripRefreshInFlight.current = true;
+    try {
+      const result = isDriver
+        ? await getDriverActiveTrip(user.id)
+        : await getPassengerActiveTrip(user.id);
+
+      if (result.error) {
+        isDriver ? setSetupError(result.error) : setRequestError(result.error);
+        return;
+      }
+      setActiveTrip(result.data);
+      setRatingSubmitted(false);
+    } finally {
+      activeTripRefreshInFlight.current = false;
+    }
+  }, [isDriver, user?.id]);
+
+  const refreshOpenTrips = useCallback(async () => {
+    if (!isDriver || !isAvailable || openTripsRefreshInFlight.current) return;
+    openTripsRefreshInFlight.current = true;
+    try {
+      const result = await getOpenTrips();
+      if (result.error) {
+        setSetupError(result.error);
+        return;
+      }
+      setDriverTrips(result.data ?? []);
+    } finally {
+      openTripsRefreshInFlight.current = false;
+    }
+  }, [isAvailable, isDriver]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -71,69 +107,68 @@ export function RoleHome({ role }: { role: UserRole }) {
 
     const load = async () => {
       if (isDriver) {
-        const [result, tripResult] = await Promise.all([
-          getDriverSetup(user.id),
-          getDriverActiveTrip(user.id),
-        ]);
+        const result = await getDriverSetup(user.id);
         if (active) {
           setDriverSetup(result.data);
           setIsAvailable(result.data?.driver?.is_online === true);
-          setActiveTrip(tripResult.data);
-          setSetupError(result.error ?? tripResult.error ?? '');
+          setSetupError(result.error ?? '');
           setLoading(false);
         }
       } else {
-        const result = await getPassengerActiveTrip(user.id);
         if (active) {
-          setActiveTrip(result.data);
-          setRequestError(result.error ?? '');
           setLoading(false);
         }
       }
+      await refreshActiveTrip();
     };
 
     void load();
     return () => {
       active = false;
     };
-  }, [isDriver, user?.id]);
+  }, [isDriver, refreshActiveTrip, user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
-    const refresh = async () => {
-      const result = isDriver
-        ? await getDriverActiveTrip(user.id)
-        : await getPassengerActiveTrip(user.id);
-      setActiveTrip(result.data);
-      setRatingSubmitted(false);
-    };
-    return subscribeToTrips(user.id, isDriver ? 'driver' : 'passenger', () => {
-      void refresh();
+    const unsubscribe = subscribeToTrips(user.id, isDriver ? 'driver' : 'passenger', () => {
+      void refreshActiveTrip();
     });
-  }, [isDriver, user?.id]);
+    const poll = setInterval(() => {
+      void refreshActiveTrip();
+    }, 12_000);
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshActiveTrip();
+    });
+
+    return () => {
+      clearInterval(poll);
+      appStateSubscription.remove();
+      unsubscribe();
+    };
+  }, [isDriver, refreshActiveTrip, user?.id]);
 
   useEffect(() => {
     if (!isDriver || !isAvailable) {
       setDriverTrips([]);
       return;
     }
-    let active = true;
-    const loadOpenTrips = async () => {
-      const result = await getOpenTrips();
-      if (active) {
-        setDriverTrips(result.data ?? []);
-        if (result.error) setSetupError(result.error);
-      }
-    };
-    void loadOpenTrips();
+    void refreshOpenTrips();
     const unsubscribe = subscribeToOpenTrips(() => {
-      void loadOpenTrips();
+      void refreshOpenTrips();
     });
+    const poll = setInterval(() => {
+      void refreshOpenTrips();
+    }, 12_000);
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshOpenTrips();
+    });
+
     return () => {
-      active = false;
+      clearInterval(poll);
+      appStateSubscription.remove();
       unsubscribe();
     };
-  }, [isAvailable, isDriver]);
+  }, [isAvailable, isDriver, refreshOpenTrips]);
 
   const handleAvailability = async () => {
     if (!user?.id) return;

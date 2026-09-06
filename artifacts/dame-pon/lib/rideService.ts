@@ -492,7 +492,9 @@ export function subscribeToTrips(
       { event: '*', schema: 'public', table: 'trips', filter: `${column}=eq.${userId}` },
       onChange,
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') onChange();
+    });
 
   return () => {
     void supabase.removeChannel(channel);
@@ -503,7 +505,9 @@ export function subscribeToOpenTrips(onChange: () => void) {
   const channel = supabase
     .channel('trips:open')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, onChange)
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') onChange();
+    });
 
   return () => {
     void supabase.removeChannel(channel);
