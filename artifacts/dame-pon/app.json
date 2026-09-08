@@ -10,7 +10,13 @@
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.damepon.damepon"
+    },
     "web": {
       "favicon": "./assets/images/dame-pon-logo.png"
     },
@@ -32,6 +38,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b7241380-ec5b-467f-9e2a-761119ab2d50"
+      }
     }
   }
 }
