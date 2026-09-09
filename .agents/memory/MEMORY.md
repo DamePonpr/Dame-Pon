@@ -1,2 +1,3 @@
 - [Supabase schema probing](supabase-schema-probing.md) — validate PostgREST columns and enums with zero-row probes when OpenAPI requires a secret key.
 - [Ride realtime resilience](ride-realtime-resilience.md) — realtime trip updates need periodic reconciliation because delivery can be absent even when subscriptions succeed.
+- [pnpm build approval](pnpm-build-approval.md) — pnpm 10 stores approved build scripts in root workspace YAML, not the lockfile.
