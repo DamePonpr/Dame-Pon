@@ -9,7 +9,14 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "dame-pon--damepon.replit.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://byexltskjqrorbfspshe.supabase.co"
+      }
     },
     "production": {
       "autoIncrement": true
