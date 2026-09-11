@@ -29,7 +29,7 @@ function runValidator(overrides = {}) {
 function assertRejected(result, expectedMessage, rejectedKey) {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, expectedMessage);
-  assert.match(result.stderr, /Replit Secrets/);
+  assert.match(result.stderr, /EAS preview environment or eas\.json/);
   assert.match(result.stderr, /restart the Dame Pon workflow/);
 
   if (rejectedKey) {

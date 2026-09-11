@@ -4,7 +4,7 @@ const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 function stop(message) {
   console.error(`\nSupabase configuration error: ${message}`);
   console.error(
-    'Update the value in Replit Secrets and restart the Dame Pon workflow. Never paste a Supabase key into chat.\n',
+    'Update the value in the EAS preview environment or eas.json and rebuild Dame Pon. Never paste a Supabase key into chat.\n',
   );
   process.exit(1);
 }

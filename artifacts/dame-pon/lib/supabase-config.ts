@@ -1,25 +1,31 @@
 const PUBLISHABLE_KEY_PREFIX = 'sb_publishable_';
 
+const buildEnvironment: Record<string, string | undefined> = {
+  EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+    process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+};
+
 export type SupabasePublicConfig = {
   url: string;
   publishableKey: string;
 };
 
 export function readSupabasePublicConfig(
-  environment: Record<string, string | undefined> = process.env,
+  environment: Record<string, string | undefined> = buildEnvironment,
 ): SupabasePublicConfig {
   const url = environment.EXPO_PUBLIC_SUPABASE_URL?.trim();
   const publishableKey = environment.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 
   if (!url) {
     throw new Error(
-      'Supabase configuration is missing EXPO_PUBLIC_SUPABASE_URL. Add it in Replit Secrets; do not paste it into chat.',
+      'Supabase configuration is missing EXPO_PUBLIC_SUPABASE_URL in EAS/eas.json. Add it to the preview build environment; do not paste it into chat.',
     );
   }
 
   if (!publishableKey) {
     throw new Error(
-      'Supabase configuration is missing EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY. Copy the Publishable key (sb_publishable_...) from Supabase into Replit Secrets; do not paste it into chat.',
+      'Supabase configuration is missing EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY in EAS/eas.json. Add the Publishable key (sb_publishable_...) to the preview build environment; do not paste it into chat.',
     );
   }
 
@@ -31,7 +37,7 @@ export function readSupabasePublicConfig(
         : 'The configured value is not a Supabase Publishable key.';
 
     throw new Error(
-      `${guidance} Set EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY to the sb_publishable_... value from Supabase in Replit Secrets; do not paste it into chat.`,
+      `${guidance} Set EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY to the sb_publishable_... value from Supabase in the EAS preview environment; do not paste it into chat.`,
     );
   }
 
@@ -40,13 +46,13 @@ export function readSupabasePublicConfig(
     parsedUrl = new URL(url);
   } catch {
     throw new Error(
-      'EXPO_PUBLIC_SUPABASE_URL is not a valid URL. Update it in Replit Secrets; do not paste it into chat.',
+      'EXPO_PUBLIC_SUPABASE_URL is not a valid URL. Update it in EAS/eas.json; do not paste it into chat.',
     );
   }
 
   if (parsedUrl.protocol !== 'https:') {
     throw new Error(
-      'EXPO_PUBLIC_SUPABASE_URL must use https://. Update it in Replit Secrets; do not paste it into chat.',
+      'EXPO_PUBLIC_SUPABASE_URL must use https://. Update it in EAS/eas.json; do not paste it into chat.',
     );
   }
 
