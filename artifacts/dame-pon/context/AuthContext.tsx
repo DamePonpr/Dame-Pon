@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseConfigError } from '@/lib/supabase';
 
 export type UserRole = 'passenger' | 'driver';
 
@@ -87,6 +87,10 @@ async function ensureProfile(user: User): Promise<string | null> {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  if (supabaseConfigError) {
+    throw supabaseConfigError;
+  }
+
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);

@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -52,16 +53,18 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <AuthProvider>
-          <PushNotificationRegistration />
-          <QueryClientProvider client={queryClient}>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </QueryClientProvider>
-        </AuthProvider>
+        <GlobalErrorHandler>
+          <AuthProvider>
+            <PushNotificationRegistration />
+            <QueryClientProvider client={queryClient}>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <KeyboardProvider>
+                  <RootLayoutNav />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </QueryClientProvider>
+          </AuthProvider>
+        </GlobalErrorHandler>
       </ErrorBoundary>
     </SafeAreaProvider>
   );
