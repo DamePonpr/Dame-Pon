@@ -1,21 +1,19 @@
 const PUBLISHABLE_KEY_PREFIX = 'sb_publishable_';
 
-const buildEnvironment: Record<string, string | undefined> = {
-  EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
-  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
-    process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-};
-
 export type SupabasePublicConfig = {
   url: string;
   publishableKey: string;
 };
 
 export function readSupabasePublicConfig(
-  environment: Record<string, string | undefined> = buildEnvironment,
+  environment?: Record<string, string | undefined>,
 ): SupabasePublicConfig {
-  const url = environment.EXPO_PUBLIC_SUPABASE_URL?.trim();
-  const publishableKey = environment.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+  const url = environment
+    ? environment.EXPO_PUBLIC_SUPABASE_URL?.trim()
+    : process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
+  const publishableKey = environment
+    ? environment.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
+    : process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 
   if (!url) {
     throw new Error(
