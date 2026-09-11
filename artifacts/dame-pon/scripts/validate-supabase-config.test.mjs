@@ -30,7 +30,7 @@ function assertRejected(result, expectedMessage, rejectedKey) {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, expectedMessage);
   assert.match(result.stderr, /EAS preview environment or eas\.json/);
-  assert.match(result.stderr, /restart the Dame Pon workflow/);
+  assert.match(result.stderr, /rebuild Dame Pon/);
 
   if (rejectedKey) {
     assert.doesNotMatch(result.stderr, new RegExp(rejectedKey));
