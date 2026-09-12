@@ -248,15 +248,12 @@ async function run() {
     .from('trips')
     .insert({
       passenger_id: passenger.user.id,
-      driver_id: null,
       pickup_address: `Realtime origen ${runId}`,
       pickup_lat: 18.4655,
       pickup_lng: -66.1057,
       dropoff_address: `Realtime destino ${runId}`,
       dropoff_lat: 18.4064,
       dropoff_lng: -66.0644,
-      status: 'buscando_conductor',
-      requested_at: new Date().toISOString(),
     })
     .select('id,status')
     .single();
