@@ -161,14 +161,12 @@ function deliveryLabel(result) {
 }
 
 async function updateStatus(driver, status, timestampColumn) {
-  const response = await driver.supabase
-    .from('trips')
-    .update({ status, [timestampColumn]: new Date().toISOString() })
-    .eq('id', created.tripId)
-    .eq('driver_id', driver.user.id)
-    .select('id,status')
-    .single();
+  const rpcName = status === 'en_curso' ? 'start_trip' : 'complete_trip';
+  const response = await driver.supabase.rpc(rpcName, { p_trip_id: created.tripId }).maybeSingle();
   checkError(`cambiar viaje a ${status}`, response.error);
+  if (!response.data || response.data.status !== status || response.data.driver_id !== driver.user.id) {
+    fail(`cambiar viaje a ${status}`, 'La función no devolvió el viaje asignado en el estado esperado.');
+  }
 }
 
 async function assertStillOffline(observation, label) {
@@ -221,35 +219,27 @@ async function run() {
       .eq('id', actor.user.id)
       .maybeSingle();
     checkError(`consultar perfil de ${role}`, existingProfile.error);
-    if (existingProfile.data) continue;
-
-    const profileResponse = await actor.supabase
-      .from('profiles')
-      .insert({
-        id: actor.user.id,
-        full_name: `Realtime ${role}`,
-        phone: '+1 787 555 0100',
-        role,
-      })
-      .select('id,role')
-      .single();
-    checkError(`preparar perfil de ${role}`, profileResponse.error);
+    if (!existingProfile.data || existingProfile.data.role !== role) {
+      fail(`perfil de ${role}`, `La cuenta no tiene el perfil esperado (${role}).`);
+    }
   }
 
   let response = await driver.supabase
     .from('drivers')
-    .upsert(
-      {
-        id: driver.user.id,
-        is_online: true,
-        license_number: `RT-${runId.slice(-10).toUpperCase()}`,
-        status: 'aprobado',
-      },
-      { onConflict: 'id' },
-    )
-    .select('id')
+    .select('id,status')
+    .eq('id', driver.user.id)
     .single();
   checkError('preparar conductor', response.error);
+  if (response.data.status !== 'aprobado') {
+    fail('preparar conductor', 'La cuenta de prueba debe estar aprobada por un administrador.');
+  }
+  response = await driver.supabase
+    .from('drivers')
+    .update({ is_online: true })
+    .eq('id', driver.user.id)
+    .select('id,is_online')
+    .single();
+  checkError('poner conductor en línea', response.error);
 
   const requestWatch = watchTrip(driver.supabase, 'conductor-solicitud', null, 'buscando_conductor', 'INSERT');
   await subscribe('solicitudes abiertas del conductor', requestWatch.channel);

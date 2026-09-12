@@ -218,14 +218,33 @@ export async function saveDriverSetup(
   userId: string,
   draft: VehicleDraft,
 ): Promise<ServiceResult<DriverSetup>> {
-  const driverResult = await supabase
+  const existingDriver = await supabase
     .from('drivers')
-    .upsert({ id: userId, is_online: false }, { onConflict: 'id' })
     .select(DRIVER_COLUMNS)
-    .single();
+    .eq('id', userId)
+    .maybeSingle();
 
-  if (driverResult.error) {
-    return serviceError('save-driver', driverResult.error);
+  if (existingDriver.error) {
+    return serviceError('save-driver', existingDriver.error);
+  }
+
+  const driverResult = existingDriver.data
+    ? existingDriver
+    : await supabase
+        .from('drivers')
+        .insert({
+          id: userId,
+          license_number: draft.licensePlate.trim().toUpperCase(),
+          is_online: false,
+        })
+        .select(DRIVER_COLUMNS)
+        .single();
+
+  if (driverResult.error || !driverResult.data) {
+    return serviceError(
+      'save-driver',
+      driverResult.error ?? { message: 'No se pudo crear el perfil de conductor.' },
+    );
   }
 
   const vehiclePayload = {
@@ -266,7 +285,7 @@ export async function saveDriverSetup(
 
   return {
     data: {
-      driver: driverResult.data as Driver,
+       driver: driverResult.data as Driver,
       vehicle: vehicleResult.data as Vehicle,
     },
     error: null,
@@ -364,15 +383,12 @@ export async function requestTrip(
     .from('trips')
     .insert({
       passenger_id: passengerId,
-      driver_id: null,
       pickup_address: pickup.address,
       pickup_lat: pickup.latitude,
       pickup_lng: pickup.longitude,
       dropoff_address: dropoffAddress.trim(),
       dropoff_lat: null,
       dropoff_lng: null,
-      status: 'buscando_conductor' satisfies TripStatus,
-      requested_at: new Date().toISOString(),
     })
     .select(TRIP_COLUMNS)
     .single();
@@ -549,16 +565,10 @@ export async function updateTripStatus(
   driverId: string,
   status: Extract<TripStatus, 'en_curso' | 'completado'>,
 ): Promise<ServiceResult<Trip>> {
-  const timestamp = new Date().toISOString();
   const result = await supabase
-    .from('trips')
-    .update({
-      status,
-      ...(status === 'en_curso' ? { started_at: timestamp } : { completed_at: timestamp }),
+    .rpc(status === 'en_curso' ? 'start_trip' : 'complete_trip', {
+      p_trip_id: tripId,
     })
-    .eq('id', tripId)
-    .eq('driver_id', driverId)
-    .select(TRIP_COLUMNS)
     .maybeSingle();
 
   if (result.error) {
@@ -566,6 +576,9 @@ export async function updateTripStatus(
   }
   if (!result.data) {
     return { data: null, error: 'Este viaje ya no está disponible para actualizarse.' };
+  }
+  if ((result.data as Trip).driver_id !== driverId) {
+    return { data: null, error: 'Supabase devolvió una asignación de viaje inválida.' };
   }
   return { data: result.data as Trip, error: null };
 }
@@ -575,12 +588,7 @@ export async function cancelTrip(
   passengerId: string,
 ): Promise<ServiceResult<Trip>> {
   const result = await supabase
-    .from('trips')
-    .update({ status: 'cancelado' satisfies TripStatus })
-    .eq('id', tripId)
-    .eq('passenger_id', passengerId)
-    .in('status', ['buscando_conductor', 'aceptado'] satisfies TripStatus[])
-    .select(TRIP_COLUMNS)
+    .rpc('cancel_trip', { p_trip_id: tripId })
     .maybeSingle();
 
   if (result.error) {
@@ -588,6 +596,9 @@ export async function cancelTrip(
   }
   if (!result.data) {
     return { data: null, error: 'Este viaje ya no puede cancelarse.' };
+  }
+  if ((result.data as Trip).passenger_id !== passengerId) {
+    return { data: null, error: 'Supabase devolvió un pasajero inválido.' };
   }
   return { data: result.data as Trip, error: null };
 }

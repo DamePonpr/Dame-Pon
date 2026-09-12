@@ -63,24 +63,38 @@ async function fetchProfile(user: User | null): Promise<Profile | null> {
 }
 
 async function ensureProfile(user: User): Promise<string | null> {
-  const { error } = await supabase.from('profiles').upsert(
-    {
-      id: user.id,
-      full_name: user.user_metadata?.full_name ?? null,
-      phone: user.user_metadata?.phone ?? null,
-      role: normalizeRole(user.user_metadata?.role),
-    },
-    { onConflict: 'id' },
-  );
+  const profileFields = {
+    full_name: user.user_metadata?.full_name ?? '',
+    phone: user.user_metadata?.phone ?? '',
+  };
+  const existing = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
 
-  if (error) {
-    console.error('[Dame Pon] No se pudo sincronizar profiles:', {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
+  if (existing.error) {
+    console.error('[Dame Pon] No se pudo consultar profiles:', {
+      code: existing.error.code,
+      message: existing.error.message,
+      details: existing.error.details,
+      hint: existing.error.hint,
     });
-    return error.message;
+    return existing.error.message;
+  }
+
+  const response = existing.data
+    ? await supabase.from('profiles').update(profileFields).eq('id', user.id)
+    : await supabase.from('profiles').insert({ id: user.id, ...profileFields });
+
+  if (response.error) {
+    console.error('[Dame Pon] No se pudo sincronizar profiles:', {
+      code: response.error.code,
+      message: response.error.message,
+      details: response.error.details,
+      hint: response.error.hint,
+    });
+    return response.error.message;
   }
 
   return null;
