@@ -179,9 +179,23 @@ function toUserMessage(error: SupabaseErrorLike, action: RideAction) {
   return actionFallbacks[action];
 }
 
+function supabaseDiagnostic(error: SupabaseErrorLike) {
+  const lines = [
+    `Código: ${error.code ?? 'no informado'}`,
+    `Mensaje: ${error.message ?? 'no informado'}`,
+  ];
+  if (error.details) lines.push(`Detalles: ${error.details}`);
+  if (error.hint) lines.push(`Sugerencia: ${error.hint}`);
+  if (error.status) lines.push(`HTTP: ${error.status}`);
+  return lines.join('\n');
+}
+
 function serviceError<T>(action: RideAction, error: SupabaseErrorLike): ServiceResult<T> {
   logServiceError(action, error);
-  return { data: null, error: toUserMessage(error, action) };
+  return {
+    data: null,
+    error: `${toUserMessage(error, action)}\n\nDiagnóstico real de Supabase:\n${supabaseDiagnostic(error)}`,
+  };
 }
 
 export async function getDriverSetup(userId: string): Promise<ServiceResult<DriverSetup>> {
@@ -387,8 +401,6 @@ export async function requestTrip(
       pickup_lat: pickup.latitude,
       pickup_lng: pickup.longitude,
       dropoff_address: dropoffAddress.trim(),
-      dropoff_lat: null,
-      dropoff_lng: null,
     })
     .select(TRIP_COLUMNS)
     .single();

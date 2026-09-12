@@ -67,8 +67,6 @@ async function createTrip(passenger) {
       pickup_lat: 18.4655,
       pickup_lng: -66.1057,
       dropoff_address: `RLS destino ${runId}`,
-      dropoff_lat: 18.4064,
-      dropoff_lng: -66.0644,
     })
     .select('id,status,driver_id')
     .single();
