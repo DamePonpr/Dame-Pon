@@ -13,7 +13,8 @@
     "verify:supabase-config": "node scripts/validate-supabase-config.mjs",
     "verify:supabase-rls": "pnpm run verify:supabase-config && node scripts/verify-supabase-rls.mjs",
     "verify:trip-realtime": "pnpm run verify:supabase-config && node scripts/verify-trip-realtime.mjs",
-    "verify:rls-hardening": "pnpm run verify:supabase-config && node scripts/verify-rls-hardening.mjs"
+    "verify:rls-hardening": "pnpm run verify:supabase-config && node scripts/verify-rls-hardening.mjs",
+    "verify:trip-request": "pnpm run verify:supabase-config && node scripts/verify-trip-request.mjs"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
