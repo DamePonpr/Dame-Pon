@@ -814,6 +814,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       />
       <TripCompleteScreen
         colors={colors}
+        insetsTop={insets.top}
         insetsBottom={insets.bottom}
         visible={completionSummary !== null}
         trip={completionSummary?.trip ?? null}
@@ -1197,6 +1198,7 @@ function DriverContent({
 
 function DestinationModal({
   colors,
+  insetsTop,
   insetsBottom,
   visible,
   destination,
@@ -1216,6 +1218,7 @@ function DestinationModal({
   onSubmit,
 }: {
   colors: ReturnType<typeof useColors>;
+  insetsTop: number;
   insetsBottom: number;
   visible: boolean;
   destination: string;
@@ -1376,7 +1379,7 @@ function TripCompleteScreen({
   return (
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={onHome}>
       <View style={[styles.completionScreen, { backgroundColor: colors.background }]}>
-        <View style={[styles.completionTopBar, { paddingTop: insetsBottom > 0 ? 18 : 28 }]}>
+        <View style={[styles.completionTopBar, { paddingTop: insetsTop + 10 }]}>
           <View style={[styles.completionLogo, { backgroundColor: colors.primary }]}>
             <Feather name="check" size={20} color="#FFFFFF" />
           </View>
