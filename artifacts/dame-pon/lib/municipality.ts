@@ -61,15 +61,15 @@ export function tripDistanceFromDriver(trip: MunicipalityTrip, driverLocation: D
   );
 }
 
-export function isTripInActiveMunicipality(trip: Trip, activeMunicipality: string | null | undefined) {
+export function isTripInActiveMunicipality(trip: MunicipalityTrip, activeMunicipality: string | null | undefined) {
   return Boolean(activeMunicipality && trip.municipio_origen === activeMunicipality);
 }
 
-export function sortTripsForDriver(
-  trips: MunicipalityTrip[],
+export function sortTripsForDriver<T extends MunicipalityTrip>(
+  trips: T[],
   activeMunicipality: string | null | undefined,
   driverLocation: DriverCoordinates,
-) {
+): T[] {
   return trips
     .map((trip, index) => ({
       trip,
