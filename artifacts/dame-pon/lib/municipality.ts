@@ -1,5 +1,3 @@
-import type { Trip } from '@/lib/rideService';
-
 export interface Municipality {
   id: string;
   nombre: string;
@@ -10,6 +8,12 @@ export interface Municipality {
 export interface DriverCoordinates {
   latitude: number | null;
   longitude: number | null;
+}
+
+export interface MunicipalityTrip {
+  municipio_origen: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
 }
 
 const EARTH_RADIUS_KM = 6371;
@@ -29,7 +33,19 @@ export function distanceKm(
   return EARTH_RADIUS_KM * 2 * Math.asin(Math.sqrt(haversine));
 }
 
-export function tripDistanceFromDriver(trip: Trip, driverLocation: DriverCoordinates) {
+export function nearestMunicipality(
+  point: { latitude: number; longitude: number },
+  municipalities: Municipality[],
+) {
+  return municipalities.reduce<Municipality | null>((nearest, municipality) => {
+    if (!nearest) return municipality;
+    const distance = distanceKm(point, { latitude: municipality.centro_lat, longitude: municipality.centro_lng });
+    const nearestDistance = distanceKm(point, { latitude: nearest.centro_lat, longitude: nearest.centro_lng });
+    return distance < nearestDistance ? municipality : nearest;
+  }, null);
+}
+
+export function tripDistanceFromDriver(trip: MunicipalityTrip, driverLocation: DriverCoordinates) {
   if (
     !Number.isFinite(driverLocation.latitude)
     || !Number.isFinite(driverLocation.longitude)
@@ -50,7 +66,7 @@ export function isTripInActiveMunicipality(trip: Trip, activeMunicipality: strin
 }
 
 export function sortTripsForDriver(
-  trips: Trip[],
+  trips: MunicipalityTrip[],
   activeMunicipality: string | null | undefined,
   driverLocation: DriverCoordinates,
 ) {
