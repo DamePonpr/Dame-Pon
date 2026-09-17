@@ -19,6 +19,7 @@ import {
   getOpenTrips,
   getPassengerActiveTrip,
   getTripHistory,
+  isLikelySessionError,
   rateTrip,
   requestTrip,
   saveDriverSetup,
@@ -56,7 +57,7 @@ const emptyVehicle: VehicleDraft = {
 export function RoleHome({ role }: { role: UserRole }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { profile, user, signOut } = useAuth();
+  const { profile, user, signOut, expireSession } = useAuth();
   const isDriver = role === 'driver';
   const [isAvailable, setIsAvailable] = useState(false);
   const [driverSetup, setDriverSetup] = useState<DriverSetup | null>(null);
@@ -114,6 +115,13 @@ export function RoleHome({ role }: { role: UserRole }) {
   const driverReady = Boolean(driverSetup?.driver && driverSetup?.vehicle);
   const baseMunicipality = driverSetup?.driver?.municipio_base ?? pendingBaseMunicipality ?? profile?.base_municipality ?? null;
   const activeMunicipality = driverSetup?.driver?.municipio_activo ?? baseMunicipality;
+  const handleServiceError = useCallback((message: string, setter: (value: string) => void) => {
+    if (isLikelySessionError(message)) {
+      void expireSession();
+      return;
+    }
+    setter(message);
+  }, [expireSession]);
 
   const refreshActiveTrip = useCallback(async () => {
     if (!user?.id || activeTripRefreshInFlight.current) return;
@@ -124,7 +132,7 @@ export function RoleHome({ role }: { role: UserRole }) {
         : await getPassengerActiveTrip(user.id);
 
       if (result.error) {
-        isDriver ? setSetupError(result.error) : setRequestError(result.error);
+        handleServiceError(result.error, isDriver ? setSetupError : setRequestError);
         return;
       }
       setActiveTrip(result.data);
@@ -132,7 +140,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     } finally {
       activeTripRefreshInFlight.current = false;
     }
-  }, [isDriver, user?.id]);
+  }, [handleServiceError, isDriver, user?.id]);
 
   const refreshOpenTrips = useCallback(async () => {
     if (!isDriver || !isAvailable || openTripsRefreshInFlight.current) return;
@@ -140,7 +148,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     try {
       const result = await getOpenTrips();
       if (result.error) {
-        setSetupError(result.error);
+        handleServiceError(result.error, setSetupError);
         return;
       }
        const driver = driverSetup?.driver;
@@ -151,7 +159,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     } finally {
       openTripsRefreshInFlight.current = false;
     }
-  }, [driverSetup, isAvailable, isDriver]);
+  }, [driverSetup, handleServiceError, isAvailable, isDriver]);
 
   useEffect(() => {
     if (!user?.id) return;
