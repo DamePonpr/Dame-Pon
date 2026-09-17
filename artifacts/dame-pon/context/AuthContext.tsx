@@ -65,7 +65,7 @@ async function fetchProfile(user: User | null): Promise<Profile | null> {
 async function ensureProfile(user: User): Promise<string | null> {
   const profileFields = {
     full_name: user.user_metadata?.full_name ?? '',
-    phone: user.user_metadata?.phone ?? '',
+    phone: user.user_metadata?.phone?.trim() || null,
   };
   const existing = await supabase
     .from('profiles')
@@ -146,16 +146,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password,
         });
         if (!error && data.user) {
-          await ensureProfile(data.user);
+          const profileError = await ensureProfile(data.user);
+          if (profileError) return { error: profileError };
         }
         return { error: error?.message ?? null };
       },
-      signUp: async ({ email, password, fullName, phone, role }) => {
+      signUp: async ({ email, password, fullName, phone, role, baseMunicipality }) => {
+        const normalizedPhone = phone.trim();
+        if (normalizedPhone) {
+          const availability = await supabase.rpc('is_phone_available', { p_phone: normalizedPhone });
+          if (availability.error) {
+            return { error: availability.error.message, needsEmailConfirmation: false };
+          }
+          if (availability.data === false) {
+            return { error: 'PHONE_ALREADY_REGISTERED', needsEmailConfirmation: false };
+          }
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
-            data: { full_name: fullName.trim(), phone: phone.trim(), role },
+            data: {
+              full_name: fullName.trim(),
+              phone: normalizedPhone || null,
+              role,
+              ...(role === 'driver' ? { base_municipality: baseMunicipality } : {}),
+            },
           },
         });
 
@@ -166,7 +183,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // require auth.uid() will reject an anonymous insert. The profile is
         // synchronized after the user confirms the email and signs in.
         if (data.user && data.session) {
-          await ensureProfile(data.user);
+          const profileError = await ensureProfile(data.user);
+          if (profileError) return { error: profileError, needsEmailConfirmation: false };
         }
 
         return {
