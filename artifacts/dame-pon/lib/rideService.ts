@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { Municipality } from '@/lib/municipality';
 
 export type TripStatus = 'buscando_conductor' | 'aceptado' | 'en_curso' | 'completado' | 'cancelado';
 export type DriverStatus = 'pendiente' | 'aprobado' | 'suspendido';
@@ -21,6 +22,8 @@ export interface Trip {
   accepted_at: string | null;
   started_at: string | null;
   completed_at: string | null;
+  municipio_origen: string | null;
+  municipio_destino: string | null;
 }
 
 export interface TripHistoryItem {
@@ -36,6 +39,9 @@ export interface Driver {
   current_lat: number | null;
   current_lng: number | null;
   updated_at: string;
+  municipio_base: string | null;
+  municipio_activo: string | null;
+  municipios_activos: string[];
 }
 
 export interface DriverLocation {
@@ -95,10 +101,13 @@ type RideAction =
   | 'cancel-trip'
   | 'update-trip'
   | 'rate-trip';
+  | 'load-municipalities'
+  | 'set-driver-base'
+  | 'set-driver-active';
 
-const DRIVER_COLUMNS = 'id,status,is_online,current_lat,current_lng,updated_at';
+const DRIVER_COLUMNS = 'id,status,is_online,current_lat,current_lng,updated_at,municipio_base,municipio_activo,municipios_activos';
 const VEHICLE_COLUMNS = 'id,driver_id,make,model,year,color,plate';
-const TRIP_COLUMNS = 'id,status,passenger_id,driver_id,pickup_address,pickup_lat,pickup_lng,dropoff_address,dropoff_lat,dropoff_lng,fare_estimate,fare_final,distance_km,requested_at,accepted_at,started_at,completed_at';
+const TRIP_COLUMNS = 'id,status,passenger_id,driver_id,pickup_address,pickup_lat,pickup_lng,dropoff_address,dropoff_lat,dropoff_lng,fare_estimate,fare_final,distance_km,requested_at,accepted_at,started_at,completed_at,municipio_origen,municipio_destino';
 
 const TRIP_RECONCILIATION_INTERVAL_MS = 3_000;
 const actionFallbacks: Record<RideAction, string> = {
@@ -117,6 +126,9 @@ const actionFallbacks: Record<RideAction, string> = {
   'cancel-trip': 'No pudimos cancelar este viaje.',
   'update-trip': 'No pudimos actualizar el estado del viaje.',
   'rate-trip': 'No pudimos guardar tu calificación.',
+  'load-municipalities': 'No pudimos cargar la lista de municipios.',
+  'set-driver-base': 'No pudimos guardar tu municipio base.',
+  'set-driver-active': 'No pudimos cambiar tu municipio activo.',
 };
 
 function logServiceError(action: RideAction, error: SupabaseErrorLike) {
