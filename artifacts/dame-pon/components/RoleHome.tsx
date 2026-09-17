@@ -390,15 +390,54 @@ export function RoleHome({ role }: { role: UserRole }) {
     void Haptics.selectionAsync();
   };
 
+  const handleSelectBaseMunicipality = async (municipality: string) => {
+    if (!user?.id) return;
+    setMunicipalityError('');
+    const result = await setDriverBaseMunicipality(municipality);
+    if (result.error) {
+      setMunicipalityError(result.error);
+      return;
+    }
+    if (result.data) {
+      setDriverSetup((current) => current
+        ? { ...current, driver: result.data }
+        : { driver: result.data, vehicle: null });
+    }
+    setShowMunicipalityPicker(false);
+    setShowVehicle(true);
+  };
+
+  const handleSelectActiveMunicipality = async (municipality: string) => {
+    if (!user?.id) return;
+    setMunicipalityError('');
+    const result = await setDriverActiveMunicipality(municipality);
+    if (result.error) {
+      setMunicipalityError(result.error);
+      return;
+    }
+    if (result.data) {
+      setDriverSetup((current) => current
+        ? { ...current, driver: result.data }
+        : { driver: result.data, vehicle: null });
+    }
+    setShowActiveMunicipalityPicker(false);
+  };
+
   const handleSaveVehicle = async () => {
     if (!user?.id) return;
+    const baseMunicipality = driverSetup?.driver?.municipio_base;
+    if (!baseMunicipality) {
+      setShowVehicle(false);
+      setShowMunicipalityPicker(true);
+      return;
+    }
     if (!vehicle.make.trim() || !vehicle.model.trim() || !vehicle.year.trim() || !vehicle.color.trim() || !vehicle.licensePlate.trim()) {
       setSetupError('Completa todos los datos del vehículo para continuar.');
       return;
     }
     setSavingVehicle(true);
     setSetupError('');
-    const result = await saveDriverSetup(user.id, vehicle);
+    const result = await saveDriverSetup(user.id, vehicle, baseMunicipality);
     setSavingVehicle(false);
     if (result.error) {
       setSetupError(result.error);
@@ -496,9 +535,44 @@ export function RoleHome({ role }: { role: UserRole }) {
       return;
     }
     setActiveTrip(result.data);
+    if (
+      status === 'completado'
+      && result.data?.municipio_destino
+      && driverSetup?.driver?.municipio_activo
+      && result.data.municipio_destino !== driverSetup.driver.municipio_activo
+    ) {
+      setMunicipalityDecision({
+        base: driverSetup.driver.municipio_base ?? driverSetup.driver.municipio_activo,
+        destination: result.data.municipio_destino,
+      });
+    }
     if (result.data && status === 'en_curso') {
       void sendTripPush('driver_start', result.data.id);
     }
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleMunicipalityDecision = async (decision: MunicipalityDecision) => {
+    if (!user?.id || !municipalityDecision) return;
+    const target = municipalityAfterDecision(
+      decision,
+      municipalityDecision.base,
+      municipalityDecision.destination,
+    );
+    setMunicipalityDecisionLoading(true);
+    setMunicipalityError('');
+    const result = await setDriverActiveMunicipality(target);
+    setMunicipalityDecisionLoading(false);
+    if (result.error) {
+      setMunicipalityError(result.error);
+      return;
+    }
+    if (result.data) {
+      setDriverSetup((current) => current
+        ? { ...current, driver: result.data }
+        : { driver: result.data, vehicle: null });
+    }
+    setMunicipalityDecision(null);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 

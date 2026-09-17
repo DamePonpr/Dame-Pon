@@ -356,6 +356,22 @@ export async function setDriverActiveMunicipality(
   return { data: result.data as Driver, error: null };
 }
 
+export async function setDriverBaseMunicipality(
+  municipality: string,
+): Promise<ServiceResult<Driver>> {
+  const result = await supabase
+    .rpc('set_driver_base_municipio', { p_municipio: municipality })
+    .maybeSingle();
+
+  if (result.error) {
+    return serviceError('set-driver-base', result.error);
+  }
+  if (!result.data) {
+    return { data: null, error: 'El municipio base ya fue establecido o no encontramos tu perfil de conductor.' };
+  }
+  return { data: result.data as Driver, error: null };
+}
+
 export async function setDriverAvailability(
   userId: string,
   isAvailable: boolean,
