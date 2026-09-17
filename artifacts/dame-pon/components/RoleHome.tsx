@@ -1198,7 +1198,6 @@ function DriverContent({
 
 function DestinationModal({
   colors,
-  insetsTop,
   insetsBottom,
   visible,
   destination,
@@ -1218,7 +1217,6 @@ function DestinationModal({
   onSubmit,
 }: {
   colors: ReturnType<typeof useColors>;
-  insetsTop: number;
   insetsBottom: number;
   visible: boolean;
   destination: string;
@@ -1342,6 +1340,7 @@ function DestinationModal({
 
 function TripCompleteScreen({
   colors,
+  insetsTop,
   insetsBottom,
   visible,
   trip,
@@ -1351,6 +1350,7 @@ function TripCompleteScreen({
   onHome,
 }: {
   colors: ReturnType<typeof useColors>;
+  insetsTop: number;
   insetsBottom: number;
   visible: boolean;
   trip: Trip | null;
