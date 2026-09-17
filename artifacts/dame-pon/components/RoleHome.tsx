@@ -1052,7 +1052,7 @@ function DriverContent({
           <Text style={styles.inverseEyebrow}>VIAJE ACTUAL</Text>
           <Text style={styles.inverseTitle}>{tripStatusLabel(activeTrip.status)}</Text>
           <Text style={styles.inverseSubtitle}>Destino: {tripDestination(activeTrip)}</Text>
-          {activeTrip.status === 'aceptado' ? (
+          {['aceptado', 'en_curso'].includes(activeTrip.status) ? (
             <View style={styles.trackingCard}>
               <Feather
                 name={driverTrackingActive ? 'radio' : 'map-pin'}
