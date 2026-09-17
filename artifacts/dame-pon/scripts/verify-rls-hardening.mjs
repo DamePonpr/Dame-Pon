@@ -111,12 +111,42 @@ async function run() {
 
   const driverRecord = await driver.supabase
     .from('drivers')
-    .select('id,status,is_online')
+    .select('id,status,is_online,municipio_base,municipio_activo')
     .eq('id', driver.user.id)
     .single();
   checkError('leer conductor de prueba', driverRecord.error);
   if (driverRecord.data.status !== 'aprobado') {
     fail('conductor de prueba', 'La cuenta debe estar aprobada por un administrador para ejecutar estas pruebas.');
+  }
+  const municipalityOptions = await driver.supabase
+    .from('municipios')
+    .select('nombre')
+    .neq('nombre', driverRecord.data.municipio_activo ?? '')
+    .order('nombre', { ascending: true })
+    .limit(1)
+    .single();
+  checkError('buscar municipio para probar RPC activa', municipalityOptions.error);
+  const originalActiveMunicipality = driverRecord.data.municipio_activo;
+  const activeMunicipality = municipalityOptions.data?.nombre;
+  if (!activeMunicipality) {
+    fail('buscar municipio para probar RPC activa', 'El catálogo no devolvió un municipio alternativo.');
+  }
+  const activeMunicipalityUpdate = await driver.supabase
+    .rpc('set_driver_active_municipio', { p_municipio: activeMunicipality })
+    .single();
+  checkError('cambiar municipio activo como conductor', activeMunicipalityUpdate.error);
+  if (
+    activeMunicipalityUpdate.data?.id !== driver.user.id
+    || activeMunicipalityUpdate.data?.municipio_activo !== activeMunicipality
+  ) {
+    fail('cambiar municipio activo como conductor', 'El RPC no devolvió la fila actualizada.');
+  }
+  console.log('[OK] cambio de municipio activo devolvió la fila actualizada');
+  if (originalActiveMunicipality) {
+    const restoreActiveMunicipality = await driver.supabase
+      .rpc('set_driver_active_municipio', { p_municipio: originalActiveMunicipality })
+      .single();
+    checkError('restaurar municipio activo del conductor de prueba', restoreActiveMunicipality.error);
   }
   const online = await driver.supabase
     .from('drivers')
