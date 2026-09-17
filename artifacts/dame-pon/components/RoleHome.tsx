@@ -15,12 +15,15 @@ import {
   getDriverActiveTrip,
   getDriverLocation,
   getDriverSetup,
+  getMunicipalities,
   getOpenTrips,
   getPassengerActiveTrip,
   getTripHistory,
   rateTrip,
   requestTrip,
   saveDriverSetup,
+  setDriverActiveMunicipality,
+  setDriverBaseMunicipality,
   setDriverAvailability,
   subscribeToOpenTrips,
   subscribeToDriverLocation,
@@ -33,6 +36,12 @@ import {
   updateDriverLocation,
   updateTripStatus,
 } from '@/lib/rideService';
+import {
+  sortTripsForDriver,
+  municipalityAfterDecision,
+  type Municipality,
+  type MunicipalityDecision,
+} from '@/lib/municipality';
 import { sendTripPush } from '@/lib/pushService';
 
 const emptyVehicle: VehicleDraft = {
@@ -54,6 +63,8 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [showDestination, setShowDestination] = useState(false);
   const [showVehicle, setShowVehicle] = useState(false);
+  const [showMunicipalityPicker, setShowMunicipalityPicker] = useState(false);
+  const [showActiveMunicipalityPicker, setShowActiveMunicipalityPicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [destination, setDestination] = useState('');
   const [savedDestination, setSavedDestination] = useState('');
@@ -78,6 +89,14 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [historyError, setHistoryError] = useState('');
   const [setupError, setSetupError] = useState('');
   const [requestError, setRequestError] = useState('');
+  const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
+  const [municipalitiesLoading, setMunicipalitiesLoading] = useState(false);
+  const [municipalityError, setMunicipalityError] = useState('');
+  const [municipalityDecision, setMunicipalityDecision] = useState<{
+    base: string;
+    destination: string;
+  } | null>(null);
+  const [municipalityDecisionLoading, setMunicipalityDecisionLoading] = useState(false);
   const activeTripRefreshInFlight = useRef(false);
   const openTripsRefreshInFlight = useRef(false);
 
@@ -112,11 +131,15 @@ export function RoleHome({ role }: { role: UserRole }) {
         setSetupError(result.error);
         return;
       }
-      setDriverTrips(result.data ?? []);
+       const driver = driverSetup?.driver;
+       setDriverTrips(sortTripsForDriver(result.data ?? [], driver?.municipio_activo ?? driver?.municipio_base, {
+         latitude: driver?.current_lat ?? null,
+         longitude: driver?.current_lng ?? null,
+       }));
     } finally {
       openTripsRefreshInFlight.current = false;
     }
-  }, [isAvailable, isDriver]);
+  }, [driverSetup, isAvailable, isDriver]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -145,6 +168,24 @@ export function RoleHome({ role }: { role: UserRole }) {
       active = false;
     };
   }, [isDriver, refreshActiveTrip, user?.id]);
+
+  useEffect(() => {
+    if (!isDriver) return;
+    let active = true;
+    setMunicipalitiesLoading(true);
+    void getMunicipalities().then((result) => {
+      if (!active) return;
+      setMunicipalitiesLoading(false);
+      if (result.error) {
+        setMunicipalityError(result.error);
+        return;
+      }
+      setMunicipalities(result.data ?? []);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isDriver]);
 
   useEffect(() => {
     if (!user?.id) return;

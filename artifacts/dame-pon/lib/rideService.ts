@@ -100,7 +100,7 @@ type RideAction =
   | 'accept-trip'
   | 'cancel-trip'
   | 'update-trip'
-  | 'rate-trip';
+  | 'rate-trip'
   | 'load-municipalities'
   | 'set-driver-base'
   | 'set-driver-active';
@@ -240,9 +240,22 @@ export async function getDriverSetup(userId: string): Promise<ServiceResult<Driv
   };
 }
 
+export async function getMunicipalities(): Promise<ServiceResult<Municipality[]>> {
+  const result = await supabase
+    .from('municipios')
+    .select('id,nombre,centro_lat,centro_lng')
+    .order('nombre', { ascending: true });
+
+  if (result.error) {
+    return serviceError('load-municipalities', result.error);
+  }
+  return { data: (result.data as Municipality[]) ?? [], error: null };
+}
+
 export async function saveDriverSetup(
   userId: string,
   draft: VehicleDraft,
+  baseMunicipality: string,
 ): Promise<ServiceResult<DriverSetup>> {
   const existingDriver = await supabase
     .from('drivers')
@@ -254,17 +267,26 @@ export async function saveDriverSetup(
     return serviceError('save-driver', existingDriver.error);
   }
 
-  const driverResult = existingDriver.data
+  let driverResult = existingDriver.data
     ? existingDriver
     : await supabase
         .from('drivers')
         .insert({
           id: userId,
           license_number: draft.licensePlate.trim().toUpperCase(),
+          municipio_base: baseMunicipality,
           is_online: false,
         })
         .select(DRIVER_COLUMNS)
         .single();
+
+  if (driverResult.data && !driverResult.data.municipio_base) {
+    const baseResult = await supabase
+      .rpc('set_driver_base_municipio', { p_municipio: baseMunicipality })
+      .maybeSingle();
+    if (baseResult.error) return serviceError('set-driver-base', baseResult.error);
+    if (baseResult.data) driverResult = baseResult;
+  }
 
   if (driverResult.error || !driverResult.data) {
     return serviceError(
@@ -316,6 +338,22 @@ export async function saveDriverSetup(
     },
     error: null,
   };
+}
+
+export async function setDriverActiveMunicipality(
+  municipality: string,
+): Promise<ServiceResult<Driver>> {
+  const result = await supabase
+    .rpc('set_driver_active_municipio', { p_municipio: municipality })
+    .maybeSingle();
+
+  if (result.error) {
+    return serviceError('set-driver-active', result.error);
+  }
+  if (!result.data) {
+    return { data: null, error: 'No encontramos tu perfil de conductor.' };
+  }
+  return { data: result.data as Driver, error: null };
 }
 
 export async function setDriverAvailability(
@@ -551,8 +589,7 @@ export async function getOpenTrips(): Promise<ServiceResult<Trip[]>> {
     .from('trips')
     .select(TRIP_COLUMNS)
     .eq('status', 'buscando_conductor' satisfies TripStatus)
-    .order('requested_at', { ascending: false })
-    .limit(10);
+    .order('requested_at', { ascending: false });
 
   if (result.error) {
     return serviceError('load-open-trips', result.error);
