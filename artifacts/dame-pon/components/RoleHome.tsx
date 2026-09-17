@@ -663,6 +663,8 @@ export function RoleHome({ role }: { role: UserRole }) {
             colors={colors}
             isAvailable={isAvailable}
             driverReady={driverReady}
+            activeMunicipality={driverSetup?.driver?.municipio_activo ?? driverSetup?.driver?.municipio_base ?? null}
+            baseMunicipality={driverSetup?.driver?.municipio_base ?? null}
             driverTrips={driverTrips}
             activeTrip={activeTrip}
             tripActionLoading={tripActionLoading}
@@ -674,7 +676,16 @@ export function RoleHome({ role }: { role: UserRole }) {
             onAvailability={handleAvailability}
             onVehicle={() => {
               setSetupError('');
-              setShowVehicle(true);
+              if (!driverSetup?.driver?.municipio_base) {
+                setMunicipalityError('');
+                setShowMunicipalityPicker(true);
+              } else {
+                setShowVehicle(true);
+              }
+            }}
+            onChangeMunicipality={() => {
+              setMunicipalityError('');
+              setShowActiveMunicipalityPicker(true);
             }}
             onAccept={handleAcceptTrip}
             onTripStatus={handleTripStatus}
@@ -745,6 +756,42 @@ export function RoleHome({ role }: { role: UserRole }) {
         onChange={setVehicle}
         onClose={() => setShowVehicle(false)}
         onSubmit={handleSaveVehicle}
+      />
+      <MunicipalityPickerModal
+        colors={colors}
+        insetsBottom={insets.bottom}
+        visible={showMunicipalityPicker}
+        title="Escoge tu pueblo base"
+        subtitle="Será tu punto de regreso cuando termines fuera de tu municipio."
+        municipalities={municipalities}
+        loading={municipalitiesLoading}
+        error={municipalityError}
+        selected={driverSetup?.driver?.municipio_base ?? null}
+        onClose={() => setShowMunicipalityPicker(false)}
+        onSelect={(municipality) => void handleSelectBaseMunicipality(municipality)}
+      />
+      <MunicipalityPickerModal
+        colors={colors}
+        insetsBottom={insets.bottom}
+        visible={showActiveMunicipalityPicker}
+        title="Cambia tu municipio activo"
+        subtitle="Las solicitudes de este pueblo aparecerán primero."
+        municipalities={municipalities}
+        loading={municipalitiesLoading}
+        error={municipalityError}
+        selected={driverSetup?.driver?.municipio_activo ?? driverSetup?.driver?.municipio_base ?? null}
+        onClose={() => setShowActiveMunicipalityPicker(false)}
+        onSelect={(municipality) => void handleSelectActiveMunicipality(municipality)}
+      />
+      <MunicipalityDecisionModal
+        colors={colors}
+        insetsBottom={insets.bottom}
+        visible={municipalityDecision !== null}
+        baseMunicipality={municipalityDecision?.base ?? ''}
+        destinationMunicipality={municipalityDecision?.destination ?? ''}
+        loading={municipalityDecisionLoading}
+        error={municipalityError}
+        onDecision={(decision) => void handleMunicipalityDecision(decision)}
       />
       <HistoryModal
         colors={colors}
@@ -887,6 +934,8 @@ function DriverContent({
   colors,
   isAvailable,
   driverReady,
+  activeMunicipality,
+  baseMunicipality,
   driverTrips,
   activeTrip,
   tripActionLoading,
@@ -897,6 +946,7 @@ function DriverContent({
   driverTrackingError,
   onAvailability,
   onVehicle,
+  onChangeMunicipality,
   onAccept,
   onTripStatus,
   onRating,
@@ -905,6 +955,8 @@ function DriverContent({
   colors: ReturnType<typeof useColors>;
   isAvailable: boolean;
   driverReady: boolean;
+  activeMunicipality: string | null;
+  baseMunicipality: string | null;
   driverTrips: Trip[];
   activeTrip: Trip | null;
   tripActionLoading: boolean;
@@ -915,6 +967,7 @@ function DriverContent({
   driverTrackingError: string;
   onAvailability: () => void;
   onVehicle: () => void;
+  onChangeMunicipality: () => void;
   onAccept: (trip: Trip) => void;
   onTripStatus: (status: 'en_curso' | 'completado') => void;
   onRating: (score: number) => void;
@@ -956,6 +1009,25 @@ function DriverContent({
           <Text style={[styles.infoTitle, { color: colors.foreground }]}>{driverReady ? 'Vehículo listo' : 'Completa tu vehículo'}</Text>
           <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
             {driverReady ? 'Puedes actualizar tus datos cuando quieras.' : 'Necesitas estos datos para recibir viajes.'}
+          </Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+      </Pressable>
+
+      <Pressable
+        testID="active-municipality"
+        onPress={onChangeMunicipality}
+        style={({ pressed }) => [styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }, pressed && { opacity: 0.8 }]}
+      >
+        <View style={[styles.infoIcon, { backgroundColor: colors.secondary }]}>
+          <Feather name="map" size={18} color={colors.primary} />
+        </View>
+        <View style={styles.infoCopy}>
+          <Text style={[styles.infoTitle, { color: colors.foreground }]}>
+            Pueblo activo: {activeMunicipality ?? 'Sin escoger'}
+          </Text>
+          <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+            Base: {baseMunicipality ?? 'Pendiente'} · Las solicitudes de tu pueblo aparecen primero.
           </Text>
         </View>
         <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
@@ -1015,7 +1087,14 @@ function DriverContent({
                   <Feather name="map-pin" size={17} color={colors.primary} />
                 </View>
                 <View style={styles.tripCopy}>
-                  <Text style={[styles.tripLabel, { color: colors.mutedForeground }]}>NUEVA SOLICITUD</Text>
+                  <View style={styles.tripLabelRow}>
+                    <Text style={[styles.tripLabel, { color: isTripInActiveMunicipality(trip, activeMunicipality) ? colors.primary : colors.mutedForeground }]}>
+                      {isTripInActiveMunicipality(trip, activeMunicipality) ? 'TU PUEBLO' : 'NUEVA SOLICITUD'}
+                    </Text>
+                    {trip.municipio_origen ? (
+                      <Text style={[styles.tripMunicipality, { color: colors.mutedForeground }]}>{trip.municipio_origen}</Text>
+                    ) : null}
+                  </View>
                   <Text style={[styles.tripDestination, { color: colors.foreground }]}>{tripDestination(trip)}</Text>
                 </View>
                 <Pressable
