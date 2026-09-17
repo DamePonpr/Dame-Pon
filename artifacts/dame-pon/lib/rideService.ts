@@ -285,7 +285,12 @@ export async function saveDriverSetup(
       .rpc('set_driver_base_municipio', { p_municipio: baseMunicipality })
       .maybeSingle();
     if (baseResult.error) return serviceError('set-driver-base', baseResult.error);
-    if (baseResult.data) driverResult = baseResult;
+    if (baseResult.data) {
+      driverResult = {
+        ...driverResult,
+        data: baseResult.data as Driver,
+      };
+    }
   }
 
   if (driverResult.error || !driverResult.data) {
