@@ -1191,12 +1191,17 @@ function DestinationModal({
   insetsBottom,
   visible,
   destination,
+  destinationMunicipality,
+  destinationSearch,
+  municipalities,
   loading,
   locationLoading,
   locationReady,
   locationError,
   error,
   onChange,
+  onMunicipalitySearch,
+  onMunicipalitySelect,
   onClose,
   onRetryLocation,
   onSubmit,
@@ -1205,23 +1210,32 @@ function DestinationModal({
   insetsBottom: number;
   visible: boolean;
   destination: string;
+  destinationMunicipality: string;
+  destinationSearch: string;
+  municipalities: Municipality[];
   loading: boolean;
   locationLoading: boolean;
   locationReady: boolean;
   locationError: string;
   error: string;
   onChange: (value: string) => void;
+  onMunicipalitySearch: (value: string) => void;
+  onMunicipalitySelect: (value: string) => void;
   onClose: () => void;
   onRetryLocation: () => void;
   onSubmit: () => void;
 }) {
+  const filteredMunicipalities = municipalities.filter((municipality) =>
+    municipality.nombre.toLocaleLowerCase().includes(destinationSearch.trim().toLocaleLowerCase()),
+  );
+
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.modalBackdrop} onPress={onClose}>
         <Pressable style={[styles.modalCard, { backgroundColor: colors.background, paddingBottom: insetsBottom + 22 }]} onPress={(event) => event.stopPropagation()}>
           <View style={styles.modalHandle} />
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>¿A dónde vas?</Text>
-          <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>Usaremos tu ubicación actual como punto de recogida.</Text>
+          <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>Escribe la dirección y escoge el pueblo donde termina tu viaje.</Text>
           <View style={[styles.modalInputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="map-pin" size={18} color={colors.primary} />
             <TextInput
@@ -1233,6 +1247,50 @@ function DestinationModal({
               style={[styles.modalInput, { color: colors.foreground }]}
             />
           </View>
+          <View style={styles.destinationMunicipalityHeader}>
+            <Text style={[styles.modalFieldLabel, { color: colors.foreground }]}>Municipio destino</Text>
+            {destinationMunicipality ? (
+              <View style={[styles.selectedMunicipality, { backgroundColor: colors.secondary }]}>
+                <Feather name="check-circle" size={15} color={colors.primary} />
+                <Text style={[styles.selectedMunicipalityText, { color: colors.primary }]}>{destinationMunicipality}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={[styles.modalInputRow, styles.destinationMunicipalitySearch, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="search" size={17} color={colors.mutedForeground} />
+            <TextInput
+              value={destinationSearch}
+              onChangeText={onMunicipalitySearch}
+              placeholder="Busca tu pueblo"
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.modalInput, { color: colors.foreground }]}
+            />
+          </View>
+          <ScrollView
+            style={styles.destinationMunicipalityList}
+            contentContainerStyle={styles.destinationMunicipalityListContent}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+          >
+            {filteredMunicipalities.map((municipality) => {
+              const selected = municipality.nombre === destinationMunicipality;
+              return (
+                <Pressable
+                  key={municipality.id}
+                  testID={`destination-municipality-${municipality.id}`}
+                  onPress={() => onMunicipalitySelect(municipality.nombre)}
+                  style={({ pressed }) => [
+                    styles.destinationMunicipalityOption,
+                    { backgroundColor: selected ? colors.secondary : colors.card, borderColor: selected ? colors.primary : colors.border },
+                    pressed && { opacity: 0.78 },
+                  ]}
+                >
+                  <Text style={[styles.destinationMunicipalityText, { color: colors.foreground }]}>{municipality.nombre}</Text>
+                  <Feather name={selected ? 'check-circle' : 'circle'} size={17} color={selected ? colors.primary : colors.mutedForeground} />
+                </Pressable>
+              );
+            })}
+          </ScrollView>
           <View style={[styles.locationStatus, { backgroundColor: colors.secondary }]}>
             {locationLoading ? (
               <ActivityIndicator size="small" color={colors.primary} />
@@ -1260,12 +1318,127 @@ function DestinationModal({
           <AppButton
             label="Solicitar viaje"
             onPress={onSubmit}
-            disabled={!destination.trim() || !locationReady || locationLoading}
+            disabled={!destination.trim() || !destinationMunicipality || !locationReady || locationLoading}
             loading={loading}
             testID="confirm-destination"
           />
         </Pressable>
       </Pressable>
+    </Modal>
+  );
+}
+
+function TripCompleteScreen({
+  colors,
+  insetsBottom,
+  visible,
+  trip,
+  score,
+  isDriver,
+  driverMunicipality,
+  onHome,
+}: {
+  colors: ReturnType<typeof useColors>;
+  insetsBottom: number;
+  visible: boolean;
+  trip: Trip | null;
+  score: number | null;
+  isDriver: boolean;
+  driverMunicipality: string | null;
+  onHome: () => void;
+}) {
+  if (!trip) return null;
+
+  const origin = trip.municipio_origen;
+  const destination = trip.municipio_destino;
+  const sameMunicipality = Boolean(origin && destination && origin === destination);
+  const municipalityLine = isDriver
+    ? driverMunicipality
+      ? `Un viaje más por ${driverMunicipality}`
+      : 'Gracias por ser parte de Dame Pon.'
+    : origin && destination
+      ? sameMunicipality
+        ? `Otro viaje por ${origin}`
+        : `De ${origin} a ${destination}`
+      : 'Otro viaje que suma.';
+  const destinationLabel = destination || trip.dropoff_address || 'Destino no registrado';
+  const originLabel = origin || 'Municipio no registrado';
+
+  return (
+    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={onHome}>
+      <View style={[styles.completionScreen, { backgroundColor: colors.background }]}>
+        <View style={[styles.completionTopBar, { paddingTop: insetsBottom > 0 ? 18 : 28 }]}>
+          <View style={[styles.completionLogo, { backgroundColor: colors.primary }]}>
+            <Feather name="check" size={20} color="#FFFFFF" />
+          </View>
+          <Text style={[styles.completionBrand, { color: colors.foreground }]}>Dame Pon</Text>
+        </View>
+        <ScrollView
+          contentContainerStyle={[styles.completionContent, { paddingBottom: insetsBottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.completionCelebration, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.completionCelebrationRing, { borderColor: colors.primary }]}>
+              <Feather name="navigation" size={33} color={colors.primary} />
+            </View>
+            <View style={[styles.completionSpark, styles.completionSparkOne, { backgroundColor: colors.primary }]} />
+            <View style={[styles.completionSpark, styles.completionSparkTwo, { backgroundColor: colors.primary }]} />
+            <View style={[styles.completionSpark, styles.completionSparkThree, { backgroundColor: colors.primary }]} />
+          </View>
+          <Text style={[styles.completionEyebrow, { color: colors.primary }]}>VIAJE COMPLETADO</Text>
+          <Text style={[styles.completionTitle, { color: colors.foreground }]}>
+            {isDriver ? 'Viaje completado. Gracias por Darle Pon.' : '¡Llegaste! Gracias por moverte con Dame Pon.'}
+          </Text>
+          <Text style={[styles.completionMunicipality, { color: colors.mutedForeground }]}>{municipalityLine}</Text>
+
+          <View style={[styles.completionRouteCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.completionRouteRow}>
+              <View style={[styles.completionRouteIcon, { backgroundColor: colors.secondary }]}>
+                <Feather name="map-pin" size={17} color={colors.primary} />
+              </View>
+              <View style={styles.completionRouteCopy}>
+                <Text style={[styles.completionRouteLabel, { color: colors.mutedForeground }]}>SALIDA</Text>
+                <Text style={[styles.completionRouteValue, { color: colors.foreground }]}>{originLabel}</Text>
+              </View>
+            </View>
+            <View style={[styles.completionRouteConnector, { backgroundColor: colors.border }]} />
+            <View style={styles.completionRouteRow}>
+              <View style={[styles.completionRouteIcon, { backgroundColor: colors.secondary }]}>
+                <Feather name="flag" size={17} color={colors.primary} />
+              </View>
+              <View style={styles.completionRouteCopy}>
+                <Text style={[styles.completionRouteLabel, { color: colors.mutedForeground }]}>DESTINO</Text>
+                <Text style={[styles.completionRouteValue, { color: colors.foreground }]}>{destinationLabel}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={[styles.completionReviewCard, { backgroundColor: colors.primary }]}>
+            <View style={styles.completionReviewIcon}>
+              <Feather name="check-circle" size={21} color={colors.primary} />
+            </View>
+            <View style={styles.completionReviewCopy}>
+              <Text style={styles.completionReviewTitle}>Tu reseña quedó enviada</Text>
+              <Text style={styles.completionReviewText}>Gracias por compartir cómo estuvo el viaje.</Text>
+            </View>
+            <View style={styles.completionScore}>
+              <Text style={styles.completionScoreValue}>{score ?? '—'}</Text>
+              <Feather name="star" size={14} color="#F6C453" />
+            </View>
+          </View>
+          <Text style={[styles.completionFooter, { color: colors.mutedForeground }]}>
+            Cada viaje ayuda a que nuestra isla se siga moviendo.
+          </Text>
+          <Pressable
+            testID="completion-home"
+            onPress={onHome}
+            style={({ pressed }) => [styles.completionHomeButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.82 }]}
+          >
+            <Text style={styles.completionHomeButtonText}>Volver al inicio</Text>
+            <Feather name="arrow-right" size={18} color="#FFFFFF" />
+          </Pressable>
+        </ScrollView>
+      </View>
     </Modal>
   );
 }
@@ -1655,6 +1828,8 @@ const styles = StyleSheet.create({
   iconButton: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   content: { flexGrow: 1, paddingHorizontal: 22, gap: 18 },
   greeting: { gap: 5, paddingTop: 8 },
+  successBanner: { borderRadius: 15, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  successBannerText: { flex: 1, fontFamily: 'Inter_600SemiBold', fontSize: 12, lineHeight: 17 },
   eyebrow: { fontFamily: 'Inter_600SemiBold', fontSize: 11, letterSpacing: 1.3 },
   title: { fontFamily: 'Inter_700Bold', fontSize: 29, letterSpacing: -0.8 },
   subtitle: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 20 },
@@ -1740,6 +1915,14 @@ const styles = StyleSheet.create({
   modalSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 18 },
   modalInputRow: { minHeight: 54, borderWidth: 1, borderRadius: 15, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10 },
   modalInput: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 15 },
+  destinationMunicipalityHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  selectedMunicipality: { borderRadius: 14, paddingHorizontal: 9, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  selectedMunicipalityText: { fontFamily: 'Inter_600SemiBold', fontSize: 11 },
+  destinationMunicipalitySearch: { minHeight: 45 },
+  destinationMunicipalityList: { maxHeight: 178 },
+  destinationMunicipalityListContent: { gap: 7, paddingBottom: 2 },
+  destinationMunicipalityOption: { minHeight: 42, borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  destinationMunicipalityText: { fontFamily: 'Inter_500Medium', fontSize: 13 },
   locationStatus: { minHeight: 46, borderRadius: 13, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 9 },
   locationStatusText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 12, lineHeight: 17 },
   retryLocation: { alignSelf: 'flex-start', paddingVertical: 2 },
@@ -1772,4 +1955,35 @@ const styles = StyleSheet.create({
   ratingSummaryValue: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   ratingSummaryScore: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
   retryHistory: { borderRadius: 12, paddingHorizontal: 15, paddingVertical: 11, marginTop: 4 },
+  completionScreen: { flex: 1 },
+  completionTopBar: { paddingHorizontal: 24, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  completionLogo: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  completionBrand: { fontFamily: 'Inter_700Bold', fontSize: 18, letterSpacing: -0.3 },
+  completionContent: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 14, alignItems: 'center', gap: 14 },
+  completionCelebration: { width: 128, height: 128, borderRadius: 64, alignItems: 'center', justifyContent: 'center', position: 'relative', marginTop: 7 },
+  completionCelebrationRing: { width: 76, height: 76, borderRadius: 38, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  completionSpark: { position: 'absolute', width: 7, height: 7, borderRadius: 4 },
+  completionSparkOne: { top: 16, right: 30 },
+  completionSparkTwo: { bottom: 27, left: 18 },
+  completionSparkThree: { top: 52, left: 9 },
+  completionEyebrow: { fontFamily: 'Inter_700Bold', fontSize: 10, letterSpacing: 1.6, marginTop: 3 },
+  completionTitle: { fontFamily: 'Inter_700Bold', fontSize: 28, lineHeight: 33, letterSpacing: -0.8, textAlign: 'center' },
+  completionMunicipality: { fontFamily: 'Inter_500Medium', fontSize: 14, lineHeight: 20, textAlign: 'center', marginTop: -2 },
+  completionRouteCard: { width: '100%', borderWidth: 1, borderRadius: 20, padding: 16, gap: 10, marginTop: 6 },
+  completionRouteRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  completionRouteIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  completionRouteCopy: { flex: 1, gap: 3 },
+  completionRouteLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 10, letterSpacing: 1 },
+  completionRouteValue: { fontFamily: 'Inter_600SemiBold', fontSize: 14 },
+  completionRouteConnector: { width: 1, height: 13, marginLeft: 18 },
+  completionReviewCard: { width: '100%', borderRadius: 20, padding: 15, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 1 },
+  completionReviewIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  completionReviewCopy: { flex: 1, gap: 3 },
+  completionReviewTitle: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 13 },
+  completionReviewText: { color: 'rgba(255,255,255,0.72)', fontFamily: 'Inter_400Regular', fontSize: 11, lineHeight: 15 },
+  completionScore: { alignItems: 'center', gap: 2 },
+  completionScoreValue: { color: '#FFFFFF', fontFamily: 'Inter_700Bold', fontSize: 20 },
+  completionFooter: { fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 1 },
+  completionHomeButton: { width: '100%', minHeight: 54, borderRadius: 16, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 'auto' },
+  completionHomeButtonText: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 14 },
 });
