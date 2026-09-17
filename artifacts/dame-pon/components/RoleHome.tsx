@@ -474,7 +474,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     setPendingBaseMunicipality(null);
     setShowVehicle(false);
     setVehicle(emptyVehicle);
-    Alert.alert('Vehículo guardado', 'Ya puedes activar tu disponibilidad y empezar a recibir solicitudes.');
+    setSuccessMessage('Vehículo guardado. Ya puedes activar tu disponibilidad y empezar a recibir solicitudes.');
   };
 
   const preparePickupLocation = async () => {
@@ -1358,9 +1358,9 @@ function TripCompleteScreen({
       : 'Gracias por ser parte de Dame Pon.'
     : origin && destination
       ? sameMunicipality
-        ? `Otro viaje por ${origin}`
+        ? `Otro Pon por ${origin}`
         : `De ${origin} a ${destination}`
-      : 'Otro viaje que suma.';
+      : 'Otro Pon que suma.';
   const destinationLabel = destination || trip.dropoff_address || 'Destino no registrado';
   const originLabel = origin || 'Municipio no registrado';
 
@@ -1387,7 +1387,7 @@ function TripCompleteScreen({
           </View>
           <Text style={[styles.completionEyebrow, { color: colors.primary }]}>VIAJE COMPLETADO</Text>
           <Text style={[styles.completionTitle, { color: colors.foreground }]}>
-            {isDriver ? 'Viaje completado. Gracias por Darle Pon.' : '¡Llegaste! Gracias por moverte con Dame Pon.'}
+            {isDriver ? 'Viaje completado. Gracias por Darle Pon.' : '¡Llegaste! Gracias por pedir Pon.'}
           </Text>
           <Text style={[styles.completionMunicipality, { color: colors.mutedForeground }]}>{municipalityLine}</Text>
 
