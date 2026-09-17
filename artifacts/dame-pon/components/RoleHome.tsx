@@ -37,6 +37,7 @@ import {
   updateTripStatus,
 } from '@/lib/rideService';
 import {
+  isTripInActiveMunicipality,
   sortTripsForDriver,
   municipalityAfterDecision,
   type Municipality,
@@ -1255,6 +1256,132 @@ function VehicleModal({
           {error ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{error}</Text> : null}
           <AppButton label="Guardar vehículo" onPress={onSubmit} loading={loading} testID="save-vehicle" />
         </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+function MunicipalityPickerModal({
+  colors,
+  insetsBottom,
+  visible,
+  title,
+  subtitle,
+  municipalities,
+  loading,
+  error,
+  selected,
+  onClose,
+  onSelect,
+}: {
+  colors: ReturnType<typeof useColors>;
+  insetsBottom: number;
+  visible: boolean;
+  title: string;
+  subtitle: string;
+  municipalities: Municipality[];
+  loading: boolean;
+  error: string;
+  selected: string | null;
+  onClose: () => void;
+  onSelect: (municipality: string) => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <Pressable accessibilityLabel="Cerrar municipios" style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={[styles.municipalityModalCard, { backgroundColor: colors.background, paddingBottom: insetsBottom + 18 }]}>
+          <View style={styles.modalHandle} />
+          <Text style={[styles.modalTitle, { color: colors.foreground }]}>{title}</Text>
+          <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
+          {loading ? (
+            <View style={styles.municipalityLoading}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : error ? (
+            <Text style={[styles.inlineError, { color: colors.destructive }]}>{error}</Text>
+          ) : (
+            <ScrollView
+              style={styles.municipalityList}
+              contentContainerStyle={styles.municipalityListContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {municipalities.map((municipality) => {
+                const isSelected = municipality.nombre === selected;
+                return (
+                  <Pressable
+                    key={municipality.id}
+                    testID={`municipality-${municipality.id}`}
+                    onPress={() => onSelect(municipality.nombre)}
+                    style={({ pressed }) => [
+                      styles.municipalityOption,
+                      { backgroundColor: isSelected ? colors.secondary : colors.card, borderColor: isSelected ? colors.primary : colors.border },
+                      pressed && { opacity: 0.78 },
+                    ]}
+                  >
+                    <Text style={[styles.municipalityOptionText, { color: colors.foreground }]}>{municipality.nombre}</Text>
+                    <Feather name={isSelected ? 'check-circle' : 'circle'} size={19} color={isSelected ? colors.primary : colors.mutedForeground} />
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function MunicipalityDecisionModal({
+  colors,
+  insetsBottom,
+  visible,
+  baseMunicipality,
+  destinationMunicipality,
+  loading,
+  error,
+  onDecision,
+}: {
+  colors: ReturnType<typeof useColors>;
+  insetsBottom: number;
+  visible: boolean;
+  baseMunicipality: string;
+  destinationMunicipality: string;
+  loading: boolean;
+  error: string;
+  onDecision: (decision: MunicipalityDecision) => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={() => undefined}>
+      <View style={styles.modalBackdrop}>
+        <View style={[styles.modalCard, { backgroundColor: colors.background, paddingBottom: insetsBottom + 22 }]}>
+          <View style={styles.modalHandle} />
+          <Text style={[styles.modalTitle, { color: colors.foreground }]}>¿Regresas a {baseMunicipality} o te quedas en {destinationMunicipality}?</Text>
+          <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+            Tu elección define dónde aparecerán primero las próximas solicitudes.
+          </Text>
+          {error ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{error}</Text> : null}
+          <Pressable
+            testID="return-to-base"
+            disabled={loading}
+            onPress={() => onDecision('return')}
+            style={({ pressed }) => [styles.municipalityDecisionButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.82 }]}
+          >
+            <Feather name="home" size={18} color={colors.primaryForeground} />
+            <Text style={styles.municipalityDecisionButtonText}>Regresar a {baseMunicipality}</Text>
+          </Pressable>
+          <Pressable
+            testID="stay-in-destination"
+            disabled={loading}
+            onPress={() => onDecision('stay')}
+            style={({ pressed }) => [styles.municipalityDecisionButton, { backgroundColor: colors.secondary }, pressed && { opacity: 0.82 }]}
+          >
+            <Feather name="map-pin" size={18} color={colors.primary} />
+            <Text style={[styles.municipalityDecisionButtonText, { color: colors.primary }]}>Quedarme en {destinationMunicipality}</Text>
+          </Pressable>
+          {loading ? <ActivityIndicator color={colors.primary} /> : null}
+        </View>
       </View>
     </Modal>
   );
