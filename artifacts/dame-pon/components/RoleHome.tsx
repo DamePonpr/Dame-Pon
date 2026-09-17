@@ -70,6 +70,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [destination, setDestination] = useState('');
   const [savedDestination, setSavedDestination] = useState('');
   const [vehicle, setVehicle] = useState<VehicleDraft>(emptyVehicle);
+  const [pendingBaseMunicipality, setPendingBaseMunicipality] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingVehicle, setSavingVehicle] = useState(false);
   const [requestingTrip, setRequestingTrip] = useState(false);
@@ -103,7 +104,7 @@ export function RoleHome({ role }: { role: UserRole }) {
 
   const firstName = profile?.full_name?.trim().split(' ')[0] || (isDriver ? 'conductor' : 'viajero');
   const driverReady = Boolean(driverSetup?.driver && driverSetup?.vehicle);
-  const baseMunicipality = driverSetup?.driver?.municipio_base ?? profile?.base_municipality ?? null;
+  const baseMunicipality = driverSetup?.driver?.municipio_base ?? pendingBaseMunicipality ?? profile?.base_municipality ?? null;
   const activeMunicipality = driverSetup?.driver?.municipio_activo ?? baseMunicipality;
 
   const refreshActiveTrip = useCallback(async () => {
@@ -406,6 +407,12 @@ export function RoleHome({ role }: { role: UserRole }) {
   const handleSelectBaseMunicipality = async (municipality: string) => {
     if (!user?.id) return;
     setMunicipalityError('');
+    if (!driverSetup?.driver) {
+      setPendingBaseMunicipality(municipality);
+      setShowMunicipalityPicker(false);
+      setShowVehicle(true);
+      return;
+    }
     const result = await setDriverBaseMunicipality(municipality);
     if (result.error) {
       setMunicipalityError(result.error);
@@ -456,6 +463,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       return;
     }
     setDriverSetup(result.data);
+    setPendingBaseMunicipality(null);
     setShowVehicle(false);
     setVehicle(emptyVehicle);
     Alert.alert('Vehículo guardado', 'Ya puedes activar tu disponibilidad y empezar a recibir solicitudes.');
