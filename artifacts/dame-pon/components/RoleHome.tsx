@@ -172,7 +172,8 @@ export function RoleHome({ role }: { role: UserRole }) {
         if (active) {
           setDriverSetup(result.data);
           setIsAvailable(result.data?.driver?.is_online === true);
-          setSetupError(result.error ?? '');
+          if (result.error) handleServiceError(result.error, setSetupError);
+          else setSetupError('');
           setLoading(false);
         }
       } else {
@@ -197,7 +198,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       if (!active) return;
       setMunicipalitiesLoading(false);
       if (result.error) {
-        setMunicipalityError(result.error);
+        handleServiceError(result.error, setMunicipalityError);
         return;
       }
       setMunicipalities(result.data ?? []);
@@ -291,7 +292,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       try {
         const result = await getDriverLocation(activeTrip.driver_id);
         if (result.error) {
-          setMapLocationError(result.error);
+          handleServiceError(result.error, setMapLocationError);
           return;
         }
         setDriverLocation(result.data);
@@ -352,7 +353,7 @@ export function RoleHome({ role }: { role: UserRole }) {
           longitude: position.coords.longitude,
         });
         if (result.error) {
-          setDriverTrackingError(result.error);
+          handleServiceError(result.error, setDriverTrackingError);
           return;
         }
         setDriverTrackingError('');
@@ -393,7 +394,7 @@ export function RoleHome({ role }: { role: UserRole }) {
           longitude: position.coords.longitude,
         });
         if (locationResult.error) {
-          setSetupError(locationResult.error);
+          handleServiceError(locationResult.error, setSetupError);
           return;
         }
         setDriverSetup((current) => current?.driver
@@ -413,7 +414,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     }
     const result = await setDriverAvailability(user.id, nextValue);
     if (result.error) {
-      setSetupError(result.error);
+      handleServiceError(result.error, setSetupError);
       return;
     }
     setIsAvailable(nextValue);
@@ -431,7 +432,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     }
     const result = await setDriverBaseMunicipality(municipality);
     if (result.error) {
-      setMunicipalityError(result.error);
+      handleServiceError(result.error, setMunicipalityError);
       return;
     }
     if (result.data) {
@@ -448,7 +449,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     setMunicipalityError('');
     const result = await setDriverActiveMunicipality(municipality);
     if (result.error) {
-      setMunicipalityError(result.error);
+      handleServiceError(result.error, setMunicipalityError);
       return;
     }
     if (result.data) {
@@ -475,7 +476,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     const result = await saveDriverSetup(user.id, vehicle, baseMunicipality);
     setSavingVehicle(false);
     if (result.error) {
-      setSetupError(result.error);
+      handleServiceError(result.error, setSetupError);
       return;
     }
     setDriverSetup(result.data);
@@ -547,7 +548,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     });
     setRequestingTrip(false);
     if (result.error) {
-      setRequestError(result.error);
+      handleServiceError(result.error, setRequestError);
       return;
     }
     setActiveTrip(result.data);
@@ -564,7 +565,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     if (!user?.id) return;
     const result = await acceptTrip(trip.id, user.id);
     if (result.error) {
-      setSetupError(result.error);
+      handleServiceError(result.error, setSetupError);
       return;
     }
     setDriverTrips((current) => current.filter((item) => item.id !== trip.id));
@@ -580,7 +581,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     const result = await updateTripStatus(activeTrip.id, user.id, status);
     setTripActionLoading(false);
     if (result.error) {
-      setSetupError(result.error);
+      handleServiceError(result.error, setSetupError);
       return;
     }
     setActiveTrip(result.data);
@@ -613,7 +614,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     const result = await setDriverActiveMunicipality(target);
     setMunicipalityDecisionLoading(false);
     if (result.error) {
-      setMunicipalityError(result.error);
+      handleServiceError(result.error, setMunicipalityError);
       return;
     }
     if (result.data) {
@@ -632,7 +633,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     const result = await cancelTrip(activeTrip.id, user.id);
     setTripActionLoading(false);
     if (result.error) {
-      setRequestError(result.error);
+      handleServiceError(result.error, setRequestError);
       return;
     }
     if (result.data) void sendTripPush('passenger_cancel', result.data.id);
@@ -646,7 +647,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     const result = await rateTrip(activeTrip, user.id, score);
     setRatingLoading(false);
     if (result.error) {
-      isDriver ? setSetupError(result.error) : setRequestError(result.error);
+      handleServiceError(result.error, isDriver ? setSetupError : setRequestError);
       return;
     }
     const completedTrip = activeTrip;
@@ -655,7 +656,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     if (isDriver && isAvailable) {
       const openTripsResult = await getOpenTrips();
       setDriverTrips(openTripsResult.data ?? []);
-      if (openTripsResult.error) setSetupError(openTripsResult.error);
+      if (openTripsResult.error) handleServiceError(openTripsResult.error, setSetupError);
     }
     setCompletionSummary({
       trip: completedTrip,
@@ -673,7 +674,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     const result = await getTripHistory(user.id, isDriver ? 'driver' : 'passenger');
     setHistoryLoading(false);
     if (result.error) {
-      setHistoryError(result.error);
+      handleServiceError(result.error, setHistoryError);
       return;
     }
     setHistory(result.data ?? []);
