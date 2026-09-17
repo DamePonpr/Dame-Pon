@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
@@ -68,6 +68,8 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [showActiveMunicipalityPicker, setShowActiveMunicipalityPicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [destination, setDestination] = useState('');
+  const [destinationMunicipality, setDestinationMunicipality] = useState('');
+  const [destinationSearch, setDestinationSearch] = useState('');
   const [savedDestination, setSavedDestination] = useState('');
   const [vehicle, setVehicle] = useState<VehicleDraft>(emptyVehicle);
   const [pendingBaseMunicipality, setPendingBaseMunicipality] = useState<string | null>(null);
@@ -99,10 +101,16 @@ export function RoleHome({ role }: { role: UserRole }) {
     destination: string;
   } | null>(null);
   const [municipalityDecisionLoading, setMunicipalityDecisionLoading] = useState(false);
+  const [completionSummary, setCompletionSummary] = useState<{
+    trip: Trip;
+    score: number;
+    driverMunicipality: string | null;
+  } | null>(null);
+  const [successMessage, setSuccessMessage] = useState('');
   const activeTripRefreshInFlight = useRef(false);
   const openTripsRefreshInFlight = useRef(false);
 
-  const firstName = profile?.full_name?.trim().split(' ')[0] || (isDriver ? 'conductor' : 'viajero');
+  const firstName = profile?.full_name?.trim().split(' ')[0] || 'de nuevo';
   const driverReady = Boolean(driverSetup?.driver && driverSetup?.vehicle);
   const baseMunicipality = driverSetup?.driver?.municipio_base ?? pendingBaseMunicipality ?? profile?.base_municipality ?? null;
   const activeMunicipality = driverSetup?.driver?.municipio_activo ?? baseMunicipality;
@@ -174,7 +182,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   }, [isDriver, refreshActiveTrip, user?.id]);
 
   useEffect(() => {
-    if (!isDriver) return;
+    if (!user?.id) return;
     let active = true;
     setMunicipalitiesLoading(true);
     void getMunicipalities().then((result) => {
@@ -189,7 +197,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     return () => {
       active = false;
     };
-  }, [isDriver]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -501,22 +509,33 @@ export function RoleHome({ role }: { role: UserRole }) {
   const handleOpenDestination = () => {
     setRequestError('');
     setLocationError('');
+    setDestinationMunicipality('');
+    setDestinationSearch('');
     setShowDestination(true);
     void preparePickupLocation();
   };
 
   const handleRequestTrip = async () => {
-    if (!user?.id || !destination.trim()) return;
+    if (!user?.id || !destination.trim() || !destinationMunicipality) return;
     if (!pickupCoordinates) {
       setLocationError('Espera a que podamos confirmar tu ubicación antes de solicitar el viaje.');
       return;
     }
     setRequestingTrip(true);
     setRequestError('');
+    const selectedMunicipality = municipalities.find(({ nombre }) => nombre === destinationMunicipality);
+    if (!selectedMunicipality) {
+      setRequestingTrip(false);
+      setRequestError('Escoge el municipio donde termina tu viaje.');
+      return;
+    }
     const result = await requestTrip(user.id, destination, {
       address: 'Ubicación actual',
       latitude: pickupCoordinates.latitude,
       longitude: pickupCoordinates.longitude,
+    }, {
+      latitude: selectedMunicipality.centro_lat,
+      longitude: selectedMunicipality.centro_lng,
     });
     setRequestingTrip(false);
     if (result.error) {
@@ -527,6 +546,8 @@ export function RoleHome({ role }: { role: UserRole }) {
     if (result.data) void sendTripPush('new_trip', result.data.id);
     setSavedDestination(destination.trim());
     setDestination('');
+    setDestinationMunicipality('');
+    setDestinationSearch('');
     setShowDestination(false);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -608,7 +629,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     }
     if (result.data) void sendTripPush('passenger_cancel', result.data.id);
     setActiveTrip(null);
-    Alert.alert('Viaje cancelado', 'La solicitud fue cancelada correctamente.');
+    setSuccessMessage('La solicitud fue cancelada correctamente.');
   };
 
   const handleRating = async (score: number) => {
@@ -620,6 +641,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       isDriver ? setSetupError(result.error) : setRequestError(result.error);
       return;
     }
+    const completedTrip = activeTrip;
     setActiveTrip(null);
     setRatingSubmitted(false);
     if (isDriver && isAvailable) {
@@ -627,7 +649,11 @@ export function RoleHome({ role }: { role: UserRole }) {
       setDriverTrips(openTripsResult.data ?? []);
       if (openTripsResult.error) setSetupError(openTripsResult.error);
     }
-    Alert.alert('Calificación enviada', 'Gracias por compartir cómo estuvo el viaje.');
+    setCompletionSummary({
+      trip: completedTrip,
+      score,
+      driverMunicipality: activeMunicipality,
+    });
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -673,6 +699,12 @@ export function RoleHome({ role }: { role: UserRole }) {
             {isDriver ? 'Tu próxima oportunidad está a un toque.' : '¿A dónde te llevamos hoy?'}
           </Text>
         </View>
+        {successMessage ? (
+          <View style={[styles.successBanner, { backgroundColor: colors.secondary }]}>
+            <Feather name="check-circle" size={18} color={colors.primary} />
+            <Text style={[styles.successBannerText, { color: colors.primary }]}>{successMessage}</Text>
+          </View>
+        ) : null}
 
         {loading ? (
           <View style={styles.loadingState}>
@@ -756,15 +788,30 @@ export function RoleHome({ role }: { role: UserRole }) {
         insetsBottom={insets.bottom}
         visible={showDestination}
         destination={destination}
+        destinationMunicipality={destinationMunicipality}
+        destinationSearch={destinationSearch}
+        municipalities={municipalities}
         loading={requestingTrip}
         locationLoading={locationLoading}
         locationReady={pickupCoordinates !== null}
         locationError={locationError}
         error={requestError}
         onChange={setDestination}
+        onMunicipalitySearch={setDestinationSearch}
+        onMunicipalitySelect={setDestinationMunicipality}
         onClose={() => setShowDestination(false)}
         onRetryLocation={() => void preparePickupLocation()}
         onSubmit={handleRequestTrip}
+      />
+      <TripCompleteScreen
+        colors={colors}
+        insetsBottom={insets.bottom}
+        visible={completionSummary !== null}
+        trip={completionSummary?.trip ?? null}
+        score={completionSummary?.score ?? null}
+        isDriver={isDriver}
+        driverMunicipality={completionSummary?.driverMunicipality ?? null}
+        onHome={() => setCompletionSummary(null)}
       />
       <VehicleModal
         colors={colors}
