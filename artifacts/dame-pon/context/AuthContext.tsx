@@ -10,6 +10,7 @@ export interface Profile {
   full_name: string | null;
   phone: string | null;
   avatar_url: string | null;
+  base_municipality: string | null;
 }
 
 interface AuthContextValue {
@@ -51,6 +52,7 @@ async function fetchProfile(user: User | null): Promise<Profile | null> {
       full_name: user.user_metadata?.full_name ?? null,
       phone: user.user_metadata?.phone ?? null,
       avatar_url: null,
+      base_municipality: user.user_metadata?.base_municipality ?? null,
     };
   }
 
@@ -60,6 +62,7 @@ async function fetchProfile(user: User | null): Promise<Profile | null> {
     full_name: data.full_name ?? user.user_metadata?.full_name ?? null,
     phone: data.phone ?? user.user_metadata?.phone ?? null,
     avatar_url: data.avatar_url ?? null,
+    base_municipality: user.user_metadata?.base_municipality ?? null,
   };
 }
 

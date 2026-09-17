@@ -103,6 +103,8 @@ export function RoleHome({ role }: { role: UserRole }) {
 
   const firstName = profile?.full_name?.trim().split(' ')[0] || (isDriver ? 'conductor' : 'viajero');
   const driverReady = Boolean(driverSetup?.driver && driverSetup?.vehicle);
+  const baseMunicipality = driverSetup?.driver?.municipio_base ?? profile?.base_municipality ?? null;
+  const activeMunicipality = driverSetup?.driver?.municipio_activo ?? baseMunicipality;
 
   const refreshActiveTrip = useCallback(async () => {
     if (!user?.id || activeTripRefreshInFlight.current) return;
@@ -305,7 +307,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   }, []);
 
   useEffect(() => {
-    const shouldTrack = isDriver && isAvailable && activeTrip?.status === 'aceptado';
+    const shouldTrack = isDriver && isAvailable && ['aceptado', 'en_curso'].includes(activeTrip?.status ?? '');
     if (!shouldTrack) {
       setDriverTrackingActive(false);
       setDriverTrackingError('');
@@ -321,7 +323,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   }, [activeTrip?.id, activeTrip?.status, isAvailable, isDriver]);
 
   useEffect(() => {
-    if (!user?.id || !driverTrackingActive || !isDriver || !isAvailable || activeTrip?.status !== 'aceptado') return;
+    if (!user?.id || !driverTrackingActive || !isDriver || !isAvailable || !['aceptado', 'en_curso'].includes(activeTrip?.status ?? '')) return;
     let updateInFlight = false;
     const publishLocation = async () => {
       if (updateInFlight) return;
@@ -377,6 +379,16 @@ export function RoleHome({ role }: { role: UserRole }) {
           setSetupError(locationResult.error);
           return;
         }
+        setDriverSetup((current) => current?.driver
+          ? {
+              ...current,
+              driver: {
+                ...current.driver,
+                current_lat: position.coords.latitude,
+                current_lng: position.coords.longitude,
+              },
+            }
+          : current);
       } catch {
         setSetupError('No pudimos confirmar tu ubicación. Verifica que el GPS esté activo antes de ponerte en línea.');
         return;
@@ -539,11 +551,11 @@ export function RoleHome({ role }: { role: UserRole }) {
     if (
       status === 'completado'
       && result.data?.municipio_destino
-      && driverSetup?.driver?.municipio_activo
-      && result.data.municipio_destino !== driverSetup.driver.municipio_activo
+      && activeMunicipality
+      && result.data.municipio_destino !== activeMunicipality
     ) {
       setMunicipalityDecision({
-        base: driverSetup.driver.municipio_base ?? driverSetup.driver.municipio_activo,
+        base: baseMunicipality ?? activeMunicipality,
         destination: result.data.municipio_destino,
       });
     }
@@ -664,8 +676,8 @@ export function RoleHome({ role }: { role: UserRole }) {
             colors={colors}
             isAvailable={isAvailable}
             driverReady={driverReady}
-            activeMunicipality={driverSetup?.driver?.municipio_activo ?? driverSetup?.driver?.municipio_base ?? null}
-            baseMunicipality={driverSetup?.driver?.municipio_base ?? null}
+            activeMunicipality={activeMunicipality}
+            baseMunicipality={baseMunicipality}
             driverTrips={driverTrips}
             activeTrip={activeTrip}
             tripActionLoading={tripActionLoading}
@@ -677,7 +689,7 @@ export function RoleHome({ role }: { role: UserRole }) {
             onAvailability={handleAvailability}
             onVehicle={() => {
               setSetupError('');
-              if (!driverSetup?.driver?.municipio_base) {
+              if (!baseMunicipality) {
                 setMunicipalityError('');
                 setShowMunicipalityPicker(true);
               } else {
@@ -767,7 +779,7 @@ export function RoleHome({ role }: { role: UserRole }) {
         municipalities={municipalities}
         loading={municipalitiesLoading}
         error={municipalityError}
-        selected={driverSetup?.driver?.municipio_base ?? null}
+        selected={baseMunicipality}
         onClose={() => setShowMunicipalityPicker(false)}
         onSelect={(municipality) => void handleSelectBaseMunicipality(municipality)}
       />
@@ -780,7 +792,7 @@ export function RoleHome({ role }: { role: UserRole }) {
         municipalities={municipalities}
         loading={municipalitiesLoading}
         error={municipalityError}
-        selected={driverSetup?.driver?.municipio_activo ?? driverSetup?.driver?.municipio_base ?? null}
+        selected={activeMunicipality}
         onClose={() => setShowActiveMunicipalityPicker(false)}
         onSelect={(municipality) => void handleSelectActiveMunicipality(municipality)}
       />
