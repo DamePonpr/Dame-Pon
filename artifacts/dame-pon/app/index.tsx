@@ -1,17 +1,40 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Redirect, router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 
 export default function IndexScreen() {
   const colors = useColors();
-  const { session, profile, isLoading } = useAuth();
+  const { session, profile, isLoading, authIssue, clearAuthIssue } = useAuth();
 
   if (isLoading) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (authIssue === 'session_expired') {
+    return (
+      <View style={[styles.expired, { backgroundColor: colors.background }]}>
+        <View style={[styles.expiredIcon, { backgroundColor: colors.secondary }]}>
+          <Text style={[styles.expiredIconText, { color: colors.primary }]}>!</Text>
+        </View>
+        <Text style={[styles.expiredTitle, { color: colors.foreground }]}>Tu sesión expiró</Text>
+        <Text style={[styles.expiredText, { color: colors.mutedForeground }]}>
+          Vuelve a iniciar sesión para continuar moviéndote con Dame Pon.
+        </Text>
+        <Pressable
+          onPress={() => {
+            clearAuthIssue();
+            router.replace('/auth/login');
+          }}
+          style={({ pressed }) => [styles.expiredButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.82 }]}
+        >
+          <Text style={styles.expiredButtonText}>Iniciar sesión</Text>
+        </Pressable>
       </View>
     );
   }
@@ -22,4 +45,11 @@ export default function IndexScreen() {
 
 const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  expired: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30, gap: 12 },
+  expiredIcon: { width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  expiredIconText: { fontFamily: 'Inter_700Bold', fontSize: 28 },
+  expiredTitle: { fontFamily: 'Inter_700Bold', fontSize: 28, textAlign: 'center', letterSpacing: -0.6 },
+  expiredText: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 21, textAlign: 'center', maxWidth: 310 },
+  expiredButton: { minHeight: 52, borderRadius: 16, paddingHorizontal: 25, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  expiredButtonText: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 14 },
 });

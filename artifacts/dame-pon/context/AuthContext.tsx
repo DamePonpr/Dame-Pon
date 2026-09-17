@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
 
 export type UserRole = 'passenger' | 'driver';
+export type AuthIssue = 'session_expired' | null;
 
 export interface Profile {
   id: string;
@@ -18,6 +19,7 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
+  authIssue: AuthIssue;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (details: {
     email: string;
@@ -28,6 +30,8 @@ interface AuthContextValue {
     baseMunicipality?: string;
   }) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
+  expireSession: () => Promise<void>;
+  clearAuthIssue: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -64,6 +68,11 @@ async function fetchProfile(user: User | null): Promise<Profile | null> {
     avatar_url: data.avatar_url ?? null,
     base_municipality: user.user_metadata?.base_municipality ?? null,
   };
+}
+
+function sessionIsExpiring(session: Session) {
+  return typeof session.expires_at === 'number'
+    && session.expires_at <= Math.floor(Date.now() / 1000) + 60;
 }
 
 async function ensureProfile(user: User): Promise<string | null> {
@@ -112,24 +121,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authIssue, setAuthIssue] = useState<AuthIssue>(null);
 
   useEffect(() => {
     let active = true;
 
-    void supabase.auth.getSession().then(async ({ data }) => {
+    const hydrateSession = async (candidate: Session | null) => {
       if (!active) return;
-      setSession(data.session);
-      setProfile(await fetchProfile(data.session?.user ?? null));
+      setIsLoading(true);
+      let nextSession = candidate;
+      if (nextSession && sessionIsExpiring(nextSession)) {
+        const refreshed = await supabase.auth.refreshSession();
+        if (refreshed.error || !refreshed.data.session) {
+          setSession(null);
+          setProfile(null);
+          setAuthIssue('session_expired');
+          setIsLoading(false);
+          return;
+        }
+        nextSession = refreshed.data.session;
+      }
+      if (!active) return;
+      setSession(nextSession);
+      setProfile(await fetchProfile(nextSession?.user ?? null));
       setIsLoading(false);
-    });
+    };
+
+    void supabase.auth.getSession().then(({ data }) => hydrateSession(data.session));
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      void fetchProfile(nextSession?.user ?? null).then((nextProfile) => {
-        if (active) setProfile(nextProfile);
-      });
+      if (!nextSession) {
+        setSession(null);
+        setProfile(null);
+        setIsLoading(false);
+        return;
+      }
+      void hydrateSession(nextSession);
     });
 
     return () => {
@@ -144,12 +173,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       profile,
       isLoading,
+      authIssue,
       signIn: async (email, password) => {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
         if (!error && data.user) {
+          setAuthIssue(null);
           const profileError = await ensureProfile(data.user);
           if (profileError) return { error: profileError };
         }
@@ -197,10 +228,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       },
       signOut: async () => {
+        setAuthIssue(null);
         await supabase.auth.signOut();
       },
+      expireSession: async () => {
+        setAuthIssue('session_expired');
+        setSession(null);
+        setProfile(null);
+        await supabase.auth.signOut({ scope: 'local' });
+      },
+      clearAuthIssue: () => setAuthIssue(null),
     }),
-    [isLoading, profile, session],
+    [authIssue, isLoading, profile, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
