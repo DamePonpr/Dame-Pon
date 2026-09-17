@@ -456,6 +456,10 @@ export async function requestTrip(
     latitude: number;
     longitude: number;
   },
+  destination?: {
+    latitude: number;
+    longitude: number;
+  },
 ): Promise<ServiceResult<Trip>> {
   if (!Number.isFinite(pickup.latitude) || !Number.isFinite(pickup.longitude)) {
     return {
@@ -472,6 +476,8 @@ export async function requestTrip(
       pickup_lat: pickup.latitude,
       pickup_lng: pickup.longitude,
       dropoff_address: dropoffAddress.trim(),
+      dropoff_lat: destination?.latitude ?? null,
+      dropoff_lng: destination?.longitude ?? null,
     })
     .select(TRIP_COLUMNS)
     .single();
