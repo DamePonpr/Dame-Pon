@@ -24,6 +24,7 @@ interface AuthContextValue {
     fullName: string;
     phone: string;
     role: UserRole;
+    baseMunicipality?: string;
   }) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
 }
