@@ -438,7 +438,6 @@ export function RoleHome({ role }: { role: UserRole }) {
 
   const handleSaveVehicle = async () => {
     if (!user?.id) return;
-    const baseMunicipality = driverSetup?.driver?.municipio_base;
     if (!baseMunicipality) {
       setShowVehicle(false);
       setShowMunicipalityPicker(true);
