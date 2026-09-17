@@ -85,6 +85,15 @@ interface SupabaseErrorLike {
   status?: number;
 }
 
+export function isLikelySessionError(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes('pgrst301')
+    || normalized.includes('invalid jwt')
+    || normalized.includes('jwt expired')
+    || normalized.includes('código: 42501')
+      && normalized.includes('permission denied');
+}
+
 type RideAction =
   | 'load-driver'
   | 'save-driver'
@@ -197,7 +206,6 @@ function supabaseDiagnostic(error: SupabaseErrorLike) {
     `Mensaje: ${error.message ?? 'no informado'}`,
   ];
   if (error.details) lines.push(`Detalles: ${error.details}`);
-  if (error.hint) lines.push(`Sugerencia: ${error.hint}`);
   if (error.status) lines.push(`HTTP: ${error.status}`);
   return lines.join('\n');
 }
