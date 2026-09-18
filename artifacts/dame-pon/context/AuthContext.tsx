@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
 
 export type UserRole = 'passenger' | 'driver';
-export type AuthIssue = 'session_expired' | null;
+export type AuthIssue = 'session_expired' | 'profile_unavailable' | null;
 
 export interface Profile {
   id: string;
@@ -36,37 +36,45 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function normalizeRole(role: unknown): UserRole {
-  return role === 'driver' || role === 'conductor' ? 'driver' : 'passenger';
+function normalizeRole(role: unknown): UserRole | null {
+  if (role === 'driver' || role === 'conductor') return 'driver';
+  if (role === 'passenger' || role === 'pasajero') return 'passenger';
+  return null;
 }
 
-async function fetchProfile(user: User | null): Promise<Profile | null> {
-  if (!user) return null;
+interface ProfileFetchResult {
+  profile: Profile | null;
+  error: string | null;
+}
 
-  const { data } = await supabase
+async function fetchProfile(user: User | null): Promise<ProfileFetchResult> {
+  if (!user) return { profile: null, error: null };
+
+  const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .maybeSingle();
 
-  if (!data) {
-    return {
-      id: user.id,
-      role: normalizeRole(user.user_metadata?.role),
-      full_name: user.user_metadata?.full_name ?? null,
-      phone: user.user_metadata?.phone ?? null,
-      avatar_url: null,
-      base_municipality: user.user_metadata?.base_municipality ?? null,
-    };
+  if (error) {
+    return { profile: null, error: error.message };
+  }
+
+  const role = normalizeRole(data?.role);
+  if (!data || !role) {
+    return { profile: null, error: 'PROFILE_ROLE_UNAVAILABLE' };
   }
 
   return {
-    id: user.id,
-    role: normalizeRole(data.role),
-    full_name: data.full_name ?? user.user_metadata?.full_name ?? null,
-    phone: data.phone ?? user.user_metadata?.phone ?? null,
-    avatar_url: data.avatar_url ?? null,
-    base_municipality: user.user_metadata?.base_municipality ?? null,
+    profile: {
+      id: user.id,
+      role,
+      full_name: data.full_name ?? user.user_metadata?.full_name ?? null,
+      phone: data.phone ?? user.user_metadata?.phone ?? null,
+      avatar_url: data.avatar_url ?? null,
+      base_municipality: data.base_municipality ?? null,
+    },
+    error: null,
   };
 }
 
@@ -122,17 +130,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authIssue, setAuthIssue] = useState<AuthIssue>(null);
+  const hydrationVersion = useRef(0);
 
   useEffect(() => {
     let active = true;
 
     const hydrateSession = async (candidate: Session | null) => {
       if (!active) return;
+      const currentHydration = ++hydrationVersion.current;
       setIsLoading(true);
+      setProfile(null);
+      setAuthIssue(null);
       let nextSession = candidate;
       if (nextSession && sessionIsExpiring(nextSession)) {
         const refreshed = await supabase.auth.refreshSession();
         if (refreshed.error || !refreshed.data.session) {
+          hydrationVersion.current += 1;
           setSession(null);
           setProfile(null);
           setAuthIssue('session_expired');
@@ -143,7 +156,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (!active) return;
       setSession(nextSession);
-      setProfile(await fetchProfile(nextSession?.user ?? null));
+      const profileResult = await fetchProfile(nextSession?.user ?? null);
+      if (!active || currentHydration !== hydrationVersion.current) return;
+      setProfile(profileResult.profile);
+      if (profileResult.error) {
+        setAuthIssue('profile_unavailable');
+      }
       setIsLoading(false);
     };
 
@@ -153,8 +171,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!nextSession) {
+        hydrationVersion.current += 1;
         setSession(null);
         setProfile(null);
+        setAuthIssue(null);
         setIsLoading(false);
         return;
       }
@@ -228,10 +248,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       },
       signOut: async () => {
+        hydrationVersion.current += 1;
+        setSession(null);
+        setProfile(null);
+        setIsLoading(false);
         setAuthIssue(null);
         await supabase.auth.signOut();
       },
       expireSession: async () => {
+        hydrationVersion.current += 1;
         setAuthIssue('session_expired');
         setSession(null);
         setProfile(null);

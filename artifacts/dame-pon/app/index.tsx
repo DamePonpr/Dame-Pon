@@ -3,10 +3,11 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Redirect, router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
+import { routeForRole } from '@/lib/roleRouting';
 
 export default function IndexScreen() {
   const colors = useColors();
-  const { session, profile, isLoading, authIssue, clearAuthIssue } = useAuth();
+  const { session, profile, isLoading, authIssue, clearAuthIssue, signOut } = useAuth();
 
   if (isLoading) {
     return (
@@ -40,7 +41,38 @@ export default function IndexScreen() {
   }
 
   if (!session) return <Redirect href="/auth/login" />;
-  return <Redirect href={profile?.role === 'driver' ? '/home/driver' : '/home/passenger'} />;
+  if (!profile) {
+    if (authIssue === 'profile_unavailable') {
+      return (
+        <View style={[styles.expired, { backgroundColor: colors.background }]}>
+          <View style={[styles.expiredIcon, { backgroundColor: colors.secondary }]}>
+            <Text style={[styles.expiredIconText, { color: colors.primary }]}>!</Text>
+          </View>
+          <Text style={[styles.expiredTitle, { color: colors.foreground }]}>No pudimos cargar tu perfil</Text>
+          <Text style={[styles.expiredText, { color: colors.mutedForeground }]}>
+            No mostraremos un panel hasta confirmar si tu cuenta es pasajero o conductor.
+          </Text>
+          <Pressable
+            onPress={() => {
+              void signOut();
+              router.replace('/auth/login');
+            }}
+            style={({ pressed }) => [styles.expiredButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.82 }]}
+          >
+            <Text style={styles.expiredButtonText}>Volver a iniciar sesión</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return (
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  const route = routeForRole(profile.role);
+  return route ? <Redirect href={route} /> : <Redirect href="/auth/login" />;
 }
 
 const styles = StyleSheet.create({
