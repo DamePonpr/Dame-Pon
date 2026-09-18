@@ -62,7 +62,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { profile, user, signOut, expireSession, isLoading: authLoading, authIssue } = useAuth();
-  const isDriver = role === 'driver';
+  const isDriver = profile?.role === 'driver';
   const roleActive = isRoleHomeAuthorized({
     isLoading: authLoading,
     userId: user?.id,
@@ -766,7 +766,10 @@ export function RoleHome({ role }: { role: UserRole }) {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View
+      testID={isDriver ? 'driver-panel' : 'passenger-panel'}
+      style={[styles.screen, { backgroundColor: colors.background }]}
+    >
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BrandMark compact />
         <Pressable
