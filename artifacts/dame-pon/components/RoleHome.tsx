@@ -133,6 +133,14 @@ export function RoleHome({ role }: { role: UserRole }) {
   const driverReady = Boolean(driverSetup?.driver && driverSetup?.vehicle);
   const baseMunicipality = driverSetup?.driver?.municipio_base ?? pendingBaseMunicipality ?? profile?.base_municipality ?? null;
   const activeMunicipality = driverSetup?.driver?.municipio_activo ?? baseMunicipality;
+  const driverMapLocation = driverSetup?.driver
+    && Number.isFinite(driverSetup.driver.current_lat)
+    && Number.isFinite(driverSetup.driver.current_lng)
+    ? {
+        latitude: Number(driverSetup.driver.current_lat),
+        longitude: Number(driverSetup.driver.current_lng),
+      }
+    : null;
   const handleServiceError = useCallback((message: string, setter: (value: string) => void) => {
     if (isLikelySessionError(message)) {
       void expireSession();
@@ -450,6 +458,17 @@ export function RoleHome({ role }: { role: UserRole }) {
           handleServiceError(result.error, setDriverTrackingError);
           return;
         }
+        setDriverSetup((current) => current?.driver
+          ? {
+              ...current,
+              driver: {
+                ...current.driver,
+                current_lat: position.coords.latitude,
+                current_lng: position.coords.longitude,
+                updated_at: new Date().toISOString(),
+              },
+            }
+          : current);
         setDriverTrackingError('');
       } catch {
         setDriverTrackingError('No pudimos actualizar tu ubicación. Verifica que el GPS siga activo.');
@@ -862,6 +881,7 @@ export function RoleHome({ role }: { role: UserRole }) {
             baseMunicipality={baseMunicipality}
             driverTrips={driverTrips}
             activeTrip={activeTrip}
+            driverLocation={driverMapLocation}
             tripActionLoading={tripActionLoading}
             ratingLoading={ratingLoading}
             ratingSubmitted={ratingSubmitted}
@@ -1160,6 +1180,7 @@ function DriverContent({
   baseMunicipality,
   driverTrips,
   activeTrip,
+  driverLocation,
   tripActionLoading,
   ratingLoading,
   ratingSubmitted,
@@ -1182,6 +1203,7 @@ function DriverContent({
   baseMunicipality: string | null;
   driverTrips: Trip[];
   activeTrip: Trip | null;
+  driverLocation: { latitude: number; longitude: number } | null;
   tripActionLoading: boolean;
   ratingLoading: boolean;
   ratingSubmitted: boolean;
@@ -1196,6 +1218,12 @@ function DriverContent({
   onRating: (score: number) => void;
   onEnableTracking: () => void;
 }) {
+  const pickupLocation = activeTrip
+    && Number.isFinite(activeTrip.pickup_lat)
+    && Number.isFinite(activeTrip.pickup_lng)
+    ? { latitude: Number(activeTrip.pickup_lat), longitude: Number(activeTrip.pickup_lng) }
+    : null;
+
   return (
     <>
       <View style={[styles.availabilityCard, { backgroundColor: colors.primary }]}>
@@ -1269,28 +1297,47 @@ function DriverContent({
           <Text style={styles.inverseTitle}>{tripStatusLabel(activeTrip.status)}</Text>
           <Text style={styles.inverseSubtitle}>Destino: {tripDestination(activeTrip)}</Text>
           {['aceptado', 'en_curso'].includes(activeTrip.status) ? (
-            <View style={styles.trackingCard}>
-              <Feather
-                name={driverTrackingActive ? 'radio' : 'map-pin'}
-                size={18}
-                color={driverTrackingActive ? '#B7E3C5' : '#FFFFFF'}
-              />
-              <View style={styles.trackingCopy}>
-                <Text style={styles.trackingTitle}>
-                  {driverTrackingActive ? 'Ubicación compartida' : 'Comparte tu ubicación'}
-                </Text>
-                <Text style={styles.trackingText}>
-                  {driverTrackingError || (driverTrackingActive
-                    ? 'El pasajero puede seguir tu llegada en el mapa.'
-                    : 'La necesitamos para mostrarle al pasajero que vas en camino.')}
-                </Text>
+            <>
+              <View style={[styles.driverMapCard, { borderColor: colors.border }]}>
+                <LiveRideMap
+                  passengerLocation={null}
+                  driverLocation={driverLocation}
+                  pickupLocation={pickupLocation}
+                />
+                <View style={styles.driverMapOverlay}>
+                  <Text style={styles.driverMapLabel}>
+                    {driverLocation ? 'Tu ubicación en Dame Pon' : 'Ubicación pendiente'}
+                  </Text>
+                  <Text style={styles.driverMapMeta}>
+                    {driverTrackingActive
+                      ? 'El pasajero puede seguir tu llegada en el mapa.'
+                      : 'Activa la ubicación para compartir tu llegada.'}
+                  </Text>
+                </View>
               </View>
-              {!driverTrackingActive ? (
-                <Pressable onPress={onEnableTracking} style={styles.trackingButton}>
-                  <Text style={[styles.trackingButtonText, { color: colors.primary }]}>Activar</Text>
-                </Pressable>
-              ) : null}
-            </View>
+              <View style={styles.trackingCard}>
+                <Feather
+                  name={driverTrackingActive ? 'radio' : 'map-pin'}
+                  size={18}
+                  color={driverTrackingActive ? '#B7E3C5' : '#FFFFFF'}
+                />
+                <View style={styles.trackingCopy}>
+                  <Text style={styles.trackingTitle}>
+                    {driverTrackingActive ? 'Ubicación compartida' : 'Comparte tu ubicación'}
+                  </Text>
+                  <Text style={styles.trackingText}>
+                    {driverTrackingError || (driverTrackingActive
+                      ? 'La posición se actualiza automáticamente.'
+                      : 'La necesitamos para mostrarle al pasajero que vas en camino.')}
+                  </Text>
+                </View>
+                {!driverTrackingActive ? (
+                  <Pressable onPress={onEnableTracking} style={styles.trackingButton}>
+                    <Text style={[styles.trackingButtonText, { color: colors.primary }]}>Activar</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </>
           ) : null}
           {activeTrip.status === 'aceptado' ? (
             <AppButton label="Iniciar viaje" onPress={() => onTripStatus('en_curso')} loading={tripActionLoading} testID="start-trip" />
