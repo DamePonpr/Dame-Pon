@@ -1380,10 +1380,7 @@ function TripCompleteScreen({
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={onHome}>
       <View style={[styles.completionScreen, { backgroundColor: colors.background }]}>
         <View style={[styles.completionTopBar, { paddingTop: insetsTop + 10 }]}>
-          <View style={[styles.completionLogo, { backgroundColor: colors.primary }]}>
-            <Feather name="check" size={20} color="#FFFFFF" />
-          </View>
-          <Text style={[styles.completionBrand, { color: colors.foreground }]}>Dame Pon</Text>
+          <BrandMark compact />
         </View>
         <ScrollView
           contentContainerStyle={[styles.completionContent, { paddingBottom: insetsBottom + 24 }]}
@@ -1969,8 +1966,6 @@ const styles = StyleSheet.create({
   retryHistory: { borderRadius: 12, paddingHorizontal: 15, paddingVertical: 11, marginTop: 4 },
   completionScreen: { flex: 1 },
   completionTopBar: { paddingHorizontal: 24, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  completionLogo: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  completionBrand: { fontFamily: 'Inter_700Bold', fontSize: 18, letterSpacing: -0.3 },
   completionContent: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 14, alignItems: 'center', gap: 14 },
   completionCelebration: { width: 128, height: 128, borderRadius: 64, alignItems: 'center', justifyContent: 'center', position: 'relative', marginTop: 7 },
   completionCelebrationRing: { width: 76, height: 76, borderRadius: 38, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
