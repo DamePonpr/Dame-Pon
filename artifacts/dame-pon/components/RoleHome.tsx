@@ -1682,7 +1682,6 @@ function MunicipalityDecisionModal({
             Tu elección cambia el municipio activo para las próximas solicitudes.
           </Text>
         </ScrollView>
-        </View>
       </View>
     </Modal>
   );
