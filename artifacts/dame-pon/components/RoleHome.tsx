@@ -623,6 +623,7 @@ export function RoleHome({ role }: { role: UserRole }) {
         : { driver: result.data, vehicle: null });
     }
     setMunicipalityDecision(null);
+    setSuccessMessage(`Municipio activo actualizado: ${target}.`);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -862,6 +863,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       />
       <MunicipalityDecisionModal
         colors={colors}
+        insetsTop={insets.top}
         insetsBottom={insets.bottom}
         visible={municipalityDecision !== null}
         baseMunicipality={municipalityDecision?.base ?? ''}
@@ -1583,6 +1585,7 @@ function MunicipalityPickerModal({
 
 function MunicipalityDecisionModal({
   colors,
+  insetsTop,
   insetsBottom,
   visible,
   baseMunicipality,
@@ -1592,6 +1595,7 @@ function MunicipalityDecisionModal({
   onDecision,
 }: {
   colors: ReturnType<typeof useColors>;
+  insetsTop: number;
   insetsBottom: number;
   visible: boolean;
   baseMunicipality: string;
@@ -1601,34 +1605,82 @@ function MunicipalityDecisionModal({
   onDecision: (decision: MunicipalityDecision) => void;
 }) {
   return (
-    <Modal transparent visible={visible} animationType="slide" onRequestClose={() => undefined}>
-      <View style={styles.modalBackdrop}>
-        <View style={[styles.modalCard, { backgroundColor: colors.background, paddingBottom: insetsBottom + 22 }]}>
-          <View style={styles.modalHandle} />
-          <Text style={[styles.modalTitle, { color: colors.foreground }]}>¿Regresas a {baseMunicipality} o te quedas en {destinationMunicipality}?</Text>
-          <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
-            Tu elección define dónde aparecerán primero las próximas solicitudes.
+    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={() => undefined}>
+      <View style={[styles.completionScreen, { backgroundColor: colors.background }]}>
+        <View style={[styles.completionTopBar, { paddingTop: insetsTop + 10 }]}>
+          <BrandMark compact />
+        </View>
+        <ScrollView
+          contentContainerStyle={[styles.decisionContent, { paddingBottom: insetsBottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.completionCelebration, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.completionCelebrationRing, { borderColor: colors.primary }]}>
+              <Feather name="navigation" size={33} color={colors.primary} />
+            </View>
+            <View style={[styles.completionSpark, styles.completionSparkOne, { backgroundColor: colors.primary }]} />
+            <View style={[styles.completionSpark, styles.completionSparkTwo, { backgroundColor: colors.primary }]} />
+            <View style={[styles.completionSpark, styles.completionSparkThree, { backgroundColor: colors.primary }]} />
+          </View>
+          <Text style={[styles.completionEyebrow, { color: colors.primary }]}>SIGUIENTE PASO</Text>
+          <Text style={[styles.completionTitle, { color: colors.foreground }]}>
+            Terminaste en {destinationMunicipality}. ¿Qué vas a hacer?
+          </Text>
+          <Text style={[styles.decisionSubtitle, { color: colors.mutedForeground }]}>
+            Escoge dónde quieres recibir primero las próximas solicitudes.
           </Text>
           {error ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{error}</Text> : null}
-          <Pressable
-            testID="return-to-base"
-            disabled={loading}
-            onPress={() => onDecision('return')}
-            style={({ pressed }) => [styles.municipalityDecisionButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.82 }]}
-          >
-            <Feather name="home" size={18} color={colors.primaryForeground} />
-            <Text style={styles.municipalityDecisionButtonText}>Regresar a {baseMunicipality}</Text>
-          </Pressable>
-          <Pressable
-            testID="stay-in-destination"
-            disabled={loading}
-            onPress={() => onDecision('stay')}
-            style={({ pressed }) => [styles.municipalityDecisionButton, { backgroundColor: colors.secondary }, pressed && { opacity: 0.82 }]}
-          >
-            <Feather name="map-pin" size={18} color={colors.primary} />
-            <Text style={[styles.municipalityDecisionButtonText, { color: colors.primary }]}>Quedarme en {destinationMunicipality}</Text>
-          </Pressable>
+          <View style={styles.decisionOptions}>
+            <Pressable
+              testID="return-to-base"
+              accessibilityRole="button"
+              accessibilityLabel={`Regresar a ${baseMunicipality}`}
+              disabled={loading}
+              onPress={() => onDecision('return')}
+              style={({ pressed }) => [
+                styles.decisionOption,
+                { backgroundColor: colors.primary },
+                pressed && !loading && { opacity: 0.82 },
+                loading && { opacity: 0.58 },
+              ]}
+            >
+              <View style={[styles.decisionOptionIcon, { backgroundColor: colors.primaryForeground }]}>
+                <Feather name="home" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.decisionOptionCopy}>
+                <Text style={[styles.decisionOptionTitle, { color: colors.primaryForeground }]}>Regresar a {baseMunicipality}</Text>
+                <Text style={[styles.decisionOptionText, { color: colors.primaryForeground }]}>Volver a tu pueblo base</Text>
+              </View>
+              <Feather name="arrow-right" size={20} color={colors.primaryForeground} />
+            </Pressable>
+            <Pressable
+              testID="stay-in-destination"
+              accessibilityRole="button"
+              accessibilityLabel={`Quedarme en ${destinationMunicipality}`}
+              disabled={loading}
+              onPress={() => onDecision('stay')}
+              style={({ pressed }) => [
+                styles.decisionOption,
+                styles.decisionOptionSecondary,
+                { backgroundColor: colors.card, borderColor: colors.border },
+                pressed && !loading && { opacity: 0.82 },
+                loading && { opacity: 0.58 },
+              ]}
+            >
+              <View style={[styles.decisionOptionIcon, { backgroundColor: colors.secondary }]}>
+                <Feather name="map-pin" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.decisionOptionCopy}>
+                <Text style={[styles.decisionOptionTitle, { color: colors.foreground }]}>Quedarme en {destinationMunicipality}</Text>
+                <Text style={[styles.decisionOptionText, { color: colors.mutedForeground }]}>Hacer clientela por aquí</Text>
+              </View>
+              <Feather name="arrow-right" size={20} color={colors.primary} />
+            </Pressable>
+          </View>
           {loading ? <ActivityIndicator color={colors.primary} /> : null}
+          <Text style={[styles.decisionFooter, { color: colors.mutedForeground }]}>
+            Tu elección cambia el municipio activo para las próximas solicitudes.
+          </Text>
         </View>
       </View>
     </Modal>
