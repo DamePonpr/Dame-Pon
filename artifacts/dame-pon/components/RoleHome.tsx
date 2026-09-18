@@ -16,6 +16,7 @@ import {
   getDriverActiveTrip,
   getDriverLocation,
   getDriverSetup,
+  getReceivedRatingAverage,
   getMunicipalities,
   getOpenTrips,
   getPassengerActiveTrip,
@@ -72,6 +73,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   });
   const [isAvailable, setIsAvailable] = useState(false);
   const [driverSetup, setDriverSetup] = useState<DriverSetup | null>(null);
+  const [ratingAverage, setRatingAverage] = useState<number | null>(null);
   const [driverTrips, setDriverTrips] = useState<Trip[]>([]);
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [showDestination, setShowDestination] = useState(false);
@@ -144,6 +146,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     openTripsRefreshInFlight.current = false;
     setIsAvailable(false);
     setDriverSetup(null);
+    setRatingAverage(null);
     setDriverTrips([]);
     setActiveTrip(null);
     setShowDestination(false);
@@ -231,16 +234,22 @@ export function RoleHome({ role }: { role: UserRole }) {
 
     const load = async () => {
       if (isDriver) {
-        const result = await getDriverSetup(user.id);
+        const [result, ratingResult] = await Promise.all([
+          getDriverSetup(user.id),
+          getReceivedRatingAverage(user.id),
+        ]);
         if (active) {
           setDriverSetup(result.data);
           setIsAvailable(result.data?.driver?.is_online === true);
+          setRatingAverage(ratingResult.data);
           if (result.error) handleServiceError(result.error, setSetupError);
           else setSetupError('');
+          if (ratingResult.error) handleServiceError(ratingResult.error, setSetupError);
           setLoading(false);
         }
       } else {
         if (active) {
+          setRatingAverage(null);
           setLoading(false);
         }
       }
