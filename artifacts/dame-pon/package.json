@@ -64,6 +64,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "@maplibre/maplibre-react-native": "11.3.10",
     "@supabase/supabase-js": "^2.115.0",
     "expo-dev-client": "~57.0.18",
     "expo-device": "~57.0.1",
