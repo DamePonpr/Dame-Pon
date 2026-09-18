@@ -43,6 +43,18 @@ sesiones dentro del tiempo límite. Cada paso informa si se observó mediante el
 Realtime o mediante la reconciliación automática. La garantía comprobada es que las
 pantallas convergen sin una recarga manual incluso si Realtime pierde un evento.
 
+La comprobación de endurecimiento RLS también valida el contrato del RPC
+`get_trip_participant_details` para las dos sesiones autenticadas. Si la migración
+del RPC no fue aplicada en el proyecto remoto, la prueba falla en vez de dejar que
+la pantalla de finalización muestre datos incompletos:
+
+```sh
+pnpm --filter @workspace/dame-pon run verify:rls-hardening
+```
+
+Las credenciales de esa prueba deben pertenecer a un pasajero y un conductor de
+prueba distintos; no tienen que ser los participantes de un viaje histórico real.
+
 Si el conductor aprobado y conectado no puede leer solicitudes con estado
 `buscando_conductor`, aplica primero la migración:
 
