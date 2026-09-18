@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import type { Municipality } from '@/lib/municipality';
+import {
+  averageReceivedRating,
+  findUnratedCompletedTrip,
+  ratingSummaryForUser,
+} from '@/lib/ratingLogic';
 
 export type TripStatus = 'buscando_conductor' | 'aceptado' | 'en_curso' | 'completado' | 'cancelado';
 export type DriverStatus = 'pendiente' | 'aprobado' | 'suspendido';
@@ -262,6 +267,25 @@ export async function getDriverSetup(userId: string): Promise<ServiceResult<Driv
     },
     error: null,
   };
+}
+
+export async function getReceivedRatingAverage(userId: string): Promise<ServiceResult<number>> {
+  const result = await supabase
+    .from('ratings')
+    .select('trip_id,rated_by,rated_user,score')
+    .eq('rated_user', userId);
+
+  if (result.error) {
+    return serviceError('load-rating', result.error);
+  }
+
+  const ratings = (result.data ?? []) as Array<{
+    trip_id: string;
+    rated_by: string;
+    rated_user: string;
+    score: number;
+  }>;
+  return { data: averageReceivedRating(ratings, userId), error: null };
 }
 
 export async function getMunicipalities(): Promise<ServiceResult<Municipality[]>> {
@@ -604,12 +628,11 @@ export async function getTripHistory(
 
   return {
     data: trips.map((trip) => {
-      const sent = ratings.find((rating) => rating.trip_id === trip.id && rating.rated_by === userId);
-      const received = ratings.find((rating) => rating.trip_id === trip.id && rating.rated_user === userId);
+      const { sentRating, receivedRating } = ratingSummaryForUser(ratings, userId, trip.id);
       return {
         trip,
-        sentRating: sent?.score ?? null,
-        receivedRating: received?.score ?? null,
+        sentRating,
+        receivedRating,
       };
     }),
     error: null,
@@ -637,17 +660,21 @@ async function getUnratedCompletedTrip(
 
   const ratingsResult = await supabase
     .from('ratings')
-    .select('trip_id')
-    .eq('rated_by', userId)
+    .select('trip_id,rated_by,rated_user,score')
     .in('trip_id', completedTrips.map((trip) => trip.id));
 
   if (ratingsResult.error) {
     return serviceError('load-rating', ratingsResult.error);
   }
 
-  const ratedTripIds = new Set((ratingsResult.data ?? []).map((rating) => rating.trip_id as string));
+  const ratings = (ratingsResult.data ?? []) as Array<{
+    trip_id: string;
+    rated_by: string;
+    rated_user: string;
+    score: number;
+  }>;
   return {
-    data: completedTrips.find((trip) => !ratedTripIds.has(trip.id)) ?? null,
+    data: findUnratedCompletedTrip(completedTrips, ratings, userId) as Trip | null,
     error: null,
   };
 }
