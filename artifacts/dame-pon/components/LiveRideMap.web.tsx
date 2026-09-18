@@ -1,6 +1,7 @@
 import React from 'react';
 import { Feather } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
+import { useColors } from '@/hooks/useColors';
 
 interface Coordinate {
   latitude: number;
@@ -14,13 +15,20 @@ interface LiveRideMapProps {
 }
 
 export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation }: LiveRideMapProps) {
+  const colors = useColors();
   const hasLocation = passengerLocation || pickupLocation;
   return (
-    <View style={styles.container}>
-      <Feather name="map" size={34} color="#FFFFFF" />
-      <Text style={styles.title}>{hasLocation ? 'Ubicación lista' : 'Mapa disponible en la app móvil'}</Text>
-      <Text style={styles.subtitle}>
-        {driverLocation ? 'El conductor está compartiendo su ubicación.' : 'Abre Dame Pon en Expo Go para ver el mapa interactivo.'}
+    <View style={[styles.container, { backgroundColor: colors.card }]}>
+      <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
+        <Feather name="map" size={28} color={colors.primary} />
+      </View>
+      <Text style={[styles.title, { color: colors.foreground }]}>
+        {driverLocation ? 'El conductor está en camino' : hasLocation ? 'Ubicación lista' : 'Mapa listo para tu viaje'}
+      </Text>
+      <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+        {driverLocation
+          ? 'La ubicación asignada se actualiza automáticamente.'
+          : 'El mapa interactivo se muestra en la app móvil.'}
       </Text>
     </View>
   );
@@ -33,18 +41,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     padding: 24,
-    backgroundColor: '#0B1C26',
+  },
+  iconWrap: {
+    alignItems: 'center',
+    borderRadius: 22,
+    justifyContent: 'center',
+    height: 56,
+    width: 56,
   },
   title: {
-    color: '#FFFFFF',
     fontFamily: 'Inter_600SemiBold',
     fontSize: 14,
+    textAlign: 'center',
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.72)',
     fontFamily: 'Inter_400Regular',
     fontSize: 12,
     lineHeight: 17,
     textAlign: 'center',
+    maxWidth: 280,
   },
 });

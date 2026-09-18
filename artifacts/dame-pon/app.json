@@ -29,6 +29,15 @@
         }
       ],
       [
+        "@maplibre/maplibre-react-native",
+        {
+          "android": {
+            "nativeVariant": "opengl",
+            "locationEngine": "default"
+          }
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#0B1C26"
