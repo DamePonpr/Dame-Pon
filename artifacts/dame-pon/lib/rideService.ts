@@ -72,6 +72,20 @@ export interface DriverSetup {
   vehicle: Vehicle | null;
 }
 
+export interface TripParticipantDetails {
+  trip_id: string;
+  passenger_id: string;
+  passenger_name: string | null;
+  passenger_avatar_url: string | null;
+  driver_id: string | null;
+  driver_name: string | null;
+  driver_avatar_url: string | null;
+  vehicle_make: string | null;
+  vehicle_model: string | null;
+  vehicle_color: string | null;
+  vehicle_plate: string | null;
+}
+
 interface ServiceResult<T> {
   data: T | null;
   error: string | null;
@@ -112,7 +126,8 @@ type RideAction =
   | 'rate-trip'
   | 'load-municipalities'
   | 'set-driver-base'
-  | 'set-driver-active';
+  | 'set-driver-active'
+  | 'load-participant-details';
 
 const DRIVER_COLUMNS = 'id,status,is_online,current_lat,current_lng,updated_at,municipio_base,municipio_activo,municipios_activos';
 const VEHICLE_COLUMNS = 'id,driver_id,make,model,year,color,plate';
@@ -138,6 +153,7 @@ const actionFallbacks: Record<RideAction, string> = {
   'load-municipalities': 'No pudimos cargar la lista de municipios.',
   'set-driver-base': 'No pudimos guardar tu municipio base.',
   'set-driver-active': 'No pudimos cambiar tu municipio activo.',
+  'load-participant-details': 'No pudimos cargar los datos visibles de los participantes.',
 };
 
 function logServiceError(action: RideAction, error: SupabaseErrorLike) {
@@ -429,6 +445,23 @@ export async function getDriverLocation(driverId: string): Promise<ServiceResult
 
   return {
     data: { latitude: Number(latitude), longitude: Number(longitude) },
+    error: null,
+  };
+}
+
+export async function getTripParticipantDetails(
+  tripId: string,
+): Promise<ServiceResult<TripParticipantDetails>> {
+  const result = await supabase
+    .rpc('get_trip_participant_details', { p_trip_id: tripId })
+    .maybeSingle();
+
+  if (result.error) {
+    return serviceError('load-participant-details', result.error);
+  }
+
+  return {
+    data: (result.data as TripParticipantDetails | null) ?? null,
     error: null,
   };
 }

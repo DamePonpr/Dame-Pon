@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
@@ -18,6 +18,7 @@ import {
   getMunicipalities,
   getOpenTrips,
   getPassengerActiveTrip,
+  getTripParticipantDetails,
   getTripHistory,
   isLikelySessionError,
   rateTrip,
@@ -33,6 +34,7 @@ import {
   type DriverSetup,
   type Trip,
   type TripHistoryItem,
+  type TripParticipantDetails,
   type VehicleDraft,
   updateDriverLocation,
   updateTripStatus,
@@ -106,6 +108,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     trip: Trip;
     score: number;
     driverMunicipality: string | null;
+    participantDetails: TripParticipantDetails | null;
   } | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const activeTripRefreshInFlight = useRef(false);
@@ -652,6 +655,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       return;
     }
     const completedTrip = activeTrip;
+    const participantResult = await getTripParticipantDetails(completedTrip.id);
     setActiveTrip(null);
     setRatingSubmitted(false);
     if (isDriver && isAvailable) {
@@ -663,6 +667,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       trip: completedTrip,
       score,
       driverMunicipality: activeMunicipality,
+      participantDetails: participantResult.data,
     });
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -822,6 +827,7 @@ export function RoleHome({ role }: { role: UserRole }) {
         score={completionSummary?.score ?? null}
         isDriver={isDriver}
         driverMunicipality={completionSummary?.driverMunicipality ?? null}
+        participantDetails={completionSummary?.participantDetails ?? null}
         onHome={() => setCompletionSummary(null)}
       />
       <VehicleModal
