@@ -804,17 +804,30 @@ export function RoleHome({ role }: { role: UserRole }) {
     >
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BrandMark compact />
-        <Pressable
-          testID="logout-button"
-          accessibilityLabel="Cerrar sesión"
-          onPress={() => {
-            void Haptics.selectionAsync();
-            void signOut();
-          }}
-          style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.secondary }, pressed && { opacity: 0.7 }]}
-        >
-          <Feather name="log-out" size={18} color={colors.primary} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            testID="settings-button"
+            accessibilityLabel="Abrir configuración"
+            onPress={() => {
+              void Haptics.selectionAsync();
+              setShowSettings(true);
+            }}
+            style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.secondary }, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="settings" size={18} color={colors.primary} />
+          </Pressable>
+          <Pressable
+            testID="logout-button"
+            accessibilityLabel="Cerrar sesión"
+            onPress={() => {
+              void Haptics.selectionAsync();
+              void signOut();
+            }}
+            style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.secondary }, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="log-out" size={18} color={colors.primary} />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -878,6 +891,7 @@ export function RoleHome({ role }: { role: UserRole }) {
           <PassengerContent
             colors={colors}
             activeTrip={activeTrip}
+            ratingAverage={ratingAverage}
             savedDestination={savedDestination}
             requestError={requestError}
             passengerLocation={passengerLocation}
@@ -1003,6 +1017,7 @@ export function RoleHome({ role }: { role: UserRole }) {
         onClose={() => setShowHistory(false)}
         onRetry={() => void handleOpenHistory()}
       />
+      <SettingsModal visible={showSettings} onClose={() => setShowSettings(false)} />
     </View>
   );
 }
@@ -1010,6 +1025,7 @@ export function RoleHome({ role }: { role: UserRole }) {
 function PassengerContent({
   colors,
   activeTrip,
+  ratingAverage,
   savedDestination,
   requestError,
   passengerLocation,
@@ -1026,6 +1042,7 @@ function PassengerContent({
 }: {
   colors: ReturnType<typeof useColors>;
   activeTrip: Trip | null;
+  ratingAverage: number | null;
   savedDestination: string;
   requestError: string;
   passengerLocation: { latitude: number; longitude: number } | null;
@@ -1048,6 +1065,10 @@ function PassengerContent({
 
   return (
     <>
+      <View style={styles.statsRow}>
+        <Stat label="Calificación" value={ratingAverage === null ? '—' : `${ratingAverage.toFixed(1)}/5`} icon="star" colors={colors} />
+      </View>
+
       <View style={[styles.mapCard, { backgroundColor: colors.primary }]}>
         <LiveRideMap
           passengerLocation={passengerLocation}
