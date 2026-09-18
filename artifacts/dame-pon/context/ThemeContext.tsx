@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Appearance } from 'react-native';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -32,17 +31,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (!isReady) return;
-    if (preference === 'system') {
-      // The installed React Native typings omit null, although the runtime
-      // accepts it to return control to the system appearance.
-      (Appearance.setColorScheme as (scheme: 'light' | 'dark' | null) => void)(null);
-    } else {
-      Appearance.setColorScheme(preference);
-    }
-  }, [isReady, preference]);
 
   const setPreference = async (nextPreference: ThemePreference) => {
     setPreferenceState(nextPreference);
