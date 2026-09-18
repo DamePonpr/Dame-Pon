@@ -746,6 +746,25 @@ export function RoleHome({ role }: { role: UserRole }) {
     setHistory(result.data ?? []);
   };
 
+  if (authLoading || (user && !profile)) {
+    return (
+      <View style={[styles.screen, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingState}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!user || authIssue === 'profile_unavailable') {
+    return <Redirect href="/auth/login" />;
+  }
+
+  if (!roleActive) {
+    const correctRoute = routeForRole(profile?.role);
+    return <Redirect href={correctRoute ?? '/auth/login'} />;
+  }
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
