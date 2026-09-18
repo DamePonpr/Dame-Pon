@@ -4,3 +4,4 @@
 - [Supabase migration reconciliation](supabase-migration-reconciliation.md) — compare live effects before replaying repository migrations whose remote names or timestamps differ.
 - [Role-safe session routing](role-safe-session-routing.md) — panel routes must validate the loaded profile identity and role; never default an unknown role to passenger or driver.
 - [Reciprocal trip ratings](reciprocal-trip-ratings.md) — rating ownership is `(trip_id, rated_by)`; sent, received, pending, and averages must be user-scoped.
+- [Expo theme compatibility](expo-theme-compatibility.md) — resolve persisted theme state in app code; do not assume Appearance.setColorScheme exists on every Expo target.
