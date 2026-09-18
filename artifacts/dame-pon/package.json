@@ -11,6 +11,7 @@
     "typecheck": "pnpm run test:supabase-config && tsc -p tsconfig.json --noEmit",
     "test:supabase-config": "node --test scripts/validate-supabase-config.test.mjs",
     "test:role-routing": "node --test scripts/role-routing.test.mjs",
+    "test:rating-flow": "node --test scripts/rating-flow.test.mjs",
     "verify:supabase-config": "node scripts/validate-supabase-config.mjs",
     "verify:supabase-rls": "pnpm run verify:supabase-config && node scripts/verify-supabase-rls.mjs",
     "verify:trip-realtime": "pnpm run verify:supabase-config && node scripts/verify-trip-realtime.mjs",
