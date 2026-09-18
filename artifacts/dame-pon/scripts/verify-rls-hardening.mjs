@@ -32,6 +32,42 @@ function checkError(step, error) {
   if (error) fail(step, errorText(error));
 }
 
+async function expectParticipantDetails(step, actor, tripId, passengerId, driverId) {
+  const response = await actor.supabase
+    .rpc('get_trip_participant_details', { p_trip_id: tripId })
+    .maybeSingle();
+  checkError(step, response.error);
+  if (!response.data) {
+    fail(step, 'El RPC no devolvió los datos del participante autorizado.');
+  }
+
+  const expectedKeys = [
+    'trip_id',
+    'passenger_id',
+    'passenger_name',
+    'passenger_avatar_url',
+    'driver_id',
+    'driver_name',
+    'driver_avatar_url',
+    'vehicle_make',
+    'vehicle_model',
+    'vehicle_color',
+    'vehicle_plate',
+  ];
+  const actualKeys = Object.keys(response.data).sort();
+  if (actualKeys.join(',') !== [...expectedKeys].sort().join(',')) {
+    fail(step, `El RPC devolvió columnas inesperadas: ${actualKeys.join(',')}`);
+  }
+  if (
+    response.data.trip_id !== tripId
+    || response.data.passenger_id !== passengerId
+    || response.data.driver_id !== driverId
+  ) {
+    fail(step, 'El RPC devolvió participantes o viaje incorrectos.');
+  }
+  console.log(`[OK] ${step}: participantes y vehículo visibles sin datos privados adicionales`);
+}
+
 function client() {
   const supabase = createClient(supabaseUrl, publishableKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
@@ -296,6 +332,23 @@ async function run() {
   checkError('completar viaje en curso', completed.error);
   if (completed.data?.status !== 'completado') fail('completar viaje en curso', 'El viaje no pasó a completado.');
   console.log('[OK] las transiciones válidas respetan el orden solicitado → aceptado → en_curso → completado');
+
+  await Promise.all([
+    expectParticipantDetails(
+      'RPC de participantes para pasajero',
+      passenger,
+      activeTripId,
+      passenger.user.id,
+      driver.user.id,
+    ),
+    expectParticipantDetails(
+      'RPC de participantes para conductor',
+      driver,
+      activeTripId,
+      passenger.user.id,
+      driver.user.id,
+    ),
+  ]);
 
   const raceTripId = await createTrip(passenger);
   const race = await Promise.all([
