@@ -1681,6 +1681,7 @@ function MunicipalityDecisionModal({
           <Text style={[styles.decisionFooter, { color: colors.mutedForeground }]}>
             Tu elección cambia el municipio activo para las próximas solicitudes.
           </Text>
+        </ScrollView>
         </View>
       </View>
     </Modal>
