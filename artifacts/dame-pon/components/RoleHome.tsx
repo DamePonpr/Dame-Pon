@@ -10,6 +10,7 @@ import { useColors } from '@/hooks/useColors';
 import { AppButton } from '@/components/AppButton';
 import { BrandMark } from '@/components/BrandMark';
 import { LiveRideMap } from '@/components/LiveRideMap';
+import { SettingsModal } from '@/components/SettingsModal';
 import {
   acceptTrip,
   cancelTrip,
@@ -81,6 +82,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [showMunicipalityPicker, setShowMunicipalityPicker] = useState(false);
   const [showActiveMunicipalityPicker, setShowActiveMunicipalityPicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [destination, setDestination] = useState('');
   const [destinationMunicipality, setDestinationMunicipality] = useState('');
   const [destinationSearch, setDestinationSearch] = useState('');
@@ -121,6 +123,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     driverMunicipality: string | null;
     participantDetails: TripParticipantDetails | null;
   } | null>(null);
+  const [participantDetails, setParticipantDetails] = useState<TripParticipantDetails | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const activeTripRefreshInFlight = useRef(false);
   const openTripsRefreshInFlight = useRef(false);
@@ -154,6 +157,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     setShowMunicipalityPicker(false);
     setShowActiveMunicipalityPicker(false);
     setShowHistory(false);
+    setShowSettings(false);
     setDestination('');
     setDestinationMunicipality('');
     setDestinationSearch('');
@@ -186,6 +190,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     setMunicipalityDecision(null);
     setMunicipalityDecisionLoading(false);
     setCompletionSummary(null);
+    setParticipantDetails(null);
     setSuccessMessage('');
   }, [user?.id]);
 
@@ -207,6 +212,21 @@ export function RoleHome({ role }: { role: UserRole }) {
       activeTripRefreshInFlight.current = false;
     }
   }, [handleServiceError, isDriver, roleActive, user?.id]);
+
+  useEffect(() => {
+    if (!roleActive || !activeTrip || activeTrip.status !== 'completado') {
+      if (!activeTrip) setParticipantDetails(null);
+      return;
+    }
+    let active = true;
+    void getTripParticipantDetails(activeTrip.id).then((result) => {
+      if (!active) return;
+      if (result.data) setParticipantDetails(result.data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [activeTrip?.id, activeTrip?.status, roleActive]);
 
   const refreshOpenTrips = useCallback(async () => {
     if (!roleActive || !isDriver || !isAvailable || openTripsRefreshInFlight.current) return;
@@ -248,8 +268,10 @@ export function RoleHome({ role }: { role: UserRole }) {
           setLoading(false);
         }
       } else {
+        const ratingResult = await getReceivedRatingAverage(user.id);
         if (active) {
-          setRatingAverage(null);
+          setRatingAverage(ratingResult.data);
+          if (ratingResult.error) handleServiceError(ratingResult.error, setRequestError);
           setLoading(false);
         }
       }
@@ -725,6 +747,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     }
     const completedTrip = activeTrip;
     const participantResult = await getTripParticipantDetails(completedTrip.id);
+    const completedParticipantDetails = participantResult.data ?? participantDetails;
     setActiveTrip(null);
     setRatingSubmitted(false);
     if (isDriver && isAvailable) {
@@ -736,7 +759,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       trip: completedTrip,
       score,
       driverMunicipality: activeMunicipality,
-      participantDetails: participantResult.data,
+      participantDetails: completedParticipantDetails,
     });
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };

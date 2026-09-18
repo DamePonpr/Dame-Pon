@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/dame-pon-logo.png",
     "scheme": "dame-pon",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false
     },
