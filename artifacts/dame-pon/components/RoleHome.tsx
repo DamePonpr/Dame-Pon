@@ -2156,6 +2156,7 @@ function tripStatusLabel(status: string) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { paddingHorizontal: 22, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   content: { flexGrow: 1, paddingHorizontal: 22, gap: 18 },
   greeting: { gap: 5, paddingTop: 8 },
