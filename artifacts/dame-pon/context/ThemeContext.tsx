@@ -35,7 +35,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isReady) return;
-    Appearance.setColorScheme(preference === 'system' ? undefined : preference);
+    if (preference === 'system') {
+      // The installed React Native typings omit null, although the runtime
+      // accepts it to return control to the system appearance.
+      (Appearance.setColorScheme as (scheme: 'light' | 'dark' | null) => void)(null);
+    } else {
+      Appearance.setColorScheme(preference);
+    }
   }, [isReady, preference]);
 
   const setPreference = async (nextPreference: ThemePreference) => {

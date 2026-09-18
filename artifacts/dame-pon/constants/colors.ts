@@ -52,8 +52,8 @@ const colors = {
     card: '#14242C',
     cardForeground: '#F4F8FA',
 
-    primary: '#DDECF2',
-    primaryForeground: '#0B1C26',
+    primary: '#1C4050',
+    primaryForeground: '#F4F8FA',
 
     secondary: '#20353F',
     secondaryForeground: '#F4F8FA',

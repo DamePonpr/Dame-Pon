@@ -82,7 +82,7 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAwareScrollViewCompat
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 22, paddingBottom: insets.bottom + 28 }]}
+      contentContainerStyle={[styles.content, { backgroundColor: colors.background, paddingTop: insets.top + 22, paddingBottom: insets.bottom + 28 }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.top}>
