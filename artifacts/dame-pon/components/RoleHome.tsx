@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { Redirect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,6 +48,7 @@ import {
   type MunicipalityDecision,
 } from '@/lib/municipality';
 import { sendTripPush } from '@/lib/pushService';
+import { isRoleHomeAuthorized, routeForRole } from '@/lib/roleRouting';
 
 const emptyVehicle: VehicleDraft = {
   make: '',
@@ -59,8 +61,15 @@ const emptyVehicle: VehicleDraft = {
 export function RoleHome({ role }: { role: UserRole }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { profile, user, signOut, expireSession } = useAuth();
+  const { profile, user, signOut, expireSession, isLoading: authLoading, authIssue } = useAuth();
   const isDriver = role === 'driver';
+  const roleActive = isRoleHomeAuthorized({
+    isLoading: authLoading,
+    userId: user?.id,
+    profileId: profile?.id,
+    profileRole: profile?.role,
+    expectedRole: role,
+  });
   const [isAvailable, setIsAvailable] = useState(false);
   const [driverSetup, setDriverSetup] = useState<DriverSetup | null>(null);
   const [driverTrips, setDriverTrips] = useState<Trip[]>([]);
@@ -113,6 +122,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [successMessage, setSuccessMessage] = useState('');
   const activeTripRefreshInFlight = useRef(false);
   const openTripsRefreshInFlight = useRef(false);
+  const previousIdentity = useRef<string | null>(null);
 
   const firstName = profile?.full_name?.trim().split(' ')[0] || 'de nuevo';
   const driverReady = Boolean(driverSetup?.driver && driverSetup?.vehicle);
@@ -126,8 +136,58 @@ export function RoleHome({ role }: { role: UserRole }) {
     setter(message);
   }, [expireSession]);
 
+  useEffect(() => {
+    const identity = user?.id ?? null;
+    if (previousIdentity.current === identity) return;
+    previousIdentity.current = identity;
+    activeTripRefreshInFlight.current = false;
+    openTripsRefreshInFlight.current = false;
+    setIsAvailable(false);
+    setDriverSetup(null);
+    setDriverTrips([]);
+    setActiveTrip(null);
+    setShowDestination(false);
+    setShowVehicle(false);
+    setShowMunicipalityPicker(false);
+    setShowActiveMunicipalityPicker(false);
+    setShowHistory(false);
+    setDestination('');
+    setDestinationMunicipality('');
+    setDestinationSearch('');
+    setSavedDestination('');
+    setVehicle({ ...emptyVehicle });
+    setPendingBaseMunicipality(null);
+    setLoading(true);
+    setSavingVehicle(false);
+    setRequestingTrip(false);
+    setLocationLoading(false);
+    setPickupCoordinates(null);
+    setLocationError('');
+    setPassengerLocation(null);
+    setDriverLocation(null);
+    setMapLocationLoading(false);
+    setMapLocationError('');
+    setDriverTrackingActive(false);
+    setDriverTrackingError('');
+    setTripActionLoading(false);
+    setRatingLoading(false);
+    setRatingSubmitted(false);
+    setHistory([]);
+    setHistoryLoading(false);
+    setHistoryError('');
+    setSetupError('');
+    setRequestError('');
+    setMunicipalities([]);
+    setMunicipalitiesLoading(false);
+    setMunicipalityError('');
+    setMunicipalityDecision(null);
+    setMunicipalityDecisionLoading(false);
+    setCompletionSummary(null);
+    setSuccessMessage('');
+  }, [user?.id]);
+
   const refreshActiveTrip = useCallback(async () => {
-    if (!user?.id || activeTripRefreshInFlight.current) return;
+    if (!roleActive || !user?.id || activeTripRefreshInFlight.current) return;
     activeTripRefreshInFlight.current = true;
     try {
       const result = isDriver
@@ -143,10 +203,10 @@ export function RoleHome({ role }: { role: UserRole }) {
     } finally {
       activeTripRefreshInFlight.current = false;
     }
-  }, [handleServiceError, isDriver, user?.id]);
+  }, [handleServiceError, isDriver, roleActive, user?.id]);
 
   const refreshOpenTrips = useCallback(async () => {
-    if (!isDriver || !isAvailable || openTripsRefreshInFlight.current) return;
+    if (!roleActive || !isDriver || !isAvailable || openTripsRefreshInFlight.current) return;
     openTripsRefreshInFlight.current = true;
     try {
       const result = await getOpenTrips();
@@ -162,10 +222,10 @@ export function RoleHome({ role }: { role: UserRole }) {
     } finally {
       openTripsRefreshInFlight.current = false;
     }
-  }, [driverSetup, handleServiceError, isAvailable, isDriver]);
+  }, [driverSetup, handleServiceError, isAvailable, isDriver, roleActive]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!roleActive || !user?.id) return;
     let active = true;
     setLoading(true);
 
@@ -191,10 +251,10 @@ export function RoleHome({ role }: { role: UserRole }) {
     return () => {
       active = false;
     };
-  }, [isDriver, refreshActiveTrip, user?.id]);
+  }, [isDriver, refreshActiveTrip, roleActive, user?.id]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!roleActive || !user?.id) return;
     let active = true;
     setMunicipalitiesLoading(true);
     void getMunicipalities().then((result) => {
@@ -209,10 +269,10 @@ export function RoleHome({ role }: { role: UserRole }) {
     return () => {
       active = false;
     };
-  }, [user?.id]);
+  }, [roleActive, user?.id]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!roleActive || !user?.id) return;
     const unsubscribe = subscribeToTrips(user.id, isDriver ? 'driver' : 'passenger', () => {
       void refreshActiveTrip();
     });
@@ -228,10 +288,10 @@ export function RoleHome({ role }: { role: UserRole }) {
       appStateSubscription.remove();
       unsubscribe();
     };
-  }, [isDriver, refreshActiveTrip, user?.id]);
+  }, [isDriver, refreshActiveTrip, roleActive, user?.id]);
 
   useEffect(() => {
-    if (!isDriver || !isAvailable) {
+    if (!roleActive || !isDriver || !isAvailable) {
       setDriverTrips([]);
       return;
     }
@@ -251,10 +311,10 @@ export function RoleHome({ role }: { role: UserRole }) {
       appStateSubscription.remove();
       unsubscribe();
     };
-  }, [isAvailable, isDriver, refreshOpenTrips]);
+  }, [isAvailable, isDriver, refreshOpenTrips, roleActive]);
 
   const loadPassengerLocation = useCallback(async (requestPermission: boolean) => {
-    if (isDriver) return;
+    if (!roleActive || isDriver) return;
     setMapLocationLoading(true);
     setMapLocationError('');
     try {
@@ -277,14 +337,14 @@ export function RoleHome({ role }: { role: UserRole }) {
     } finally {
       setMapLocationLoading(false);
     }
-  }, [isDriver]);
+  }, [isDriver, roleActive]);
 
   useEffect(() => {
-    if (!isDriver) void loadPassengerLocation(false);
-  }, [isDriver, loadPassengerLocation]);
+    if (roleActive && !isDriver) void loadPassengerLocation(false);
+  }, [isDriver, loadPassengerLocation, roleActive]);
 
   useEffect(() => {
-    if (isDriver || !activeTrip?.driver_id || !['aceptado', 'en_curso'].includes(activeTrip.status)) {
+    if (!roleActive || isDriver || !activeTrip?.driver_id || !['aceptado', 'en_curso'].includes(activeTrip.status)) {
       setDriverLocation(null);
       return;
     }
@@ -314,7 +374,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       appStateSubscription.remove();
       unsubscribe();
     };
-  }, [activeTrip?.driver_id, activeTrip?.status, isDriver]);
+  }, [activeTrip?.driver_id, activeTrip?.status, isDriver, roleActive]);
 
   const enableDriverTracking = useCallback(async () => {
     setDriverTrackingError('');
@@ -328,7 +388,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   }, []);
 
   useEffect(() => {
-    const shouldTrack = isDriver && isAvailable && ['aceptado', 'en_curso'].includes(activeTrip?.status ?? '');
+    const shouldTrack = roleActive && isDriver && isAvailable && ['aceptado', 'en_curso'].includes(activeTrip?.status ?? '');
     if (!shouldTrack) {
       setDriverTrackingActive(false);
       setDriverTrackingError('');
@@ -341,10 +401,10 @@ export function RoleHome({ role }: { role: UserRole }) {
         setDriverTrackingError('Comparte tu ubicación para que el pasajero pueda seguir tu llegada en el mapa.');
       }
     });
-  }, [activeTrip?.id, activeTrip?.status, isAvailable, isDriver]);
+  }, [activeTrip?.id, activeTrip?.status, isAvailable, isDriver, roleActive]);
 
   useEffect(() => {
-    if (!user?.id || !driverTrackingActive || !isDriver || !isAvailable || !['aceptado', 'en_curso'].includes(activeTrip?.status ?? '')) return;
+    if (!roleActive || !user?.id || !driverTrackingActive || !isDriver || !isAvailable || !['aceptado', 'en_curso'].includes(activeTrip?.status ?? '')) return;
     let updateInFlight = false;
     const publishLocation = async () => {
       if (updateInFlight) return;
@@ -375,7 +435,7 @@ export function RoleHome({ role }: { role: UserRole }) {
       clearInterval(interval);
       appStateSubscription.remove();
     };
-  }, [activeTrip?.status, driverTrackingActive, isAvailable, isDriver, user?.id]);
+  }, [activeTrip?.status, driverTrackingActive, isAvailable, isDriver, roleActive, user?.id]);
 
   const handleAvailability = async () => {
     if (!user?.id) return;
