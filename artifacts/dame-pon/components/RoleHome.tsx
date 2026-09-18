@@ -821,6 +821,7 @@ export function RoleHome({ role }: { role: UserRole }) {
             colors={colors}
             isAvailable={isAvailable}
             driverReady={driverReady}
+            ratingAverage={ratingAverage}
             activeMunicipality={activeMunicipality}
             baseMunicipality={baseMunicipality}
             driverTrips={driverTrips}
@@ -1110,6 +1111,7 @@ function DriverContent({
   colors,
   isAvailable,
   driverReady,
+  ratingAverage,
   activeMunicipality,
   baseMunicipality,
   driverTrips,
@@ -1131,6 +1133,7 @@ function DriverContent({
   colors: ReturnType<typeof useColors>;
   isAvailable: boolean;
   driverReady: boolean;
+  ratingAverage: number | null;
   activeMunicipality: string | null;
   baseMunicipality: string | null;
   driverTrips: Trip[];
@@ -1170,7 +1173,12 @@ function DriverContent({
 
       <View style={styles.statsRow}>
         <Stat label={isAvailable ? 'Solicitudes' : 'Viajes hoy'} value={String(driverTrips.length)} icon="navigation" colors={colors} />
-        <Stat label="Calificación" value="—" icon="star" colors={colors} />
+        <Stat
+          label="Calificación"
+          value={ratingAverage === null ? '—' : `${ratingAverage.toFixed(1)}/5`}
+          icon="star"
+          colors={colors}
+        />
       </View>
 
       <Pressable
