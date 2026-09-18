@@ -35,7 +35,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isReady) return;
-    Appearance.setColorScheme(preference === 'system' ? null : preference);
+    Appearance.setColorScheme(preference === 'system' ? undefined : preference);
   }, [isReady, preference]);
 
   const setPreference = async (nextPreference: ThemePreference) => {
