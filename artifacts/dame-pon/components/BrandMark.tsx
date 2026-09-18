@@ -7,7 +7,11 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <View style={styles.row}>
       <Image
-        source={require('@/assets/images/dame-pon-logo.png')}
+        source={
+          colors.isDark
+            ? require('@/assets/images/dame-pon-logo-dark.png')
+            : require('@/assets/images/dame-pon-logo.png')
+        }
         resizeMode="contain"
         style={[styles.icon, compact && styles.compactIcon]}
       />
