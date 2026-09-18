@@ -1355,6 +1355,7 @@ function TripCompleteScreen({
   score,
   isDriver,
   driverMunicipality,
+  participantDetails,
   onHome,
 }: {
   colors: ReturnType<typeof useColors>;
@@ -1365,6 +1366,7 @@ function TripCompleteScreen({
   score: number | null;
   isDriver: boolean;
   driverMunicipality: string | null;
+  participantDetails: TripParticipantDetails | null;
   onHome: () => void;
 }) {
   if (!trip) return null;
@@ -1383,6 +1385,12 @@ function TripCompleteScreen({
       : 'Otro Pon que suma.';
   const destinationLabel = destination || trip.dropoff_address || 'Destino no registrado';
   const originLabel = origin || 'Municipio no registrado';
+  const participantName = isDriver
+    ? participantDetails?.passenger_name || 'Pasajero'
+    : participantDetails?.driver_name || 'Tu conductor';
+  const participantAvatarUrl = isDriver
+    ? participantDetails?.passenger_avatar_url
+    : participantDetails?.driver_avatar_url;
 
   return (
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={onHome}>
@@ -1430,6 +1438,36 @@ function TripCompleteScreen({
             </View>
           </View>
 
+          <View style={[styles.participantCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <ParticipantAvatar
+              colors={colors}
+              name={participantName}
+              avatarUrl={participantAvatarUrl}
+              fallback={isDriver ? 'P' : 'C'}
+              size={54}
+            />
+            <View style={styles.participantCopy}>
+              <Text style={[styles.participantLabel, { color: colors.mutedForeground }]}>
+                {isDriver ? 'PASAJERO' : 'TE LLEVÓ'}
+              </Text>
+              <Text style={[styles.participantName, { color: colors.foreground }]} numberOfLines={1}>
+                {participantName}
+              </Text>
+              {!isDriver ? (
+                <View style={styles.vehicleSummary}>
+                  <Feather name="truck" size={13} color={colors.primary} />
+                  <Text style={[styles.vehicleSummaryText, { color: colors.mutedForeground }]} numberOfLines={2}>
+                    {formatVehicleSummary(participantDetails)}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.participantSupportingText, { color: colors.mutedForeground }]}>
+                  Gracias por viajar con Dame Pon.
+                </Text>
+              )}
+            </View>
+          </View>
+
           <View style={[styles.completionReviewCard, { backgroundColor: colors.primary }]}>
             <View style={styles.completionReviewIcon}>
               <Feather name="check-circle" size={21} color={colors.primary} />
@@ -1458,6 +1496,65 @@ function TripCompleteScreen({
       </View>
     </Modal>
   );
+}
+
+function ParticipantAvatar({
+  colors,
+  name,
+  avatarUrl,
+  fallback,
+  size,
+}: {
+  colors: ReturnType<typeof useColors>;
+  name: string;
+  avatarUrl?: string | null;
+  fallback: string;
+  size: number;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const initials = getInitials(name, fallback);
+
+  return (
+    <View
+      style={[
+        styles.participantAvatar,
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.secondary },
+      ]}
+    >
+      {avatarUrl && !imageFailed ? (
+        <Image
+          source={{ uri: avatarUrl }}
+          style={{ width: size, height: size, borderRadius: size / 2 }}
+          accessibilityLabel={`Foto de ${name}`}
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <Text style={[styles.participantInitials, { color: colors.primary, fontSize: size * 0.3 }]}>
+          {initials}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function getInitials(name: string, fallback: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return fallback;
+  return words
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
+}
+
+function formatVehicleSummary(details: TripParticipantDetails | null) {
+  if (!details) return 'Vehículo no disponible';
+  const vehicleParts = [
+    [details.vehicle_make, details.vehicle_model].filter(Boolean).join(' '),
+    details.vehicle_color,
+    details.vehicle_plate ? `Tablilla ${details.vehicle_plate}` : null,
+  ].filter(Boolean);
+  return vehicleParts.length ? vehicleParts.join(' · ') : 'Datos del vehículo no disponibles';
 }
 
 function VehicleModal({
