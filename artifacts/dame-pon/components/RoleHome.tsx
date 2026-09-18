@@ -1402,37 +1402,13 @@ function TripCompleteScreen({
           contentContainerStyle={[styles.completionContent, { paddingBottom: insetsBottom + 24 }]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.decisionJourneyVisual, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-            <View style={styles.decisionJourneyHeader}>
-              <Text style={[styles.decisionJourneyLabel, { color: colors.primary }]}>RUTA DE HOY</Text>
-              <Feather name="repeat" size={17} color={colors.primary} />
+          <View style={[styles.completionCelebration, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.completionCelebrationRing, { borderColor: colors.primary }]}>
+              <Feather name="check" size={35} color={colors.primary} />
             </View>
-            <View style={styles.decisionJourneyRoute}>
-              <View style={styles.decisionCity}>
-                <View style={[styles.decisionCityIcon, { backgroundColor: colors.primary }]}>
-                  <Feather name="home" size={17} color={colors.primaryForeground} />
-                </View>
-                <Text style={[styles.decisionCityLabel, { color: colors.mutedForeground }]}>BASE</Text>
-                <Text style={[styles.decisionCityName, { color: colors.foreground }]} numberOfLines={1}>
-                  {baseMunicipality}
-                </Text>
-              </View>
-              <View style={styles.decisionRouteTrack}>
-                <View style={[styles.decisionRouteLine, { backgroundColor: colors.primary }]} />
-                <View style={[styles.decisionRouteArrow, { backgroundColor: colors.background }]}>
-                  <Feather name="arrow-right" size={14} color={colors.primary} />
-                </View>
-              </View>
-              <View style={styles.decisionCity}>
-                <View style={[styles.decisionCityIcon, { backgroundColor: colors.primary }]}>
-                  <Feather name="map-pin" size={17} color={colors.primaryForeground} />
-                </View>
-                <Text style={[styles.decisionCityLabel, { color: colors.mutedForeground }]}>AHORA</Text>
-                <Text style={[styles.decisionCityName, { color: colors.foreground }]} numberOfLines={1}>
-                  {destinationMunicipality}
-                </Text>
-              </View>
-            </View>
+            <View style={[styles.completionSpark, styles.completionSparkOne, { backgroundColor: colors.primary }]} />
+            <View style={[styles.completionSpark, styles.completionSparkTwo, { backgroundColor: colors.primary }]} />
+            <View style={[styles.completionSpark, styles.completionSparkThree, { backgroundColor: colors.primary }]} />
           </View>
           <Text style={[styles.completionEyebrow, { color: colors.primary }]}>VIAJE COMPLETADO</Text>
           <Text style={[styles.completionTitle, { color: colors.foreground }]}>
@@ -1741,13 +1717,37 @@ function MunicipalityDecisionModal({
           contentContainerStyle={[styles.decisionContent, { paddingBottom: insetsBottom + 24 }]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.completionCelebration, { backgroundColor: colors.secondary }]}>
-            <View style={[styles.completionCelebrationRing, { borderColor: colors.primary }]}>
-              <Feather name="navigation" size={33} color={colors.primary} />
+          <View style={[styles.decisionJourneyVisual, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+            <View style={styles.decisionJourneyHeader}>
+              <Text style={[styles.decisionJourneyLabel, { color: colors.primary }]}>RUTA DE HOY</Text>
+              <Feather name="repeat" size={17} color={colors.primary} />
             </View>
-            <View style={[styles.completionSpark, styles.completionSparkOne, { backgroundColor: colors.primary }]} />
-            <View style={[styles.completionSpark, styles.completionSparkTwo, { backgroundColor: colors.primary }]} />
-            <View style={[styles.completionSpark, styles.completionSparkThree, { backgroundColor: colors.primary }]} />
+            <View style={styles.decisionJourneyRoute}>
+              <View style={styles.decisionCity}>
+                <View style={[styles.decisionCityIcon, { backgroundColor: colors.primary }]}>
+                  <Feather name="home" size={17} color={colors.primaryForeground} />
+                </View>
+                <Text style={[styles.decisionCityLabel, { color: colors.mutedForeground }]}>BASE</Text>
+                <Text style={[styles.decisionCityName, { color: colors.foreground }]} numberOfLines={1}>
+                  {baseMunicipality}
+                </Text>
+              </View>
+              <View style={styles.decisionRouteTrack}>
+                <View style={[styles.decisionRouteLine, { backgroundColor: colors.primary }]} />
+                <View style={[styles.decisionRouteArrow, { backgroundColor: colors.background }]}>
+                  <Feather name="arrow-right" size={14} color={colors.primary} />
+                </View>
+              </View>
+              <View style={styles.decisionCity}>
+                <View style={[styles.decisionCityIcon, { backgroundColor: colors.primary }]}>
+                  <Feather name="map-pin" size={17} color={colors.primaryForeground} />
+                </View>
+                <Text style={[styles.decisionCityLabel, { color: colors.mutedForeground }]}>AHORA</Text>
+                <Text style={[styles.decisionCityName, { color: colors.foreground }]} numberOfLines={1}>
+                  {destinationMunicipality}
+                </Text>
+              </View>
+            </View>
           </View>
           <Text style={[styles.completionEyebrow, { color: colors.primary }]}>SIGUIENTE PASO</Text>
           <Text style={[styles.completionTitle, { color: colors.foreground }]}>
