@@ -207,7 +207,6 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     alignItems: 'center',
-    alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     position: 'absolute',
