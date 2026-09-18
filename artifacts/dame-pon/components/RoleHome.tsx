@@ -1402,13 +1402,37 @@ function TripCompleteScreen({
           contentContainerStyle={[styles.completionContent, { paddingBottom: insetsBottom + 24 }]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.completionCelebration, { backgroundColor: colors.secondary }]}>
-            <View style={[styles.completionCelebrationRing, { borderColor: colors.primary }]}>
-              <Feather name="navigation" size={33} color={colors.primary} />
+          <View style={[styles.decisionJourneyVisual, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+            <View style={styles.decisionJourneyHeader}>
+              <Text style={[styles.decisionJourneyLabel, { color: colors.primary }]}>RUTA DE HOY</Text>
+              <Feather name="repeat" size={17} color={colors.primary} />
             </View>
-            <View style={[styles.completionSpark, styles.completionSparkOne, { backgroundColor: colors.primary }]} />
-            <View style={[styles.completionSpark, styles.completionSparkTwo, { backgroundColor: colors.primary }]} />
-            <View style={[styles.completionSpark, styles.completionSparkThree, { backgroundColor: colors.primary }]} />
+            <View style={styles.decisionJourneyRoute}>
+              <View style={styles.decisionCity}>
+                <View style={[styles.decisionCityIcon, { backgroundColor: colors.primary }]}>
+                  <Feather name="home" size={17} color={colors.primaryForeground} />
+                </View>
+                <Text style={[styles.decisionCityLabel, { color: colors.mutedForeground }]}>BASE</Text>
+                <Text style={[styles.decisionCityName, { color: colors.foreground }]} numberOfLines={1}>
+                  {baseMunicipality}
+                </Text>
+              </View>
+              <View style={styles.decisionRouteTrack}>
+                <View style={[styles.decisionRouteLine, { backgroundColor: colors.primary }]} />
+                <View style={[styles.decisionRouteArrow, { backgroundColor: colors.background }]}>
+                  <Feather name="arrow-right" size={14} color={colors.primary} />
+                </View>
+              </View>
+              <View style={styles.decisionCity}>
+                <View style={[styles.decisionCityIcon, { backgroundColor: colors.primary }]}>
+                  <Feather name="map-pin" size={17} color={colors.primaryForeground} />
+                </View>
+                <Text style={[styles.decisionCityLabel, { color: colors.mutedForeground }]}>AHORA</Text>
+                <Text style={[styles.decisionCityName, { color: colors.foreground }]} numberOfLines={1}>
+                  {destinationMunicipality}
+                </Text>
+              </View>
+            </View>
           </View>
           <Text style={[styles.completionEyebrow, { color: colors.primary }]}>VIAJE COMPLETADO</Text>
           <Text style={[styles.completionTitle, { color: colors.foreground }]}>
@@ -2146,6 +2170,15 @@ const styles = StyleSheet.create({
   completionRouteLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 10, letterSpacing: 1 },
   completionRouteValue: { fontFamily: 'Inter_600SemiBold', fontSize: 14 },
   completionRouteConnector: { width: 1, height: 13, marginLeft: 18 },
+  participantCard: { width: '100%', borderWidth: 1, borderRadius: 20, padding: 15, flexDirection: 'row', alignItems: 'center', gap: 13 },
+  participantAvatar: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  participantInitials: { fontFamily: 'Inter_700Bold' },
+  participantCopy: { flex: 1, gap: 3 },
+  participantLabel: { fontFamily: 'Inter_700Bold', fontSize: 10, letterSpacing: 1 },
+  participantName: { fontFamily: 'Inter_700Bold', fontSize: 17 },
+  participantSupportingText: { fontFamily: 'Inter_400Regular', fontSize: 11, lineHeight: 15 },
+  vehicleSummary: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 2 },
+  vehicleSummaryText: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 11, lineHeight: 15 },
   completionReviewCard: { width: '100%', borderRadius: 20, padding: 15, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 1 },
   completionReviewIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   completionReviewCopy: { flex: 1, gap: 3 },
@@ -2156,4 +2189,15 @@ const styles = StyleSheet.create({
   completionFooter: { fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 1 },
   completionHomeButton: { width: '100%', minHeight: 54, borderRadius: 16, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 'auto' },
   completionHomeButtonText: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 14 },
+  decisionJourneyVisual: { width: '100%', borderWidth: 1, borderRadius: 22, padding: 16, gap: 16, marginTop: 7 },
+  decisionJourneyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  decisionJourneyLabel: { fontFamily: 'Inter_700Bold', fontSize: 10, letterSpacing: 1.4 },
+  decisionJourneyRoute: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  decisionCity: { flex: 1, gap: 5 },
+  decisionCityIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  decisionCityLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 9, letterSpacing: 1 },
+  decisionCityName: { fontFamily: 'Inter_700Bold', fontSize: 14 },
+  decisionRouteTrack: { width: 34, height: 58, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  decisionRouteLine: { position: 'absolute', top: 28, left: 0, right: 0, height: 2, borderRadius: 2 },
+  decisionRouteArrow: { width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
 });
