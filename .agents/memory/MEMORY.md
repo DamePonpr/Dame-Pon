@@ -6,3 +6,4 @@
 - [Reciprocal trip ratings](reciprocal-trip-ratings.md) — rating ownership is `(trip_id, rated_by)`; sent, received, pending, and averages must be user-scoped.
 - [Expo theme compatibility](expo-theme-compatibility.md) — resolve persisted theme state in app code; do not assume Appearance.setColorScheme exists on every Expo target.
 - [NativeWind with Expo and pnpm](nativewind-expo-pnpm.md) — expose CSS interop directly to Metro and configure NativeWind v4 as a Babel preset.
+- [Android APK workflow compatibility](android-apk-workflow.md) — Expo release builds need direct Babel dependencies; legacy clipboard needs Gradle and RN 0.86 CI patches.
