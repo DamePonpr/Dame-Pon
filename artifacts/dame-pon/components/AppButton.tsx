@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
+import { radii, spacing, typography } from '@/constants/designSystem';
 
 interface AppButtonProps {
   label: string;
@@ -63,16 +64,16 @@ export function AppButton({
 const styles = StyleSheet.create({
   button: {
     minHeight: 54,
-    borderRadius: 16,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 22,
+    paddingHorizontal: spacing.xl,
   },
   label: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 15,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.label,
     letterSpacing: 0.1,
   },
   pressed: {

@@ -12,6 +12,8 @@
  * The useColors() hook will automatically pick it up.
  */
 
+import { brand } from '@/constants/designSystem';
+
 const colors = {
   light: {
     text: '#0B1C26',
@@ -35,7 +37,7 @@ const colors = {
     accent: '#DCE9EE',
     accentForeground: '#0B1C26',
 
-    destructive: '#C73E4D',
+    destructive: brand.danger,
     destructiveForeground: '#ffffff',
 
     border: '#D6E1E6',
@@ -43,37 +45,38 @@ const colors = {
   },
 
   dark: {
-    text: '#F4F8FA',
-    tint: '#F4F8FA',
+    text: brand.white,
+    tint: brand.white,
 
-    background: '#0B151B',
-    foreground: '#F4F8FA',
+    background: brand.navy,
+    foreground: brand.white,
 
-    card: '#14242C',
-    cardForeground: '#F4F8FA',
+    card: 'rgba(255,255,255,0.08)',
+    cardForeground: brand.white,
 
-    primary: '#1C4050',
-    primaryForeground: '#F4F8FA',
+    primary: brand.white,
+    primaryForeground: brand.navy,
 
-    secondary: '#20353F',
-    secondaryForeground: '#F4F8FA',
+    secondary: 'rgba(255,255,255,0.12)',
+    secondaryForeground: brand.white,
 
-    muted: '#1A2B33',
-    mutedForeground: '#B7C8CF',
+    muted: 'rgba(255,255,255,0.06)',
+    mutedForeground: 'rgba(255,255,255,0.72)',
 
-    accent: '#29434E',
-    accentForeground: '#F4F8FA',
+    accent: 'rgba(255,255,255,0.16)',
+    accentForeground: brand.white,
 
-    destructive: '#FF8C98',
-    destructiveForeground: '#281014',
+    destructive: '#FF9DA7',
+    destructiveForeground: brand.navy,
 
-    border: '#30464F',
-    input: '#30464F',
+    border: 'rgba(255,255,255,0.20)',
+    input: 'rgba(255,255,255,0.12)',
   },
 
   // Border radius (in px). Sync from the sibling web artifact's --radius
   // CSS variable. This value applies to cards, buttons, inputs, and modals.
   radius: 18,
+  star: brand.star,
 };
 
 export default colors;

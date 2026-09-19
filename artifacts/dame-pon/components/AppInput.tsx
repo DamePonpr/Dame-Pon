@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
+import { radii, typography } from '@/constants/designSystem';
 
 interface AppInputProps extends TextInputProps {
   label: string;
@@ -30,19 +31,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 13,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.body,
   },
   input: {
     minHeight: 54,
     borderWidth: 1,
-    borderRadius: 15,
+    borderRadius: radii.md,
     paddingHorizontal: 16,
-    fontFamily: 'Inter_400Regular',
-    fontSize: 15,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.label,
   },
   error: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.caption,
   },
 });
