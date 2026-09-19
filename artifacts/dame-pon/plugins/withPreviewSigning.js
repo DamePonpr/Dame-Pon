@@ -3,6 +3,7 @@ const { withAppBuildGradle } = require('@expo/config-plugins');
 const SIGNING_CONFIG = `
     dameponPreview {
         storeFile file("dame-pon-preview.keystore")
+        storeType "PKCS12"
         storePassword "damepon-preview"
         keyAlias "damepon-preview"
         keyPassword "damepon-preview"
