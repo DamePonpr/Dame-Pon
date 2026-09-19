@@ -1,7 +1,9 @@
 import { Tabs } from "expo-router";
 import { Image, ImageSourcePropType, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { icons } from "@/constants";
+import { useColors } from "@/hooks/useColors";
 
 const TabIcon = ({
   source,
@@ -11,49 +13,58 @@ const TabIcon = ({
   focused: boolean;
 }) => (
   <View
-    className={`flex flex-row justify-center items-center rounded-full ${focused ? "bg-general-300" : ""}`}
+    style={{
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: focused ? "#17304D" : "transparent",
+    }}
   >
-    <View
-      className={`rounded-full w-12 h-12 items-center justify-center ${focused ? "bg-general-400" : ""}`}
-    >
-      <Image
-        source={source}
-        tintColor="white"
-        resizeMode="contain"
-        className="w-7 h-7"
-      />
-    </View>
+    <Image source={source} tintColor={focused ? "#F6C453" : "#FFFFFF"} resizeMode="contain" style={{ width: 21, height: 21 }} />
   </View>
 );
 
 export default function Layout() {
+  const insets = useSafeAreaInsets();
+  const colors = useColors();
   return (
     <Tabs
       initialRouteName="home"
       screenOptions={{
-        tabBarActiveTintColor: "white",
-        tabBarInactiveTintColor: "white",
-        tabBarShowLabel: false,
+        tabBarActiveTintColor: "#F6C453",
+        tabBarInactiveTintColor: "rgba(255,255,255,0.70)",
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontFamily: "Jakarta-SemiBold",
+          fontSize: 11,
+          marginTop: -1,
+          marginBottom: 2,
+        },
         tabBarStyle: {
-          backgroundColor: "#333333",
-          borderRadius: 50,
-          paddingBottom: 0, // ios only
+          backgroundColor: "#081321",
+          borderTopWidth: 0,
+          borderRadius: 24,
+          paddingTop: 8,
+          paddingBottom: insets.bottom,
+          marginHorizontal: 14,
+          marginBottom: Math.max(insets.bottom, 10),
+          height: 72 + insets.bottom,
           overflow: "hidden",
-          marginHorizontal: 20,
-          marginBottom: 20,
-          height: 78,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexDirection: "row",
           position: "absolute",
         },
+        tabBarItemStyle: { paddingVertical: 0 },
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.foreground,
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
           title: "Home",
+          tabBarLabel: "Inicio",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
             <TabIcon source={icons.home} focused={focused} />
@@ -64,6 +75,7 @@ export default function Layout() {
         name="rides"
         options={{
           title: "Rides",
+          tabBarLabel: "Viajes",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
             <TabIcon source={icons.list} focused={focused} />
@@ -74,6 +86,7 @@ export default function Layout() {
         name="chat"
         options={{
           title: "Chat",
+          tabBarLabel: "Chat",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
             <TabIcon source={icons.chat} focused={focused} />
@@ -84,6 +97,7 @@ export default function Layout() {
         name="profile"
         options={{
           title: "Profile",
+          tabBarLabel: "Perfil",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
             <TabIcon source={icons.profile} focused={focused} />

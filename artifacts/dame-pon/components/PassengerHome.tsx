@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandMark } from '@/components/BrandMark';
@@ -22,10 +23,7 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const home = usePassengerHome(userId, onSessionExpired);
-  const [destination, setDestination] = require('react').useState<LocationValue | null>(null) as [
-    LocationValue | null,
-    (value: LocationValue | null) => void,
-  ];
+  const [destination, setDestination] = useState<LocationValue | null>(null);
   const firstName = profile.full_name?.trim().split(' ')[0] || 'de nuevo';
 
   if (home.completion) {

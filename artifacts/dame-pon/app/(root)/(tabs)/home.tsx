@@ -8,7 +8,8 @@ import { useColors } from "@/hooks/useColors";
 
 export default function Home() {
   const colors = useColors();
-  const { profile, session, isLoading, authIssue } = useAuth();
+  const auth = useAuth();
+  const { profile, session, isLoading, authIssue } = auth;
 
   if (isLoading || (session && !profile && !authIssue)) {
     return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}><ActivityIndicator color={colors.primary} /></View>;
@@ -19,8 +20,8 @@ export default function Home() {
     <Home
       profile={profile}
       userId={session.user.id}
-      onSignOut={() => void useAuth().signOut()}
-      onSessionExpired={() => void useAuth().expireSession()}
+      onSignOut={() => void auth.signOut()}
+      onSessionExpired={() => void auth.expireSession()}
     />
   );
 }
