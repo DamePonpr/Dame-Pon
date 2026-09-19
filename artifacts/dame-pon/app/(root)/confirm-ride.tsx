@@ -1,37 +1,22 @@
 import { router } from "expo-router";
-import { FlatList, View } from "react-native";
+import { Text, View } from "react-native";
 
 import CustomButton from "@/components/CustomButton";
-import DriverCard from "@/components/DriverCard";
 import RideLayout from "@/components/RideLayout";
-import { useDriverStore } from "@/store";
+import { useLocationStore } from "@/store";
 
-const ConfirmRide = () => {
-  const { drivers, selectedDriver, setSelectedDriver } = useDriverStore();
-
+export default function ConfirmRide() {
+  const { userLocation, destinationLocation } = useLocationStore();
   return (
-    <RideLayout title={"Choose a Rider"} snapPoints={["65%", "85%"]}>
-      <FlatList
-        data={drivers}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item, index }) => (
-          <DriverCard
-            item={item}
-            selected={selectedDriver!}
-            setSelected={() => setSelectedDriver(item.id!)}
-          />
-        )}
-        ListFooterComponent={() => (
-          <View className="mx-5 mt-10">
-            <CustomButton
-              title="Select Ride"
-              onPress={() => router.push("/(root)/book-ride")}
-            />
-          </View>
-        )}
-      />
+    <RideLayout title="Confirma tu viaje">
+      <View className="rounded-3xl bg-general-600 p-5 mt-4">
+        <Text className="text-xs font-JakartaBold text-general-200">ORIGEN</Text>
+        <Text className="text-base font-JakartaSemiBold mt-1">{userLocation?.address ?? "No seleccionado"}</Text>
+        <Text className="text-xs font-JakartaBold text-general-200 mt-5">DESTINO</Text>
+        <Text className="text-base font-JakartaSemiBold mt-1">{destinationLocation?.address ?? "No seleccionado"}</Text>
+      </View>
+      <Text className="text-base font-JakartaRegular text-general-200 mt-5">La solicitud se publicará para conductores aprobados del municipio activo. No se realiza ningún cobro desde esta pantalla.</Text>
+      <CustomButton title="Continuar" onPress={() => router.push("/(root)/book-ride")} className="mt-6" />
     </RideLayout>
   );
-};
-
-export default ConfirmRide;
+}

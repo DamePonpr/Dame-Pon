@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Text, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 
 import CustomButton from "@/components/CustomButton";
 import GoogleTextInput from "@/components/GoogleTextInput";
@@ -7,47 +7,29 @@ import RideLayout from "@/components/RideLayout";
 import { icons } from "@/constants";
 import { useLocationStore } from "@/store";
 
-const FindRide = () => {
-  const {
-    userAddress,
-    destinationAddress,
-    setDestinationLocation,
-    setUserLocation,
-  } = useLocationStore();
-
+export default function FindRide() {
+  const { userLocation, destinationLocation, setDestinationLocation, setUserLocation } = useLocationStore();
   return (
-    <RideLayout title="Ride">
+    <RideLayout title="Solicitar viaje">
       <View className="my-3">
-        <Text className="text-lg font-JakartaSemiBold mb-3">From</Text>
-
-        <GoogleTextInput
-          icon={icons.target}
-          initialLocation={userAddress!}
-          containerStyle="bg-neutral-100"
-          textInputBackgroundColor="#f5f5f5"
-          handlePress={(location) => setUserLocation(location)}
-        />
+        <Text className="text-lg font-JakartaSemiBold mb-3">Desde</Text>
+        <GoogleTextInput icon={icons.target} initialLocation={userLocation?.address ?? undefined} containerStyle="bg-neutral-100" textInputBackgroundColor="#f5f5f5" handlePress={setUserLocation} />
       </View>
-
       <View className="my-3">
-        <Text className="text-lg font-JakartaSemiBold mb-3">To</Text>
-
-        <GoogleTextInput
-          icon={icons.map}
-          initialLocation={destinationAddress!}
-          containerStyle="bg-neutral-100"
-          textInputBackgroundColor="transparent"
-          handlePress={(location) => setDestinationLocation(location)}
-        />
+        <Text className="text-lg font-JakartaSemiBold mb-3">Hasta</Text>
+        <GoogleTextInput icon={icons.map} initialLocation={destinationLocation?.address ?? undefined} containerStyle="bg-neutral-100" textInputBackgroundColor="#f5f5f5" handlePress={setDestinationLocation} />
       </View>
-
       <CustomButton
-        title="Find Now"
-        onPress={() => router.push(`/(root)/confirm-ride`)}
+        title="Revisar solicitud"
+        onPress={() => {
+          if (!userLocation || !destinationLocation) {
+            Alert.alert("Selecciona ambas ubicaciones", "El origen y el destino deben estar dentro de Puerto Rico.");
+            return;
+          }
+          router.push("/(root)/confirm-ride");
+        }}
         className="mt-5"
       />
     </RideLayout>
   );
-};
-
-export default FindRide;
+}
