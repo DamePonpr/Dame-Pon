@@ -7,7 +7,7 @@ import { useColors } from '@/hooks/useColors';
 import { iconSizes, radii, spacing, typography } from '@/constants/designSystem';
 
 export interface RideLayoutProps {
-  map: ReactNode;
+  map?: ReactNode;
   children: ReactNode;
   title?: string;
   snapPoints?: string[];

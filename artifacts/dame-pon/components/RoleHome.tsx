@@ -834,7 +834,7 @@ export function RoleHome({ role }: { role: UserRole }) {
 
   if (!roleActive) {
     const correctRoute = routeForRole(profile?.role);
-    return <Redirect href={correctRoute ?? '/auth/login'} />;
+    return <Redirect href={correctRoute ?? '/(auth)/sign-in'} />;
   }
 
   const usePassengerRideLayout = !isDriver
