@@ -81,9 +81,6 @@
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-modal": "14.0.0-rc.1",
     "react-native-swiper": "^1.6.0",
-    "zustand": "^5.0.15",
-    "expo": "~57.0.20",
-    "react": "19.2.3",
-    "react-native": "0.86.3"
+    "zustand": "^5.0.15"
   }
 }
