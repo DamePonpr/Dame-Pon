@@ -83,6 +83,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [driverTrips, setDriverTrips] = useState<Trip[]>([]);
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [showDestination, setShowDestination] = useState(false);
+  const [showTripConfirmation, setShowTripConfirmation] = useState(false);
   const [showVehicle, setShowVehicle] = useState(false);
   const [showMunicipalityPicker, setShowMunicipalityPicker] = useState(false);
   const [showActiveMunicipalityPicker, setShowActiveMunicipalityPicker] = useState(false);
@@ -167,6 +168,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     setDriverTrips([]);
     setActiveTrip(null);
     setShowDestination(false);
+    setShowTripConfirmation(false);
     setShowVehicle(false);
     setShowMunicipalityPicker(false);
     setShowActiveMunicipalityPicker(false);
@@ -649,6 +651,18 @@ export function RoleHome({ role }: { role: UserRole }) {
       setLocationError('Espera a que podamos confirmar tu ubicación antes de solicitar el viaje.');
       return;
     }
+    setRequestError('');
+    const selectedMunicipality = municipalities.find(({ nombre }) => nombre === destinationMunicipality);
+    if (!selectedMunicipality) {
+      setRequestError('Escoge el municipio donde termina tu viaje.');
+      return;
+    }
+    setShowDestination(false);
+    setShowTripConfirmation(true);
+  };
+
+  const handleConfirmTrip = async () => {
+    if (!user?.id || !destination.trim() || !destinationMunicipality || !pickupCoordinates) return;
     setRequestingTrip(true);
     setRequestError('');
     const selectedMunicipality = municipalities.find(({ nombre }) => nombre === destinationMunicipality);
@@ -676,6 +690,7 @@ export function RoleHome({ role }: { role: UserRole }) {
     setDestination('');
     setDestinationMunicipality('');
     setDestinationSearch('');
+    setShowTripConfirmation(false);
     setShowDestination(false);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -1026,6 +1041,21 @@ export function RoleHome({ role }: { role: UserRole }) {
         onClose={() => setShowDestination(false)}
         onRetryLocation={() => void preparePickupLocation()}
         onSubmit={handleRequestTrip}
+      />
+      <TripConfirmationModal
+        colors={colors}
+        insetsBottom={insets.bottom}
+        visible={showTripConfirmation}
+        destination={destination}
+        municipality={destinationMunicipality}
+        loading={requestingTrip}
+        error={requestError}
+        onClose={() => setShowTripConfirmation(false)}
+        onEdit={() => {
+          setShowTripConfirmation(false);
+          setShowDestination(true);
+        }}
+        onConfirm={() => void handleConfirmTrip()}
       />
       <TripCompleteScreen
         colors={colors}
@@ -1638,6 +1668,58 @@ function DriverContent({
         </View>
       ) : null}
     </>
+  );
+}
+
+function TripConfirmationModal({
+  colors,
+  insetsBottom,
+  visible,
+  destination,
+  municipality,
+  loading,
+  error,
+  onClose,
+  onEdit,
+  onConfirm,
+}: {
+  colors: ReturnType<typeof useColors>;
+  insetsBottom: number;
+  visible: boolean;
+  destination: string;
+  municipality: string;
+  loading: boolean;
+  error: string;
+  onClose: () => void;
+  onEdit: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable
+          style={[styles.modalCard, { backgroundColor: colors.background, paddingBottom: insetsBottom + 22 }]}
+          onPress={(event) => event.stopPropagation()}
+        >
+          <View style={styles.modalHandle} />
+          <Text style={[styles.modalTitle, { color: colors.foreground }]}>Confirma tu viaje</Text>
+          <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+            Revisa el destino antes de reservar. Buscaremos un conductor disponible en la zona.
+          </Text>
+          <View style={[styles.confirmationRoute, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.confirmationDot, { backgroundColor: colors.primary }]} />
+            <View style={styles.confirmationCopy}>
+              <Text style={[styles.confirmationLabel, { color: colors.mutedForeground }]}>DESTINO</Text>
+              <Text style={[styles.confirmationValue, { color: colors.foreground }]}>{destination}</Text>
+              <Text style={[styles.confirmationMunicipality, { color: colors.mutedForeground }]}>{municipality}</Text>
+            </View>
+          </View>
+          {error ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{error}</Text> : null}
+          <AppButton label="Reservar viaje" onPress={onConfirm} loading={loading} testID="reserve-trip" />
+          <AppButton label="Cambiar destino" onPress={onEdit} variant="ghost" disabled={loading} />
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -2460,6 +2542,12 @@ const styles = StyleSheet.create({
   profileRole: { fontFamily: 'Inter_400Regular', fontSize: 14 },
   profileAction: { alignItems: 'center', borderRadius: 14, flexDirection: 'row', gap: 8, marginTop: 12, paddingHorizontal: 15, paddingVertical: 12 },
   profileActionText: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
+  confirmationRoute: { alignItems: 'center', borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 16 },
+  confirmationDot: { borderRadius: 6, height: 12, width: 12 },
+  confirmationCopy: { flex: 1, gap: 4 },
+  confirmationLabel: { fontFamily: 'Inter_700Bold', fontSize: 10, letterSpacing: 1.1 },
+  confirmationValue: { fontFamily: 'Inter_600SemiBold', fontSize: 16, lineHeight: 21 },
+  confirmationMunicipality: { fontFamily: 'Inter_400Regular', fontSize: 13 },
   header: { paddingHorizontal: 22, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
