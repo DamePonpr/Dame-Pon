@@ -58,7 +58,7 @@ export default function GoogleTextInput({ icon, initialLocation, containerStyle,
   }, [initialLocation, query]);
 
   return (
-    <View style={[styles.wrapper, { backgroundColor: textInputBackgroundColor ?? colors.card, borderColor: colors.border }]} className={containerStyle}>
+    <View style={[styles.wrapper, { backgroundColor: textInputBackgroundColor ?? colors.card, borderColor: colors.border }, containerStyle]}>
       <View style={styles.inputRow}>
         <Image source={icon ?? icons.search} style={styles.icon} resizeMode="contain" />
         <TextInput

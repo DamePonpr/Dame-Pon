@@ -1,15 +1,19 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
 import { InlineNotice } from "@/components/InlineNotice";
 import { useAuth } from "@/context/AuthContext";
+import { useColors } from "@/hooks/useColors";
 import type { UserRole } from "@/lib/roles";
-import { icons, images } from "@/constants";
+import { icons } from "@/constants";
+
+const logo = require("@/assets/images/dame-pon-logo.png");
 
 export default function SignUp() {
+  const colors = useColors();
   const { signUp } = useAuth();
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", baseMunicipality: "" });
   const [role, setRole] = useState<UserRole>("pasajero");
@@ -47,24 +51,25 @@ export default function SignUp() {
   }
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="bg-white">
-      <View className="flex-1 bg-white">
-        <View className="relative w-full h-[220px]">
-          <Image source={images.signUpCar} className="z-0 w-full h-[220px]" resizeMode="cover" />
-          <Text className="text-2xl text-black font-JakartaSemiBold absolute bottom-5 left-5">Crea tu cuenta</Text>
+    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.scrollContent}>
+      <View style={[styles.screen, { backgroundColor: colors.background }]}>
+        <View style={[styles.hero, { backgroundColor: colors.background }]}>
+          <Image source={logo} style={styles.heroLogo} resizeMode="contain" />
+          <Text style={[styles.heroTitle, { color: colors.foreground }]}>Crea tu cuenta</Text>
+          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>Elige cómo quieres usar Dame Pon</Text>
         </View>
-        <View className="p-5">
+        <View style={styles.form}>
           <InputField label="Nombre completo" placeholder="Tu nombre" icon={icons.person} value={form.name} onChangeText={(value) => setForm({ ...form, name: value })} />
           <InputField label="Correo electrónico" placeholder="tu@correo.com" icon={icons.email} keyboardType="email-address" autoCapitalize="none" value={form.email} onChangeText={(value) => setForm({ ...form, email: value })} />
           <InputField label="Teléfono" placeholder="787-000-0000" icon={icons.person} keyboardType="phone-pad" value={form.phone} onChangeText={(value) => setForm({ ...form, phone: value })} />
           <InputField label="Contraseña" placeholder="••••••••" icon={icons.lock} secureTextEntry value={form.password} onChangeText={(value) => setForm({ ...form, password: value })} />
-          <Text className="text-base font-JakartaSemiBold mt-2 mb-3">Quiero usar Dame Pon como</Text>
-          <View className="flex-row gap-3">
-            <CustomButton title="Pasajero" bgVariant={role === "pasajero" ? "primary" : "outline"} textVariant={role === "pasajero" ? "default" : "secondary"} onPress={() => setRole("pasajero")} className="flex-1" />
-            <CustomButton title="Conductor" bgVariant={role === "conductor" ? "primary" : "outline"} textVariant={role === "conductor" ? "default" : "secondary"} onPress={() => setRole("conductor")} className="flex-1" />
+          <Text style={[styles.roleLabel, { color: colors.foreground }]}>Quiero usar Dame Pon como</Text>
+          <View style={styles.roleRow}>
+            <CustomButton title="Pasajero" bgVariant={role === "pasajero" ? "primary" : "outline"} textVariant={role === "pasajero" ? "default" : "secondary"} onPress={() => setRole("pasajero")} style={styles.roleButton} />
+            <CustomButton title="Conductor" bgVariant={role === "conductor" ? "primary" : "outline"} textVariant={role === "conductor" ? "default" : "secondary"} onPress={() => setRole("conductor")} style={styles.roleButton} />
           </View>
           {role === "conductor" ? <InputField label="Municipio base" placeholder="Ej. Bayamón" icon={icons.map} value={form.baseMunicipality} onChangeText={(value) => setForm({ ...form, baseMunicipality: value })} /> : null}
-          <CustomButton title="Crear cuenta" onPress={() => void submit()} loading={loading} className="mt-4" />
+          <CustomButton title="Crear cuenta" onPress={() => void submit()} loading={loading} style={styles.button} />
           {notice ? (
             <InlineNotice
               title={notice.title}
@@ -73,11 +78,26 @@ export default function SignUp() {
               onAction={notice.action ? () => router.replace("/(auth)/sign-in") : undefined}
             />
           ) : null}
-          <Link href="/sign-in" className="text-lg text-center text-general-200 mt-10">
-            ¿Ya tienes una cuenta? <Text className="text-primary-500">Inicia sesión</Text>
+          <Link href="/sign-in" style={[styles.link, { color: colors.mutedForeground }]}>
+            ¿Ya tienes una cuenta? <Text style={{ color: colors.primary }}>Inicia sesión</Text>
           </Link>
         </View>
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: { flexGrow: 1 },
+  screen: { flex: 1, paddingBottom: 24 },
+  hero: { alignItems: "center", minHeight: 220, justifyContent: "center", paddingHorizontal: 24, paddingTop: 12 },
+  heroLogo: { height: 96, marginBottom: 14, width: 96 },
+  heroTitle: { fontFamily: "Jakarta-SemiBold", fontSize: 25, textAlign: "center" },
+  heroSubtitle: { fontFamily: "Jakarta", fontSize: 14, marginTop: 8, textAlign: "center" },
+  form: { padding: 20 },
+  roleLabel: { fontFamily: "Jakarta-SemiBold", fontSize: 16, marginBottom: 12, marginTop: 2 },
+  roleRow: { flexDirection: "row", gap: 12 },
+  roleButton: { flex: 1, paddingHorizontal: 10 },
+  button: { marginTop: 4 },
+  link: { fontFamily: "Jakarta-SemiBold", fontSize: 16, marginTop: 28, textAlign: "center" },
+});

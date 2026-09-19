@@ -1,16 +1,19 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import CustomButton from "@/components/CustomButton";
 import { BuildStamp } from "@/components/BuildStamp";
+import { useColors } from "@/hooks/useColors";
 import InputField from "@/components/InputField";
 import { InlineNotice } from "@/components/InlineNotice";
 import { useAuth } from "@/context/AuthContext";
-import { icons, images } from "@/constants";
-import { routeForRole } from "@/lib/roleRouting";
+import { icons } from "@/constants";
+
+const logo = require("@/assets/images/dame-pon-logo.png");
 
 export default function SignIn() {
+  const colors = useColors();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,23 +36,37 @@ export default function SignIn() {
   }
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="bg-white">
-      <View className="flex-1 bg-white">
-        <View className="relative w-full h-[250px]">
-          <Image source={images.signUpCar} className="z-0 w-full h-[250px]" resizeMode="cover" />
-          <Text className="text-2xl text-black font-JakartaSemiBold absolute bottom-5 left-5">Bienvenido a Dame Pon</Text>
+    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.scrollContent}>
+      <View style={[styles.screen, { backgroundColor: colors.background }]}>
+        <View style={[styles.hero, { backgroundColor: colors.background }]}>
+          <Image source={logo} style={styles.heroLogo} resizeMode="contain" />
+          <Text style={[styles.heroTitle, { color: colors.foreground }]}>Bienvenido a Dame Pon</Text>
+          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>Viajes claros y seguros en tu municipio</Text>
         </View>
-        <View className="p-5">
+        <View style={styles.form}>
           <InputField label="Correo electrónico" placeholder="tu@correo.com" icon={icons.email} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
           <InputField label="Contraseña" placeholder="••••••••" icon={icons.lock} secureTextEntry value={password} onChangeText={setPassword} />
-          <CustomButton title="Iniciar sesión" onPress={() => void submit()} loading={loading} className="mt-4" />
+          <CustomButton title="Iniciar sesión" onPress={() => void submit()} loading={loading} style={styles.button} />
           {notice ? <InlineNotice title={notice.title} message={notice.message} /> : null}
-          <Link href="/sign-up" className="text-lg text-center text-general-200 mt-10">
-            ¿No tienes una cuenta? <Text className="text-primary-500">Regístrate</Text>
+          <Link href="/sign-up" style={[styles.link, { color: colors.mutedForeground }]}>
+            ¿No tienes una cuenta? <Text style={{ color: colors.primary }}>Regístrate</Text>
           </Link>
         </View>
-        <BuildStamp />
+        <View style={styles.stamp}><BuildStamp /></View>
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: { flexGrow: 1 },
+  screen: { flex: 1, paddingBottom: 24 },
+  hero: { alignItems: "center", minHeight: 250, justifyContent: "center", paddingHorizontal: 24, paddingTop: 18 },
+  heroLogo: { height: 116, marginBottom: 18, width: 116 },
+  heroTitle: { fontFamily: "Jakarta-SemiBold", fontSize: 25, textAlign: "center" },
+  heroSubtitle: { fontFamily: "Jakarta", fontSize: 14, marginTop: 8, textAlign: "center" },
+  form: { padding: 20 },
+  button: { marginTop: 4 },
+  link: { fontFamily: "Jakarta-SemiBold", fontSize: 16, marginTop: 28, textAlign: "center" },
+  stamp: { marginTop: 4 },
+});

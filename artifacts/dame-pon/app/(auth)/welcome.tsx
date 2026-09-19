@@ -1,53 +1,53 @@
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Swiper from "react-native-swiper";
 
 import CustomButton from "@/components/CustomButton";
 import { onboarding } from "@/constants";
+import { useColors } from "@/hooks/useColors";
+
+const logo = require("@/assets/images/dame-pon-logo.png");
 
 const Home = () => {
+  const colors = useColors();
   const swiperRef = useRef<Swiper>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const isLastSlide = activeIndex === onboarding.length - 1;
 
   return (
-    <SafeAreaView className="flex h-full items-center justify-between bg-white">
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
       <TouchableOpacity
         onPress={() => {
           router.replace("/(auth)/sign-up");
         }}
-        className="w-full flex justify-end items-end p-5"
+        style={styles.skip}
       >
-        <Text className="text-black text-md font-JakartaBold">Skip</Text>
+        <Text style={[styles.skipText, { color: colors.primary }]}>Saltar</Text>
       </TouchableOpacity>
 
       <Swiper
         ref={swiperRef}
         loop={false}
-        dot={
-          <View className="w-[32px] h-[4px] mx-1 bg-[#E2E8F0] rounded-full" />
-        }
-        activeDot={
-          <View className="w-[32px] h-[4px] mx-1 bg-[#0286FF] rounded-full" />
-        }
+        dot={<View style={[styles.dot, { backgroundColor: colors.border }]} />}
+        activeDot={<View style={[styles.dot, { backgroundColor: colors.primary }]} />}
         onIndexChanged={(index) => setActiveIndex(index)}
       >
         {onboarding.map((item) => (
-          <View key={item.id} className="flex items-center justify-center p-5">
+          <View key={item.id} style={styles.slide}>
             <Image
-              source={item.image}
-              className="w-full h-[300px]"
+              source={logo}
+              style={styles.logo}
               resizeMode="contain"
             />
-            <View className="flex flex-row items-center justify-center w-full mt-10">
-              <Text className="text-black text-3xl font-bold mx-10 text-center">
+            <View style={styles.titleWrap}>
+              <Text style={[styles.title, { color: colors.foreground }]}>
                 {item.title}
               </Text>
             </View>
-            <Text className="text-md font-JakartaSemiBold text-center text-[#858585] mx-10 mt-3">
+            <Text style={[styles.description, { color: colors.mutedForeground }]}>
               {item.description}
             </Text>
           </View>
@@ -61,10 +61,23 @@ const Home = () => {
             ? router.replace("/(auth)/sign-up")
             : swiperRef.current?.scrollBy(1)
         }
-        className="w-11/12 mt-10 mb-5"
+        style={styles.button}
       />
     </SafeAreaView>
   );
 };
 
 export default Home;
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, alignItems: "center", justifyContent: "space-between" },
+  skip: { alignItems: "flex-end", padding: 20, width: "100%" },
+  skipText: { fontFamily: "Jakarta-Bold", fontSize: 15 },
+  dot: { borderRadius: 999, height: 4, marginHorizontal: 4, width: 32 },
+  slide: { alignItems: "center", justifyContent: "center", padding: 20 },
+  logo: { height: 220, width: 220 },
+  titleWrap: { alignItems: "center", marginTop: 28, width: "100%" },
+  title: { fontFamily: "Jakarta-Bold", fontSize: 28, marginHorizontal: 20, textAlign: "center" },
+  description: { fontFamily: "Jakarta-SemiBold", fontSize: 15, lineHeight: 22, marginHorizontal: 24, marginTop: 12, textAlign: "center" },
+  button: { marginBottom: 20, marginTop: 18, width: "92%" },
+});

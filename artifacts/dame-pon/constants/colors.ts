@@ -16,33 +16,33 @@ import { brand } from '@/constants/designSystem';
 
 const colors = {
   light: {
-    text: '#0B1C26',
-    tint: '#0B1C26',
+    text: brand.white,
+    tint: brand.star,
 
-    background: '#ffffff',
-    foreground: '#0B1C26',
+    background: brand.navy,
+    foreground: brand.white,
 
-    card: '#F5F8FA',
-    cardForeground: '#0B1C26',
+    card: '#102235',
+    cardForeground: brand.white,
 
-    primary: '#0B1C26',
-    primaryForeground: '#ffffff',
+    primary: brand.star,
+    primaryForeground: brand.navy,
 
-    secondary: '#E8F0F3',
-    secondaryForeground: '#0B1C26',
+    secondary: '#17304D',
+    secondaryForeground: brand.white,
 
-    muted: '#EEF3F5',
-    mutedForeground: '#64747C',
+    muted: '#0D1D2D',
+    mutedForeground: 'rgba(255,255,255,0.72)',
 
-    accent: '#DCE9EE',
-    accentForeground: '#0B1C26',
+    accent: '#203B59',
+    accentForeground: brand.white,
 
     destructive: brand.danger,
-    destructiveForeground: '#ffffff',
+    destructiveForeground: brand.white,
     star: brand.star,
 
-    border: '#D6E1E6',
-    input: '#D6E1E6',
+    border: 'rgba(255,255,255,0.20)',
+    input: '#17304D',
   },
 
   dark: {
@@ -55,7 +55,7 @@ const colors = {
     card: 'rgba(255,255,255,0.08)',
     cardForeground: brand.white,
 
-    primary: brand.white,
+    primary: brand.star,
     primaryForeground: brand.navy,
 
     secondary: 'rgba(255,255,255,0.12)',

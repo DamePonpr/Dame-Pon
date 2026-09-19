@@ -1,4 +1,4 @@
-import type { ImageSourcePropType, TextInputProps, TouchableOpacityProps } from "react-native";
+import type { ImageSourcePropType, StyleProp, TextInputProps, TouchableOpacityProps, ViewStyle } from "react-native";
 import type { TripHistoryItem } from "@/lib/rideService";
 
 export interface LocationValue {
@@ -10,7 +10,7 @@ export interface LocationValue {
 export interface GoogleInputProps {
   icon?: ImageSourcePropType;
   initialLocation?: string;
-  containerStyle?: string;
+  containerStyle?: StyleProp<ViewStyle>;
   textInputBackgroundColor?: string;
   handlePress: (location: LocationValue) => void;
 }
@@ -21,7 +21,6 @@ export interface ButtonProps extends TouchableOpacityProps {
   textVariant?: "primary" | "default" | "secondary" | "danger" | "success";
   IconLeft?: React.ComponentType<any>;
   IconRight?: React.ComponentType<any>;
-  className?: string;
   loading?: boolean;
 }
 
@@ -32,7 +31,6 @@ export interface InputFieldProps extends TextInputProps {
   containerStyle?: string;
   inputStyle?: string;
   iconStyle?: string;
-  className?: string;
 }
 
 export interface PaymentProps {

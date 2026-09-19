@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
 import type { ButtonProps } from "@/types/type";
 import { useColors } from "@/hooks/useColors";
 
@@ -12,8 +12,7 @@ export function CustomButton({
   IconRight,
   disabled,
   loading,
-  className: _className,
-  style: _style,
+  style,
   ...props
 }: ButtonProps) {
   const colors = useColors();
@@ -37,18 +36,12 @@ export function CustomButton({
       {...props}
       disabled={disabled || loading}
       onPress={onPress}
-      style={({ pressed }) => ({
-        minHeight: 54,
-        borderRadius: 16,
-        borderWidth: bgVariant === "outline" ? 1 : 0,
-        borderColor: colors.border,
-        backgroundColor,
-        opacity: disabled || loading ? 0.5 : pressed ? 0.82 : 1,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 20,
-      })}
+      style={({ pressed }) => [
+        styles.button,
+        { borderWidth: bgVariant === "outline" ? 1 : 0, borderColor: colors.border, backgroundColor },
+        style,
+        { opacity: disabled || loading ? 0.5 : pressed ? 0.82 : 1 },
+      ]}
     >
       {loading ? <ActivityIndicator color={textColor} /> : null}
       {!loading && IconLeft ? <IconLeft /> : null}
@@ -60,3 +53,14 @@ export function CustomButton({
 
 export const AppButton = CustomButton;
 export default CustomButton;
+
+const styles = StyleSheet.create({
+  button: {
+    minHeight: 54,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+});

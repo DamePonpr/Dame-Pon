@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useColors } from '@/hooks/useColors';
 
@@ -15,10 +15,14 @@ export function BuildStamp() {
   const colors = useColors();
 
   return (
-    <View className="items-center" accessibilityLabel={buildStampText()}>
+    <View style={styles.container} accessibilityLabel={buildStampText()}>
       <Text style={{ color: colors.mutedForeground, fontSize: 11, lineHeight: 16 }}>
         {buildStampText()}
       </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { alignItems: 'center' },
+});
