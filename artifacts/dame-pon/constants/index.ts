@@ -76,23 +76,23 @@ export const icons = {
 export const onboarding = [
   {
     id: 1,
-    title: "The perfect ride is just a tap away!",
+    title: "Tu viaje comienza con un toque",
     description:
-      "Your journey begins with Ryde. Find your ideal ride effortlessly.",
+      "Dame Pon conecta tu municipio con viajes claros y seguros.",
     image: images.onboarding1,
   },
   {
     id: 2,
-    title: "Best car in your hands with Ryde",
+    title: "Viaja a tu manera",
     description:
-      "Discover the convenience of finding your perfect ride with Ryde",
+      "Encuentra un conductor aprobado o registra tu disponibilidad como conductor.",
     image: images.onboarding2,
   },
   {
     id: 3,
-    title: "Your ride, your way. Let's go!",
+    title: "Pon, llegamos",
     description:
-      "Enter your destination, sit back, and let us take care of the rest.",
+      "Indica tu origen y destino dentro de Puerto Rico. Nosotros coordinamos lo demás.",
     image: images.onboarding3,
   },
 ];

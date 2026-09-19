@@ -1,6 +1,6 @@
 export function routeForRole(role) {
-  if (role === 'driver') return '/home/driver';
-  if (role === 'passenger') return '/home/passenger';
+  if (role === 'driver') return '/(root)/(tabs)/home';
+  if (role === 'passenger') return '/(root)/(tabs)/home';
   return null;
 }
 
