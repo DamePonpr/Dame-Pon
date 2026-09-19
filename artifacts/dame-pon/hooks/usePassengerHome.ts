@@ -76,7 +76,7 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
     try {
       const [tripResult, historyResult] = await Promise.all([
         getPassengerActiveTrip(userId),
-        getTripHistory(userId, 'passenger'),
+        getTripHistory(userId, 'pasajero'),
       ]);
       if (tripResult.error) handleError(tripResult.error);
       if (historyResult.error) handleError(historyResult.error);
@@ -105,7 +105,7 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
     void Promise.all([loadPickup(), refresh()]).finally(() => {
       if (!cancelled) setLoading(false);
     });
-    const unsubscribe = subscribeToTrips(userId, 'passenger', () => void refresh());
+    const unsubscribe = subscribeToTrips(userId, 'pasajero', () => void refresh());
     return () => {
       cancelled = true;
       unsubscribe();

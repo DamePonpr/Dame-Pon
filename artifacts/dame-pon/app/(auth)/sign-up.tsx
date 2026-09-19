@@ -5,13 +5,14 @@ import { Image, ScrollView, Text, View } from "react-native";
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
 import { InlineNotice } from "@/components/InlineNotice";
-import { useAuth, type UserRole } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
+import type { UserRole } from "@/lib/roles";
 import { icons, images } from "@/constants";
 
 export default function SignUp() {
   const { signUp } = useAuth();
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", baseMunicipality: "" });
-  const [role, setRole] = useState<UserRole>("passenger");
+  const [role, setRole] = useState<UserRole>("pasajero");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<{ title: string; message: string; action?: boolean } | null>(null);
 
@@ -20,7 +21,7 @@ export default function SignUp() {
       setNotice({ title: "Completa tus datos", message: "Nombre, correo, teléfono y contraseña son obligatorios." });
       return;
     }
-    if (role === "driver" && !form.baseMunicipality.trim()) {
+    if (role === "conductor" && !form.baseMunicipality.trim()) {
       setNotice({ title: "Falta el municipio base", message: "Los conductores deben indicar su municipio base." });
       return;
     }
@@ -31,7 +32,7 @@ export default function SignUp() {
       fullName: form.name,
       phone: form.phone,
       role,
-      baseMunicipality: role === "driver" ? form.baseMunicipality : undefined,
+      baseMunicipality: role === "conductor" ? form.baseMunicipality : undefined,
     });
     setLoading(false);
     if (result.error) {
@@ -59,10 +60,10 @@ export default function SignUp() {
           <InputField label="Contraseña" placeholder="••••••••" icon={icons.lock} secureTextEntry value={form.password} onChangeText={(value) => setForm({ ...form, password: value })} />
           <Text className="text-base font-JakartaSemiBold mt-2 mb-3">Quiero usar Dame Pon como</Text>
           <View className="flex-row gap-3">
-            <CustomButton title="Pasajero" bgVariant={role === "passenger" ? "primary" : "outline"} textVariant={role === "passenger" ? "default" : "secondary"} onPress={() => setRole("passenger")} className="flex-1" />
-            <CustomButton title="Conductor" bgVariant={role === "driver" ? "primary" : "outline"} textVariant={role === "driver" ? "default" : "secondary"} onPress={() => setRole("driver")} className="flex-1" />
+            <CustomButton title="Pasajero" bgVariant={role === "pasajero" ? "primary" : "outline"} textVariant={role === "pasajero" ? "default" : "secondary"} onPress={() => setRole("pasajero")} className="flex-1" />
+            <CustomButton title="Conductor" bgVariant={role === "conductor" ? "primary" : "outline"} textVariant={role === "conductor" ? "default" : "secondary"} onPress={() => setRole("conductor")} className="flex-1" />
           </View>
-          {role === "driver" ? <InputField label="Municipio base" placeholder="Ej. Bayamón" icon={icons.map} value={form.baseMunicipality} onChangeText={(value) => setForm({ ...form, baseMunicipality: value })} /> : null}
+          {role === "conductor" ? <InputField label="Municipio base" placeholder="Ej. Bayamón" icon={icons.map} value={form.baseMunicipality} onChangeText={(value) => setForm({ ...form, baseMunicipality: value })} /> : null}
           <CustomButton title="Crear cuenta" onPress={() => void submit()} loading={loading} className="mt-4" />
           {notice ? (
             <InlineNotice

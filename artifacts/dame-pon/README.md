@@ -23,7 +23,7 @@ pnpm --filter @workspace/dame-pon run verify:supabase-config
 ## Comprobación integral del viaje en tiempo real
 
 La prueba usa dos cuentas de Supabase Auth dedicadas y distintas. Ambas deben existir,
-tener el correo confirmado y usar los roles `passenger` y `driver`, respectivamente.
+tener el correo confirmado y usar los roles `pasajero` y `conductor`, respectivamente.
 Guarda sus credenciales únicamente en Replit Secrets:
 
 - `SUPABASE_RLS_PASSENGER_EMAIL`

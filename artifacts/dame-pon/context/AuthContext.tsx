@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
+import type { UserRole } from '@/lib/roles';
 
-export type UserRole = 'passenger' | 'driver';
+export type { UserRole } from '@/lib/roles';
 export type AuthIssue = 'session_expired' | 'profile_unavailable' | null;
 
 export interface Profile {
@@ -37,8 +38,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function normalizeRole(role: unknown): UserRole | null {
-  if (role === 'driver' || role === 'conductor') return 'driver';
-  if (role === 'passenger' || role === 'pasajero') return 'passenger';
+  if (role === 'conductor') return 'conductor';
+  if (role === 'pasajero') return 'pasajero';
   return null;
 }
 
@@ -226,7 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name: fullName.trim(),
               phone: normalizedPhone || null,
               role,
-              ...(role === 'driver' ? { base_municipality: baseMunicipality } : {}),
+              ...(role === 'conductor' ? { base_municipality: baseMunicipality } : {}),
             },
           },
         });

@@ -21,7 +21,7 @@ export default function Profile() {
           <InputField label="Nombre completo" value={profile?.full_name ?? ""} editable={false} />
           <InputField label="Correo electrónico" value={user?.email ?? ""} editable={false} keyboardType="email-address" icon={icons.email} />
           <InputField label="Teléfono" value={profile?.phone ?? "No registrado"} editable={false} icon={icons.person} />
-          <InputField label="Rol" value={profile?.role === "driver" ? "Conductor" : "Pasajero"} editable={false} icon={icons.profile} />
+          <InputField label="Rol" value={profile?.role === "conductor" ? "Conductor" : "Pasajero"} editable={false} icon={icons.profile} />
         </View>
         <CustomButton title="Cerrar sesión" bgVariant="outline" textVariant="secondary" onPress={() => void signOut()} className="mt-6" />
       </ScrollView>

@@ -98,7 +98,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
   useEffect(() => {
     if (!userId) return;
     void refresh();
-    const unsubscribeTrips = subscribeToTrips(userId, 'driver', () => void refresh());
+    const unsubscribeTrips = subscribeToTrips(userId, 'conductor', () => void refresh());
     const unsubscribeOpen = subscribeToOpenTrips(() => void refresh());
     return () => {
       unsubscribeTrips();

@@ -15,7 +15,7 @@ export default function Home() {
     return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}><ActivityIndicator color={colors.primary} /></View>;
   }
   if (!session || !profile) return <Redirect href="/(auth)/sign-in" />;
-  const Home = profile.role === "driver" ? DriverHome : PassengerHome;
+  const Home = profile.role === "conductor" ? DriverHome : PassengerHome;
   return (
     <Home
       profile={profile}

@@ -1,4 +1,4 @@
-export type RoutedRole = 'passenger' | 'driver';
+export type RoutedRole = 'pasajero' | 'conductor';
 export type RoleRoute = '/(root)/(tabs)/home';
 
 export function routeForRole(role: RoutedRole | null | undefined): RoleRoute | null;

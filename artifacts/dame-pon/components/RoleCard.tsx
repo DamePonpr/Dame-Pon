@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
-import type { UserRole } from '@/context/AuthContext';
+import type { UserRole } from '@/lib/roles';
 
 interface RoleCardProps {
   role: UserRole;
@@ -12,7 +12,7 @@ interface RoleCardProps {
 
 export function RoleCard({ role, selected, onPress }: RoleCardProps) {
   const colors = useColors();
-  const isDriver = role === 'driver';
+  const isDriver = role === 'conductor';
   return (
     <Pressable
       testID={`role-${role}`}

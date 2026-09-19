@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { UserRole } from '@/lib/roles';
 import type { Municipality } from '@/lib/municipality';
 import {
   averageReceivedRating,
@@ -592,9 +593,9 @@ export async function getDriverActiveTrip(driverId: string): Promise<ServiceResu
 
 export async function getTripHistory(
   userId: string,
-  role: 'passenger' | 'driver',
+  role: UserRole,
 ): Promise<ServiceResult<TripHistoryItem[]>> {
-  const participantColumn = role === 'driver' ? 'driver_id' : 'passenger_id';
+  const participantColumn = role === 'conductor' ? 'driver_id' : 'passenger_id';
   const tripsResult = await supabase
     .from('trips')
     .select(TRIP_COLUMNS)
@@ -784,10 +785,10 @@ export async function rateTrip(
 
 export function subscribeToTrips(
   userId: string,
-  role: 'passenger' | 'driver',
+  role: UserRole,
   onChange: () => void,
 ) {
-  const column = role === 'driver' ? 'driver_id' : 'passenger_id';
+  const column = role === 'conductor' ? 'driver_id' : 'passenger_id';
   const channel = supabase
     .channel(`trips:${role}:${userId}`)
     .on(

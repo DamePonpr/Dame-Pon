@@ -1,10 +1,10 @@
-import type { UserRole } from "@/context/AuthContext";
+import type { UserRole } from "@/lib/roles";
 
 export type RoutedRole = UserRole;
 export type RoleRoute = "/(root)/(tabs)/home";
 
 export function routeForRole(role: RoutedRole | null | undefined): RoleRoute | null {
-  return role === "driver" || role === "passenger" ? "/(root)/(tabs)/home" : null;
+  return role === "conductor" || role === "pasajero" ? "/(root)/(tabs)/home" : null;
 }
 
 export function isHomeAuthorized(input: {
