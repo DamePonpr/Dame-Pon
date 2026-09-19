@@ -4,7 +4,7 @@ export function routeForRole(role) {
   return null;
 }
 
-export function isRoleHomeAuthorized({
+export function isHomeAuthorized({
   isLoading,
   userId,
   profileId,
