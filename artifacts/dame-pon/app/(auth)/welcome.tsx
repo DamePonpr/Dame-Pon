@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   slide: { alignItems: "center", justifyContent: "center", padding: 20 },
   logo: { height: 220, width: 220 },
   titleWrap: { alignItems: "center", marginTop: 28, width: "100%" },
-  title: { fontFamily: "Jakarta-Bold", fontSize: 28, marginHorizontal: 20, textAlign: "center" },
-  description: { fontFamily: "Jakarta-SemiBold", fontSize: 15, lineHeight: 22, marginHorizontal: 24, marginTop: 12, textAlign: "center" },
+  title: { fontFamily: "Jakarta-Bold", fontSize: 28, lineHeight: 36, marginHorizontal: 20, maxWidth: 330, textAlign: "center" },
+  description: { fontFamily: "Jakarta-SemiBold", fontSize: 15, lineHeight: 22, marginHorizontal: 24, marginTop: 12, maxWidth: 330, textAlign: "center" },
   button: { marginBottom: 20, marginTop: 18, width: "92%" },
 });
