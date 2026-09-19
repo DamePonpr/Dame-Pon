@@ -66,6 +66,18 @@ jobs:
           test -n "$clipboard_gradle"
           sed -i 's/jcenter()/mavenCentral()/g' "$clipboard_gradle"
 
+      - name: Patch legacy clipboard React Native API
+        run: |
+          clipboard_java="$(find node_modules/.pnpm -path '*/node_modules/@react-native-community/clipboard/android/src/main/java/com/reactnativecommunity/clipboard/ClipboardModule.java' -print -quit)"
+          test -n "$clipboard_java"
+          sed -i \
+            -e 's/import com.facebook.react.bridge.ContextBaseJavaModule;/import com.facebook.react.bridge.ReactContextBaseJavaModule;/' \
+            -e '/import com.facebook.react.bridge.ReactMethod;/i import com.facebook.react.bridge.ReactApplicationContext;' \
+            -e 's/extends ContextBaseJavaModule/extends ReactContextBaseJavaModule/' \
+            -e 's/public ClipboardModule(Context context)/public ClipboardModule(ReactApplicationContext context)/' \
+            -e 's/getContext()/getReactApplicationContext()/g' \
+            "$clipboard_java"
+
       - name: Assemble release APK
         working-directory: artifacts/dame-pon/android
         run: |
