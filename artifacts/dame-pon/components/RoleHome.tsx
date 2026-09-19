@@ -1668,7 +1668,7 @@ function TripCompleteScreen({
             </View>
             <View style={styles.completionScore}>
               <Text style={styles.completionScoreValue}>{score ?? '—'}</Text>
-              <Feather name="star" size={14} color="#F6C453" />
+              <Feather name="star" size={14} color={colors.star} />
             </View>
           </View>
           <Text style={[styles.completionFooter, { color: colors.mutedForeground }]}>
@@ -2184,7 +2184,7 @@ function RatingControl({
             onPress={() => onRating(score)}
             style={({ pressed }) => [styles.starButton, pressed && { opacity: 0.65 }]}
           >
-            <Feather name="star" size={24} color="#F6C453" />
+        <Feather name="star" size={24} color={colors.star} />
           </Pressable>
         ))}
       </View>
