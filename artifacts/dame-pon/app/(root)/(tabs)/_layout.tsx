@@ -8,9 +8,11 @@ import { useColors } from "@/hooks/useColors";
 const TabIcon = ({
   source,
   focused,
+  colors,
 }: {
   source: ImageSourcePropType;
   focused: boolean;
+  colors: ReturnType<typeof useColors>;
 }) => (
   <View
     style={{
@@ -19,10 +21,10 @@ const TabIcon = ({
       borderRadius: 17,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: focused ? "#17304D" : "transparent",
+       backgroundColor: focused ? colors.secondary : "transparent",
     }}
   >
-    <Image source={source} tintColor={focused ? "#F6C453" : "#FFFFFF"} resizeMode="contain" style={{ width: 21, height: 21 }} />
+    <Image source={source} tintColor={focused ? colors.primary : colors.mutedForeground} resizeMode="contain" style={{ width: 21, height: 21 }} />
   </View>
 );
 
@@ -33,8 +35,8 @@ export default function Layout() {
     <Tabs
       initialRouteName="home"
       screenOptions={{
-        tabBarActiveTintColor: "#F6C453",
-        tabBarInactiveTintColor: "rgba(255,255,255,0.70)",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.mutedForeground,
         tabBarShowLabel: true,
         tabBarLabelStyle: {
           fontFamily: "Jakarta-SemiBold",
@@ -43,7 +45,7 @@ export default function Layout() {
           marginBottom: 2,
         },
         tabBarStyle: {
-          backgroundColor: "#081321",
+          backgroundColor: colors.background,
           borderTopWidth: 0,
           borderRadius: 24,
           paddingTop: 8,
@@ -67,7 +69,7 @@ export default function Layout() {
           tabBarLabel: "Inicio",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.home} focused={focused} />
+            <TabIcon source={icons.home} focused={focused} colors={colors} />
           ),
         }}
       />
@@ -78,7 +80,7 @@ export default function Layout() {
           tabBarLabel: "Viajes",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.list} focused={focused} />
+            <TabIcon source={icons.list} focused={focused} colors={colors} />
           ),
         }}
       />
@@ -89,7 +91,7 @@ export default function Layout() {
           tabBarLabel: "Chat",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.chat} focused={focused} />
+            <TabIcon source={icons.chat} focused={focused} colors={colors} />
           ),
         }}
       />
@@ -100,7 +102,7 @@ export default function Layout() {
           tabBarLabel: "Perfil",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.profile} focused={focused} />
+            <TabIcon source={icons.profile} focused={focused} colors={colors} />
           ),
         }}
       />

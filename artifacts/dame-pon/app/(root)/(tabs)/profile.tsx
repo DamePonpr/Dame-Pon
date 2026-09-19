@@ -1,32 +1,48 @@
 import { Image, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet } from "react-native";
 
 import InputField from "@/components/InputField";
 import CustomButton from "@/components/CustomButton";
 import { BuildStamp } from "@/components/BuildStamp";
 import { useAuth } from "@/context/AuthContext";
 import { icons } from "@/constants";
+import { useColors } from "@/hooks/useColors";
 
 export default function Profile() {
+  const colors = useColors();
   const { user, profile, signOut } = useAuth();
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <ScrollView className="px-5" contentContainerStyle={{ paddingBottom: 120 }}>
-        <Text className="text-2xl font-JakartaBold my-5">Mi perfil</Text>
-        <View className="flex items-center justify-center my-5">
-          <View className="h-[110px] w-[110px] rounded-full bg-[#081321] items-center justify-center">
-            {profile?.avatar_url ? <Image source={{ uri: profile.avatar_url }} className="h-[110px] w-[110px] rounded-full" /> : <Text className="text-4xl text-white font-JakartaBold">{(profile?.full_name ?? "D").slice(0, 1).toUpperCase()}</Text>}
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={[styles.heading, { color: colors.foreground }]}>Mi perfil</Text>
+        <View style={styles.avatarWrap}>
+          <View style={[styles.avatar, { backgroundColor: colors.secondary }]}>
+            {profile?.avatar_url ? <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} /> : <Text style={[styles.initial, { color: colors.primary }]}>{(profile?.full_name ?? "D").slice(0, 1).toUpperCase()}</Text>}
           </View>
         </View>
-        <View className="flex flex-col items-start justify-center bg-white rounded-lg shadow-sm shadow-neutral-300 px-5 py-3">
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <InputField label="Nombre completo" value={profile?.full_name ?? ""} editable={false} />
           <InputField label="Correo electrónico" value={user?.email ?? ""} editable={false} keyboardType="email-address" icon={icons.email} />
           <InputField label="Teléfono" value={profile?.phone ?? "No registrado"} editable={false} icon={icons.person} />
           <InputField label="Rol" value={profile?.role === "conductor" ? "Conductor" : "Pasajero"} editable={false} icon={icons.profile} />
         </View>
-        <CustomButton title="Cerrar sesión" bgVariant="outline" textVariant="secondary" onPress={() => void signOut()} className="mt-6" />
-        <BuildStamp />
+        <CustomButton title="Cerrar sesión" bgVariant="outline" textVariant="secondary" onPress={() => void signOut()} style={styles.logout} />
+        <View style={styles.stamp}><BuildStamp /></View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  content: { paddingBottom: 120, paddingHorizontal: 20 },
+  heading: { fontFamily: "Jakarta-Bold", fontSize: 26, marginBottom: 20, marginTop: 20 },
+  avatarWrap: { alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  avatar: { alignItems: "center", borderRadius: 55, height: 110, justifyContent: "center", overflow: "hidden", width: 110 },
+  avatarImage: { height: 110, width: 110 },
+  initial: { fontFamily: "Jakarta-Bold", fontSize: 40 },
+  card: { borderRadius: 18, borderWidth: 1, paddingHorizontal: 20, paddingVertical: 14 },
+  logout: { marginTop: 24 },
+  stamp: { marginTop: 14 },
+});

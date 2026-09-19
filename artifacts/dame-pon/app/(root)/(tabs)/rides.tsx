@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { RideCard } from "@/components/RideCard";
@@ -27,21 +27,29 @@ export default function Rides() {
   useEffect(() => { void load(); }, [load]);
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
       <FlatList
         data={rides}
         renderItem={({ item }) => <RideCard item={item} />}
         keyExtractor={(item) => item.trip.id}
-        className="px-5"
-        contentContainerStyle={{ paddingBottom: 120 }}
-        ListHeaderComponent={<Text className="text-2xl font-JakartaBold my-5">Mis viajes</Text>}
+        contentContainerStyle={styles.list}
+        ListHeaderComponent={<Text style={[styles.heading, { color: colors.foreground }]}>Mis viajes</Text>}
         ListEmptyComponent={
-          <View className="items-center justify-center py-20">
-            {loading ? <ActivityIndicator color={colors.primary} /> : <Text className="text-base text-gray-500">{error || "Todavía no tienes viajes completados."}</Text>}
-            {error ? <CustomButton title="Intentar de nuevo" onPress={() => void load()} className="mt-5" /> : null}
+          <View style={styles.empty}>
+            {loading ? <ActivityIndicator color={colors.primary} /> : <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>{error || "Todavía no tienes viajes completados."}</Text>}
+            {error ? <CustomButton title="Intentar de nuevo" onPress={() => void load()} style={styles.retry} /> : null}
           </View>
         }
       />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  list: { paddingBottom: 120, paddingHorizontal: 20 },
+  heading: { fontFamily: "Jakarta-Bold", fontSize: 26, marginBottom: 20, marginTop: 20 },
+  empty: { alignItems: "center", justifyContent: "center", paddingVertical: 80 },
+  emptyText: { fontFamily: "Jakarta", fontSize: 15, textAlign: "center" },
+  retry: { marginTop: 20 },
+});
