@@ -43,6 +43,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
   const [error, setError] = useState('');
   const [vehicle, setVehicle] = useState<VehicleDraft>(emptyVehicle);
   const [completion, setCompletion] = useState<Trip | null>(null);
+  const [pendingCompletion, setPendingCompletion] = useState<Trip | null>(null);
   const [decision, setDecision] = useState<{ base: string; destination: string } | null>(null);
   const refreshInFlight = useRef(false);
 
@@ -145,6 +146,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
       const destination = result.data.municipio_destino;
       if (base && destination && base !== destination) {
         setDecision({ base, destination });
+        setPendingCompletion(result.data);
       } else {
         setCompletion(result.data);
       }
@@ -183,9 +185,21 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
       return;
     }
     setDecision(null);
-    if (completion) setCompletion(completion);
+    setCompletion(pendingCompletion);
+    setPendingCompletion(null);
     void refresh();
-  }, [completion, decision, handleError, refresh]);
+  }, [decision, handleError, pendingCompletion, refresh]);
+
+  const changeActiveMunicipality = useCallback(async (municipality: string) => {
+    setActionLoading(true);
+    const result = await setDriverActiveMunicipality(municipality);
+    setActionLoading(false);
+    if (result.error) {
+      handleError(result.error);
+      return;
+    }
+    void refresh();
+  }, [handleError, refresh]);
 
   return {
     loading,
@@ -207,6 +221,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
     updateStatus,
     saveVehicle,
     chooseMunicipality,
+    changeActiveMunicipality,
     clearCompletion: () => setCompletion(null),
     retry: refresh,
     isTripInActiveMunicipality,

@@ -60,7 +60,7 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
             return (
               <Pressable
                 key={municipality.id}
-                onPress={() => void home.chooseMunicipality('stay' as MunicipalityDecision)}
+                onPress={() => void home.changeActiveMunicipality(municipality.nombre)}
                 style={[styles.municipalityChip, { backgroundColor: selected ? colors.primary : colors.secondary, borderColor: selected ? colors.primary : colors.border }]}
               >
                 <Text style={{ color: selected ? colors.primaryForeground : colors.foreground, fontFamily: 'Jakarta-SemiBold', fontSize: 12 }}>{municipality.nombre}</Text>
