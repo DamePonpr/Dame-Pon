@@ -25,24 +25,10 @@ const selectedMarker = require("../assets/icons/selected-marker.png");
 const star = require("../assets/icons/star.png");
 const target = require("../assets/icons/target.png");
 const to = require("../assets/icons/to.png");
-const check = require("../assets/images/check.png");
-const getStarted = require("../assets/images/get-started.png");
-const message = require("../assets/images/message.png");
-const noResult = require("../assets/images/no-result.png");
-const onboarding1 = require("../assets/images/onboarding1.png");
-const onboarding2 = require("../assets/images/onboarding2.png");
-const onboarding3 = require("../assets/images/onboarding3.png");
-const signUpCar = require("../assets/images/signup-car.png");
+const logo = require("../assets/images/dame-pon-logo.png");
 
 export const images = {
-  onboarding1,
-  onboarding2,
-  onboarding3,
-  getStarted,
-  signUpCar,
-  check,
-  noResult,
-  message,
+  logo,
 };
 
 export const icons = {
@@ -79,21 +65,18 @@ export const onboarding = [
     title: "Tu viaje comienza con un toque",
     description:
       "Dame Pon conecta tu municipio con viajes claros y seguros.",
-    image: images.onboarding1,
   },
   {
     id: 2,
     title: "Viaja a tu manera",
     description:
       "Encuentra un conductor aprobado o registra tu disponibilidad como conductor.",
-    image: images.onboarding2,
   },
   {
     id: 3,
     title: "Tu próximo viaje está listo",
     description:
       "Indica tu origen y destino dentro de Puerto Rico. Nosotros coordinamos lo demás.",
-    image: images.onboarding3,
   },
 ];
 
