@@ -6,7 +6,7 @@ import { BrandMark } from '@/components/BrandMark';
 import { AppButton } from '@/components/AppButton';
 import GoogleTextInput from '@/components/GoogleTextInput';
 import { LiveRideMap } from '@/components/LiveRideMap';
-import RideCard from '@/components/RideCard';
+import { RideCard } from '@/components/RideCard';
 import { TripCompletionScreen } from '@/components/TripCompletionScreen';
 import { icons } from '@/constants';
 import { useColors } from '@/hooks/useColors';
