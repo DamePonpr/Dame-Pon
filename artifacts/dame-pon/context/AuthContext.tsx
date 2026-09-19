@@ -132,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authIssue, setAuthIssue] = useState<AuthIssue>(null);
   const hydrationVersion = useRef(0);
+  const hydrateSessionRef = useRef<((candidate: Session | null) => Promise<void>) | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -165,6 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setIsLoading(false);
     };
+    hydrateSessionRef.current = hydrateSession;
 
     void supabase.auth.getSession().then(({ data }) => hydrateSession(data.session));
 
@@ -184,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       active = false;
+      hydrateSessionRef.current = null;
       subscription.unsubscribe();
     };
   }, []);
@@ -200,12 +203,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: email.trim(),
           password,
         });
-        if (!error && data.user) {
-          setAuthIssue(null);
-          const profileError = await ensureProfile(data.user);
-          if (profileError) return { error: profileError };
+        if (error) {
+          console.error('[Dame Pon] signInWithPassword falló:', {
+            code: error.code,
+            message: error.message,
+            status: error.status,
+          });
+          return { error: error.message };
         }
-        return { error: error?.message ?? null };
+        if (data.session) {
+          await hydrateSessionRef.current?.(data.session);
+        }
+        return { error: null };
       },
       signUp: async ({ email, password, fullName, phone, role, baseMunicipality }) => {
         const normalizedPhone = phone.trim();

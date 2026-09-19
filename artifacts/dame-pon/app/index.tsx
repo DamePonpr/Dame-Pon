@@ -1,4 +1,4 @@
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { Redirect } from "expo-router";
 
 import { useAuth } from "@/context/AuthContext";
@@ -13,6 +13,7 @@ export default function IndexScreen() {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
         <ActivityIndicator color={colors.primary} />
+        <Text style={{ color: colors.mutedForeground, fontFamily: "Jakarta", fontSize: 14, marginTop: 12 }}>Cargando tu perfil…</Text>
       </View>
     );
   }

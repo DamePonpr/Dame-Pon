@@ -1,5 +1,5 @@
 import { Redirect } from "expo-router";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import { DriverHome } from "@/components/DriverHome";
 import { PassengerHome } from "@/components/PassengerHome";
@@ -12,7 +12,7 @@ export default function Home() {
   const { profile, session, isLoading, authIssue } = auth;
 
   if (isLoading || (session && !profile && !authIssue)) {
-    return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}><ActivityIndicator color={colors.primary} /></View>;
+    return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}><ActivityIndicator color={colors.primary} /><Text style={{ color: colors.mutedForeground, fontFamily: "Jakarta", fontSize: 14, marginTop: 12 }}>Cargando tu perfil…</Text></View>;
   }
   if (!session || !profile) return <Redirect href="/(auth)/sign-in" />;
   const Home = profile.role === "conductor" ? DriverHome : PassengerHome;
