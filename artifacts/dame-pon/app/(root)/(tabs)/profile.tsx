@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import InputField from "@/components/InputField";
 import CustomButton from "@/components/CustomButton";
+import { BuildStamp } from "@/components/BuildStamp";
 import { useAuth } from "@/context/AuthContext";
 import { icons } from "@/constants";
 
@@ -24,6 +25,7 @@ export default function Profile() {
           <InputField label="Rol" value={profile?.role === "conductor" ? "Conductor" : "Pasajero"} editable={false} icon={icons.profile} />
         </View>
         <CustomButton title="Cerrar sesión" bgVariant="outline" textVariant="secondary" onPress={() => void signOut()} className="mt-6" />
+        <BuildStamp />
       </ScrollView>
     </SafeAreaView>
   );

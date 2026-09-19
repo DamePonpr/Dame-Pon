@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Image, ScrollView, Text, View } from "react-native";
 
 import CustomButton from "@/components/CustomButton";
+import { BuildStamp } from "@/components/BuildStamp";
 import InputField from "@/components/InputField";
 import { InlineNotice } from "@/components/InlineNotice";
 import { useAuth } from "@/context/AuthContext";
@@ -47,6 +48,7 @@ export default function SignIn() {
             ¿No tienes una cuenta? <Text className="text-primary-500">Regístrate</Text>
           </Link>
         </View>
+        <BuildStamp />
       </View>
     </ScrollView>
   );

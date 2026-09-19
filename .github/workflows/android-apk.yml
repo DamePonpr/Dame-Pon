@@ -48,6 +48,35 @@ jobs:
         run: |
           grep -v '^[[:space:]]*#' .env.production >> "$GITHUB_ENV"
 
+      - name: Set build metadata
+        run: |
+          case "$(date -u +%m)" in
+            01) month="ene" ;;
+            02) month="feb" ;;
+            03) month="mar" ;;
+            04) month="abr" ;;
+            05) month="may" ;;
+            06) month="jun" ;;
+            07) month="jul" ;;
+            08) month="ago" ;;
+            09) month="sep" ;;
+            10) month="oct" ;;
+            11) month="nov" ;;
+            12) month="dic" ;;
+          esac
+          {
+            echo "EXPO_PUBLIC_BUILD_TAG=preview-${GITHUB_RUN_NUMBER}"
+            echo "EXPO_PUBLIC_BUILD_SHA=${GITHUB_SHA:0:7}"
+            echo "EXPO_PUBLIC_BUILD_DATE=$(date -u +%-d) ${month} $(date -u +%Y)"
+          } >> "$GITHUB_ENV"
+
+      - name: Export public config for Metro and Gradle
+        run: |
+          test -n "${EXPO_PUBLIC_DOMAIN:-}"
+          test -n "${EXPO_PUBLIC_SUPABASE_URL:-}"
+          test -n "${EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}"
+          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" >> "$GITHUB_ENV"
+
       - name: Validate public Supabase configuration
         working-directory: artifacts/dame-pon
         run: pnpm run verify:supabase-config
@@ -81,6 +110,9 @@ jobs:
       - name: Assemble release APK
         working-directory: artifacts/dame-pon/android
         run: |
+          test -n "${EXPO_PUBLIC_DOMAIN:-}"
+          test -n "${EXPO_PUBLIC_SUPABASE_URL:-}"
+          test -n "${EXPO_PUBLIC_SUPABASE_ANON_KEY:-}"
           chmod +x gradlew
           ./gradlew assembleRelease
 
