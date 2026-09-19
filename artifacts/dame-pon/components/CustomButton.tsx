@@ -12,6 +12,8 @@ export function CustomButton({
   IconRight,
   disabled,
   loading,
+  className: _className,
+  style: _style,
   ...props
 }: ButtonProps) {
   const colors = useColors();
