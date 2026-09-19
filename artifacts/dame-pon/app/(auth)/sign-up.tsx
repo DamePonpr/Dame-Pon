@@ -1,195 +1,72 @@
-import { useSignUp } from "@clerk/clerk-expo";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Alert, Image, ScrollView, Text, View } from "react-native";
-import { ReactNativeModal } from "react-native-modal";
 
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
-import OAuth from "@/components/OAuth";
+import { useAuth, type UserRole } from "@/context/AuthContext";
 import { icons, images } from "@/constants";
-import { fetchAPI } from "@/lib/fetch";
 
-const SignUp = () => {
-  const { isLoaded, signUp, setActive } = useSignUp();
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+export default function SignUp() {
+  const { signUp } = useAuth();
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", baseMunicipality: "" });
+  const [role, setRole] = useState<UserRole>("passenger");
+  const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
-  const [verification, setVerification] = useState({
-    state: "default",
-    error: "",
-    code: "",
-  });
-
-  const onSignUpPress = async () => {
-    if (!isLoaded) return;
-    try {
-      await signUp.create({
-        emailAddress: form.email,
-        password: form.password,
-      });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setVerification({
-        ...verification,
-        state: "pending",
-      });
-    } catch (err: any) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      console.log(JSON.stringify(err, null, 2));
-      Alert.alert("Error", err.errors[0].longMessage);
+  async function submit() {
+    if (!form.name.trim() || !form.email.trim() || !form.password || !form.phone.trim()) {
+      Alert.alert("Completa tus datos", "Nombre, correo, teléfono y contraseña son obligatorios.");
+      return;
     }
-  };
-  const onPressVerify = async () => {
-    if (!isLoaded) return;
-    try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
-        code: verification.code,
-      });
-      if (completeSignUp.status === "complete") {
-        await fetchAPI("/(api)/user", {
-          method: "POST",
-          body: JSON.stringify({
-            name: form.name,
-            email: form.email,
-            clerkId: completeSignUp.createdUserId,
-          }),
-        });
-        await setActive({ session: completeSignUp.createdSessionId });
-        setVerification({
-          ...verification,
-          state: "success",
-        });
-      } else {
-        setVerification({
-          ...verification,
-          error: "Verification failed. Please try again.",
-          state: "failed",
-        });
-      }
-    } catch (err: any) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      setVerification({
-        ...verification,
-        error: err.errors[0].longMessage,
-        state: "failed",
-      });
+    if (role === "driver" && !form.baseMunicipality.trim()) {
+      Alert.alert("Falta el municipio base", "Los conductores deben indicar su municipio base.");
+      return;
     }
-  };
+    setLoading(true);
+    const result = await signUp({
+      email: form.email,
+      password: form.password,
+      fullName: form.name,
+      phone: form.phone,
+      role,
+      baseMunicipality: role === "driver" ? form.baseMunicipality : undefined,
+    });
+    setLoading(false);
+    if (result.error) {
+      Alert.alert("No pudimos crear la cuenta", result.error === "PHONE_ALREADY_REGISTERED" ? "Ese teléfono ya está registrado." : result.error);
+      return;
+    }
+    if (result.needsEmailConfirmation) {
+      Alert.alert("Confirma tu correo", "Revisa tu correo electrónico y luego inicia sesión.", [{ text: "Ir a iniciar sesión", onPress: () => router.replace("/(auth)/sign-in") }]);
+      return;
+    }
+    router.replace("/(root)/(tabs)/home");
+  }
+
   return (
-    <ScrollView className="flex-1 bg-white">
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="bg-white">
       <View className="flex-1 bg-white">
-        <View className="relative w-full h-[250px]">
-          <Image source={images.signUpCar} className="z-0 w-full h-[250px]" />
-          <Text className="text-2xl text-black font-JakartaSemiBold absolute bottom-5 left-5">
-            Create Your Account
-          </Text>
+        <View className="relative w-full h-[220px]">
+          <Image source={images.signUpCar} className="z-0 w-full h-[220px]" resizeMode="cover" />
+          <Text className="text-2xl text-black font-JakartaSemiBold absolute bottom-5 left-5">Crea tu cuenta</Text>
         </View>
         <View className="p-5">
-          <InputField
-            label="Name"
-            placeholder="Enter name"
-            icon={icons.person}
-            value={form.name}
-            onChangeText={(value) => setForm({ ...form, name: value })}
-          />
-          <InputField
-            label="Email"
-            placeholder="Enter email"
-            icon={icons.email}
-            textContentType="emailAddress"
-            value={form.email}
-            onChangeText={(value) => setForm({ ...form, email: value })}
-          />
-          <InputField
-            label="Password"
-            placeholder="Enter password"
-            icon={icons.lock}
-            secureTextEntry={true}
-            textContentType="password"
-            value={form.password}
-            onChangeText={(value) => setForm({ ...form, password: value })}
-          />
-          <CustomButton
-            title="Sign Up"
-            onPress={onSignUpPress}
-            className="mt-6"
-          />
-          <OAuth />
-          <Link
-            href="/sign-in"
-            className="text-lg text-center text-general-200 mt-10"
-          >
-            Already have an account?{" "}
-            <Text className="text-primary-500">Log In</Text>
+          <InputField label="Nombre completo" placeholder="Tu nombre" icon={icons.person} value={form.name} onChangeText={(value) => setForm({ ...form, name: value })} />
+          <InputField label="Correo electrónico" placeholder="tu@correo.com" icon={icons.email} keyboardType="email-address" autoCapitalize="none" value={form.email} onChangeText={(value) => setForm({ ...form, email: value })} />
+          <InputField label="Teléfono" placeholder="787-000-0000" icon={icons.person} keyboardType="phone-pad" value={form.phone} onChangeText={(value) => setForm({ ...form, phone: value })} />
+          <InputField label="Contraseña" placeholder="••••••••" icon={icons.lock} secureTextEntry value={form.password} onChangeText={(value) => setForm({ ...form, password: value })} />
+          <Text className="text-base font-JakartaSemiBold mt-2 mb-3">Quiero usar Dame Pon como</Text>
+          <View className="flex-row gap-3">
+            <CustomButton title="Pasajero" bgVariant={role === "passenger" ? "primary" : "outline"} textVariant={role === "passenger" ? "default" : "secondary"} onPress={() => setRole("passenger")} className="flex-1" />
+            <CustomButton title="Conductor" bgVariant={role === "driver" ? "primary" : "outline"} textVariant={role === "driver" ? "default" : "secondary"} onPress={() => setRole("driver")} className="flex-1" />
+          </View>
+          {role === "driver" ? <InputField label="Municipio base" placeholder="Ej. Bayamón" icon={icons.map} value={form.baseMunicipality} onChangeText={(value) => setForm({ ...form, baseMunicipality: value })} /> : null}
+          <CustomButton title="Crear cuenta" onPress={() => void submit()} loading={loading} className="mt-4" />
+          <Link href="/sign-in" className="text-lg text-center text-general-200 mt-10">
+            ¿Ya tienes una cuenta? <Text className="text-primary-500">Inicia sesión</Text>
           </Link>
         </View>
-        <ReactNativeModal
-          isVisible={verification.state === "pending"}
-          // onBackdropPress={() =>
-          //   setVerification({ ...verification, state: "default" })
-          // }
-          onModalHide={() => {
-            if (verification.state === "success") {
-              setShowSuccessModal(true);
-            }
-          }}
-        >
-          <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
-            <Text className="font-JakartaExtraBold text-2xl mb-2">
-              Verification
-            </Text>
-            <Text className="font-Jakarta mb-5">
-              We've sent a verification code to {form.email}.
-            </Text>
-            <InputField
-              label={"Code"}
-              icon={icons.lock}
-              placeholder={"12345"}
-              value={verification.code}
-              keyboardType="numeric"
-              onChangeText={(code) =>
-                setVerification({ ...verification, code })
-              }
-            />
-            {verification.error && (
-              <Text className="text-red-500 text-sm mt-1">
-                {verification.error}
-              </Text>
-            )}
-            <CustomButton
-              title="Verify Email"
-              onPress={onPressVerify}
-              className="mt-5 bg-success-500"
-            />
-          </View>
-        </ReactNativeModal>
-        <ReactNativeModal isVisible={showSuccessModal}>
-          <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
-            <Image
-              source={images.check}
-              className="w-[110px] h-[110px] mx-auto my-5"
-            />
-            <Text className="text-3xl font-JakartaBold text-center">
-              Verified
-            </Text>
-            <Text className="text-base text-gray-400 font-Jakarta text-center mt-2">
-              You have successfully verified your account.
-            </Text>
-            <CustomButton
-              title="Browse Home"
-              onPress={() => router.push(`/(root)/(tabs)/home`)}
-              className="mt-5"
-            />
-          </View>
-        </ReactNativeModal>
       </View>
     </ScrollView>
   );
-};
-export default SignUp;
+}
