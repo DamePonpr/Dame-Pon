@@ -5,7 +5,7 @@ import { Redirect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth, type UserRole } from '@/context/AuthContext';
+import { useAuth, type Profile, type UserRole } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { brand } from '@/constants/designSystem';
 import { AppButton } from '@/components/AppButton';
@@ -13,7 +13,9 @@ import { BrandMark } from '@/components/BrandMark';
 import { LiveRideMap } from '@/components/LiveRideMap';
 import { RideLayout } from '@/components/RideLayout';
 import { DriverCard } from '@/components/DriverCard';
+import { RideCard } from '@/components/RideCard';
 import { SettingsModal } from '@/components/SettingsModal';
+import { RoleTabs, type RoleTab } from '@/components/RoleTabs';
 import {
   acceptTrip,
   cancelTrip,
@@ -86,6 +88,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   const [showActiveMunicipalityPicker, setShowActiveMunicipalityPicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState<RoleTab>('home');
   const [destination, setDestination] = useState('');
   const [destinationMunicipality, setDestinationMunicipality] = useState('');
   const [destinationSearch, setDestinationSearch] = useState('');
@@ -786,9 +789,9 @@ export function RoleHome({ role }: { role: UserRole }) {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  const handleOpenHistory = async () => {
+  const handleOpenHistory = async (openModal = true) => {
     if (!user?.id) return;
-    setShowHistory(true);
+    if (openModal) setShowHistory(true);
     setHistoryLoading(true);
     setHistoryError('');
     const result = await getTripHistory(user.id, isDriver ? 'driver' : 'passenger');
@@ -829,7 +832,19 @@ export function RoleHome({ role }: { role: UserRole }) {
       testID={isDriver ? 'driver-panel' : 'passenger-panel'}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
-      {usePassengerRideLayout ? (
+      {activeTab !== 'home' ? (
+        <TabSurface
+          colors={colors}
+          activeTab={activeTab}
+          profile={profile!}
+          history={history}
+          historyLoading={historyLoading}
+          historyError={historyError}
+          onRetryHistory={() => void handleOpenHistory(false)}
+          onOpenSettings={() => setShowSettings(true)}
+          onSignOut={() => void signOut()}
+        />
+      ) : usePassengerRideLayout ? (
         <PassengerRideLayout
           colors={colors}
           activeTrip={activeTrip}
@@ -982,6 +997,16 @@ export function RoleHome({ role }: { role: UserRole }) {
         </>
       )}
 
+      {!usePassengerRideLayout && !useDriverRideLayout ? (
+        <RoleTabs
+          activeTab={activeTab}
+          onChange={(tab) => {
+            setActiveTab(tab);
+            if (tab === 'rides') void handleOpenHistory(false);
+          }}
+        />
+      ) : null}
+
       <DestinationModal
         colors={colors}
         insetsBottom={insets.bottom}
@@ -1073,6 +1098,93 @@ export function RoleHome({ role }: { role: UserRole }) {
         onRetry={() => void handleOpenHistory()}
       />
       <SettingsModal visible={showSettings} onClose={() => setShowSettings(false)} />
+    </View>
+  );
+}
+
+function TabSurface({
+  colors,
+  activeTab,
+  profile,
+  history,
+  historyLoading,
+  historyError,
+  onRetryHistory,
+  onOpenSettings,
+  onSignOut,
+}: {
+  colors: ReturnType<typeof useColors>;
+  activeTab: RoleTab;
+  profile: Profile;
+  history: TripHistoryItem[];
+  historyLoading: boolean;
+  historyError: string;
+  onRetryHistory: () => void;
+  onOpenSettings: () => void;
+  onSignOut: () => void;
+}) {
+  const title = activeTab === 'rides' ? 'Tus viajes' : activeTab === 'chat' ? 'Chat' : 'Perfil';
+  return (
+    <View style={styles.tabSurface}>
+      <View style={[styles.tabHeader, { paddingTop: 12 }]}>
+        <BrandMark compact />
+        <View style={styles.headerActions}>
+          <Pressable
+            accessibilityLabel="Abrir configuración"
+            onPress={onOpenSettings}
+            style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.secondary }, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="settings" size={18} color={colors.primary} />
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Cerrar sesión"
+            onPress={onSignOut}
+            style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.secondary }, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="log-out" size={18} color={colors.primary} />
+          </Pressable>
+        </View>
+      </View>
+      <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
+        <Text style={[styles.eyebrow, { color: colors.mutedForeground }]}>{title.toUpperCase()}</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
+        {activeTab === 'rides' ? (
+          historyLoading ? (
+            <View style={styles.loadingState}><ActivityIndicator color={colors.primary} /></View>
+          ) : historyError ? (
+            <View style={styles.emptyTab}>
+              <Feather name="alert-circle" size={28} color={colors.destructive} />
+              <Text style={[styles.tabEmptyTitle, { color: colors.foreground }]}>No pudimos cargar tus viajes</Text>
+              <Text style={[styles.tabEmptyText, { color: colors.mutedForeground }]}>{historyError}</Text>
+              <AppButton label="Intentar de nuevo" onPress={onRetryHistory} />
+            </View>
+          ) : history.length ? (
+            history.map((item) => <RideCard key={item.trip.id} item={item} />)
+          ) : (
+            <View style={styles.emptyTab}>
+              <Feather name="clock" size={30} color={colors.primary} />
+              <Text style={[styles.tabEmptyTitle, { color: colors.foreground }]}>Aún no tienes viajes</Text>
+              <Text style={[styles.tabEmptyText, { color: colors.mutedForeground }]}>Tus trayectos completados aparecerán aquí.</Text>
+            </View>
+          )
+        ) : activeTab === 'chat' ? (
+          <View style={styles.emptyTab}>
+            <Feather name="message-circle" size={30} color={colors.primary} />
+            <Text style={[styles.tabEmptyTitle, { color: colors.foreground }]}>Chat de viaje</Text>
+            <Text style={[styles.tabEmptyText, { color: colors.mutedForeground }]}>El chat aparecerá aquí cuando tengas un viaje activo.</Text>
+          </View>
+        ) : (
+          <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <ParticipantAvatar colors={colors} name={profile.full_name ?? 'Usuario'} avatarUrl={profile.avatar_url} fallback={profile.role === 'driver' ? 'C' : 'P'} size={78} />
+            <Text style={[styles.profileName, { color: colors.foreground }]}>{profile.full_name ?? 'Usuario Dame Pon'}</Text>
+            <Text style={[styles.profileRole, { color: colors.mutedForeground }]}>{profile.role === 'driver' ? 'Conductor' : 'Pasajero'}</Text>
+            <Pressable onPress={onOpenSettings} style={({ pressed }) => [styles.profileAction, { backgroundColor: colors.secondary }, pressed && { opacity: 0.7 }]}>
+              <Feather name="settings" size={17} color={colors.primary} />
+              <Text style={[styles.profileActionText, { color: colors.primary }]}>Configuración y tema</Text>
+            </Pressable>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -2337,6 +2449,17 @@ function tripStatusLabel(status: string) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  tabSurface: { flex: 1 },
+  tabHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 16, paddingHorizontal: 22 },
+  tabContent: { flexGrow: 1, gap: 14, paddingBottom: 28, paddingHorizontal: 22 },
+  emptyTab: { alignItems: 'center', gap: 10, justifyContent: 'center', minHeight: 260, paddingHorizontal: 24 },
+  tabEmptyTitle: { fontFamily: 'Inter_700Bold', fontSize: 18, textAlign: 'center' },
+  tabEmptyText: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 19, maxWidth: 280, textAlign: 'center' },
+  profileCard: { alignItems: 'center', borderRadius: 22, borderWidth: 1, gap: 8, padding: 24 },
+  profileName: { fontFamily: 'Inter_700Bold', fontSize: 22, marginTop: 4 },
+  profileRole: { fontFamily: 'Inter_400Regular', fontSize: 14 },
+  profileAction: { alignItems: 'center', borderRadius: 14, flexDirection: 'row', gap: 8, marginTop: 12, paddingHorizontal: 15, paddingVertical: 12 },
+  profileActionText: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
   header: { paddingHorizontal: 22, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },

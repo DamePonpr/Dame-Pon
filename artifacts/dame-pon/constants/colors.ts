@@ -39,6 +39,7 @@ const colors = {
 
     destructive: brand.danger,
     destructiveForeground: '#ffffff',
+    star: brand.star,
 
     border: '#D6E1E6',
     input: '#D6E1E6',
@@ -68,6 +69,7 @@ const colors = {
 
     destructive: '#FF9DA7',
     destructiveForeground: brand.navy,
+    star: brand.star,
 
     border: 'rgba(255,255,255,0.20)',
     input: 'rgba(255,255,255,0.12)',
