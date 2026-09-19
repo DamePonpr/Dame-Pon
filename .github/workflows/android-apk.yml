@@ -1,0 +1,86 @@
+name: Dame Pon Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build signed Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Load public production variables
+        working-directory: artifacts/dame-pon
+        run: |
+          grep -v '^[[:space:]]*#' .env.production >> "$GITHUB_ENV"
+
+      - name: Validate public Supabase configuration
+        working-directory: artifacts/dame-pon
+        run: pnpm run verify:supabase-config
+
+      - name: Generate Android project
+        working-directory: artifacts/dame-pon
+        run: pnpm exec expo prebuild --platform android --no-install
+
+      - name: Copy preview signing keystore
+        working-directory: artifacts/dame-pon
+        run: cp android-signing/dame-pon-preview.keystore android/app/dame-pon-preview.keystore
+
+      - name: Assemble release APK
+        working-directory: artifacts/dame-pon/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Upload APK to this workflow run
+        uses: actions/upload-artifact@v4
+        with:
+          name: dame-pon-preview-${{ github.run_number }}
+          path: artifacts/dame-pon/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub Release and upload APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="preview-${{ github.run_number }}"
+          gh release create "$tag" \
+            artifacts/dame-pon/android/app/build/outputs/apk/release/app-release.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Dame Pon Android preview ${{ github.run_number }}" \
+            --notes "APK de prueba generado por GitHub Actions. La primera instalación debe reemplazar el APK firmado por EAS."
