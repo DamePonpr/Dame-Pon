@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isRoleHomeAuthorized, routeForRole } from '../lib/roleRouting.js';
+import { isHomeAuthorized, routeForRole } from '../lib/roleRouting.js';
 
 test('routes each known profile role to its own home panel', () => {
   assert.equal(routeForRole('pasajero'), '/(root)/(tabs)/home');
@@ -21,9 +21,9 @@ test('renders the passenger panel only for a loaded matching passenger profile',
     profileRole: 'pasajero',
     expectedRole: 'pasajero',
   };
-  assert.equal(isRoleHomeAuthorized(passenger), true);
-  assert.equal(isRoleHomeAuthorized({ ...passenger, expectedRole: 'conductor' }), false);
-  assert.equal(isRoleHomeAuthorized({ ...passenger, isLoading: true }), false);
+  assert.equal(isHomeAuthorized(passenger), true);
+  assert.equal(isHomeAuthorized({ ...passenger, expectedRole: 'conductor' }), false);
+  assert.equal(isHomeAuthorized({ ...passenger, isLoading: true }), false);
 });
 
 test('renders the driver panel only for a loaded matching driver profile', () => {
@@ -34,8 +34,8 @@ test('renders the driver panel only for a loaded matching driver profile', () =>
     profileRole: 'conductor',
     expectedRole: 'conductor',
   };
-  assert.equal(isRoleHomeAuthorized(driver), true);
-  assert.equal(isRoleHomeAuthorized({ ...driver, expectedRole: 'pasajero' }), false);
+  assert.equal(isHomeAuthorized(driver), true);
+  assert.equal(isHomeAuthorized({ ...driver, expectedRole: 'pasajero' }), false);
 });
 
 test('switches passenger to driver and driver to passenger without reusing the prior role', () => {
@@ -52,12 +52,12 @@ test('switches passenger to driver and driver to passenger without reusing the p
     profileRole: 'conductor',
   };
 
-  assert.equal(isRoleHomeAuthorized({ ...passengerSession, expectedRole: 'pasajero' }), true);
-  assert.equal(isRoleHomeAuthorized({ ...passengerSession, expectedRole: 'conductor' }), false);
-  assert.equal(isRoleHomeAuthorized({ ...driverSession, expectedRole: 'conductor' }), true);
-  assert.equal(isRoleHomeAuthorized({ ...driverSession, expectedRole: 'pasajero' }), false);
+  assert.equal(isHomeAuthorized({ ...passengerSession, expectedRole: 'pasajero' }), true);
+  assert.equal(isHomeAuthorized({ ...passengerSession, expectedRole: 'conductor' }), false);
+  assert.equal(isHomeAuthorized({ ...driverSession, expectedRole: 'conductor' }), true);
+  assert.equal(isHomeAuthorized({ ...driverSession, expectedRole: 'pasajero' }), false);
 
   const loadingNextSession = { ...driverSession, isLoading: true, profileId: null, profileRole: null };
-  assert.equal(isRoleHomeAuthorized({ ...loadingNextSession, expectedRole: 'pasajero' }), false);
-  assert.equal(isRoleHomeAuthorized({ ...loadingNextSession, expectedRole: 'conductor' }), false);
+  assert.equal(isHomeAuthorized({ ...loadingNextSession, expectedRole: 'pasajero' }), false);
+  assert.equal(isHomeAuthorized({ ...loadingNextSession, expectedRole: 'conductor' }), false);
 });
