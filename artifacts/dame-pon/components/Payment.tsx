@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Alert, Text } from "react-native";
+import { Text, View } from "react-native";
 import { router } from "expo-router";
 import CustomButton from "@/components/CustomButton";
+import { InlineNotice } from "@/components/InlineNotice";
 import { useAuth } from "@/context/AuthContext";
 import { useLocationStore } from "@/store";
 import { requestTrip } from "@/lib/rideService";
@@ -11,10 +12,11 @@ export default function Payment({ amount }: PaymentProps) {
   const { user } = useAuth();
   const { userLocation, destinationLocation } = useLocationStore();
   const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<{ title: string; message: string; action?: boolean } | null>(null);
 
   async function confirmRide() {
     if (!user || !userLocation || !destinationLocation) {
-      Alert.alert("Falta información", "Selecciona el origen y el destino antes de confirmar.");
+      setNotice({ title: "Falta información", message: "Selecciona el origen y el destino antes de confirmar." });
       return;
     }
     setLoading(true);
@@ -26,12 +28,10 @@ export default function Payment({ amount }: PaymentProps) {
     );
     setLoading(false);
     if (result.error) {
-      Alert.alert("No se pudo solicitar", result.error);
+      setNotice({ title: "No se pudo solicitar", message: result.error });
       return;
     }
-    Alert.alert("Solicitud enviada", "Buscaremos un conductor disponible en tu municipio.", [
-      { text: "Ver viaje", onPress: () => router.replace("/(root)/(tabs)/rides") },
-    ]);
+    setNotice({ title: "Solicitud enviada", message: "Buscaremos un conductor disponible en tu municipio.", action: true });
   }
 
   return (
@@ -40,6 +40,14 @@ export default function Payment({ amount }: PaymentProps) {
         El pago se coordina fuera de la app. Este paso solo crea la solicitud protegida del viaje.
       </Text>
       <CustomButton title={`Confirmar solicitud${amount ? ` · $${amount}` : ""}`} loading={loading} onPress={confirmRide} className="mt-6" />
+      {notice ? (
+        <InlineNotice
+          title={notice.title}
+          message={notice.message}
+          actionLabel={notice.action ? "Ver viaje" : undefined}
+          onAction={notice.action ? () => router.replace("/(root)/(tabs)/rides") : undefined}
+        />
+      ) : null}
     </>
   );
 }

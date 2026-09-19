@@ -90,7 +90,7 @@ export const onboarding = [
   },
   {
     id: 3,
-    title: "Pon, llegamos",
+    title: "Tu próximo viaje está listo",
     description:
       "Indica tu origen y destino dentro de Puerto Rico. Nosotros coordinamos lo demás.",
     image: images.onboarding3,

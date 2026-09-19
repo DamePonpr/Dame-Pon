@@ -1,9 +1,10 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Alert, Image, ScrollView, Text, View } from "react-native";
+import { Image, ScrollView, Text, View } from "react-native";
 
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
+import { InlineNotice } from "@/components/InlineNotice";
 import { useAuth, type UserRole } from "@/context/AuthContext";
 import { icons, images } from "@/constants";
 
@@ -12,14 +13,15 @@ export default function SignUp() {
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", baseMunicipality: "" });
   const [role, setRole] = useState<UserRole>("passenger");
   const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<{ title: string; message: string; action?: boolean } | null>(null);
 
   async function submit() {
     if (!form.name.trim() || !form.email.trim() || !form.password || !form.phone.trim()) {
-      Alert.alert("Completa tus datos", "Nombre, correo, teléfono y contraseña son obligatorios.");
+      setNotice({ title: "Completa tus datos", message: "Nombre, correo, teléfono y contraseña son obligatorios." });
       return;
     }
     if (role === "driver" && !form.baseMunicipality.trim()) {
-      Alert.alert("Falta el municipio base", "Los conductores deben indicar su municipio base.");
+      setNotice({ title: "Falta el municipio base", message: "Los conductores deben indicar su municipio base." });
       return;
     }
     setLoading(true);
@@ -33,11 +35,11 @@ export default function SignUp() {
     });
     setLoading(false);
     if (result.error) {
-      Alert.alert("No pudimos crear la cuenta", result.error === "PHONE_ALREADY_REGISTERED" ? "Ese teléfono ya está registrado." : result.error);
+      setNotice({ title: "No pudimos crear la cuenta", message: result.error === "PHONE_ALREADY_REGISTERED" ? "Ese teléfono ya está registrado." : result.error });
       return;
     }
     if (result.needsEmailConfirmation) {
-      Alert.alert("Confirma tu correo", "Revisa tu correo electrónico y luego inicia sesión.", [{ text: "Ir a iniciar sesión", onPress: () => router.replace("/(auth)/sign-in") }]);
+      setNotice({ title: "Confirma tu correo", message: "Revisa tu correo electrónico y luego inicia sesión.", action: true });
       return;
     }
     router.replace("/(root)/(tabs)/home");
@@ -62,6 +64,14 @@ export default function SignUp() {
           </View>
           {role === "driver" ? <InputField label="Municipio base" placeholder="Ej. Bayamón" icon={icons.map} value={form.baseMunicipality} onChangeText={(value) => setForm({ ...form, baseMunicipality: value })} /> : null}
           <CustomButton title="Crear cuenta" onPress={() => void submit()} loading={loading} className="mt-4" />
+          {notice ? (
+            <InlineNotice
+              title={notice.title}
+              message={notice.message}
+              actionLabel={notice.action ? "Ir a iniciar sesión" : undefined}
+              onAction={notice.action ? () => router.replace("/(auth)/sign-in") : undefined}
+            />
+          ) : null}
           <Link href="/sign-in" className="text-lg text-center text-general-200 mt-10">
             ¿Ya tienes una cuenta? <Text className="text-primary-500">Inicia sesión</Text>
           </Link>
