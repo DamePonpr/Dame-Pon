@@ -1,12 +1,25 @@
-import { useAuth } from "@clerk/clerk-expo";
+import { ActivityIndicator, View } from "react-native";
 import { Redirect } from "expo-router";
 
-const Page = () => {
-  const { isSignedIn } = useAuth();
+import { useAuth } from "@/context/AuthContext";
+import { useColors } from "@/hooks/useColors";
+import { routeForRole } from "@/lib/roleRouting";
 
-  if (isSignedIn) return <Redirect href="/(root)/(tabs)/home" />;
+export default function IndexScreen() {
+  const colors = useColors();
+  const { session, profile, isLoading, authIssue } = useAuth();
 
-  return <Redirect href="/(auth)/welcome" />;
-};
+  if (isLoading || (session && !profile && !authIssue)) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
 
-export default Page;
+  if (!session || authIssue === "session_expired" || authIssue === "profile_unavailable") {
+    return <Redirect href="/(auth)/welcome" />;
+  }
+
+  return <Redirect href={routeForRole(profile?.role) ?? "/(auth)/sign-in"} />;
+}
