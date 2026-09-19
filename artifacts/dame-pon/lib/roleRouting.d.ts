@@ -3,7 +3,7 @@ export type RoleRoute = '/(root)/(tabs)/home';
 
 export function routeForRole(role: RoutedRole | null | undefined): RoleRoute | null;
 
-export function isRoleHomeAuthorized(input: {
+export function isHomeAuthorized(input: {
   isLoading: boolean;
   userId: string | null | undefined;
   profileId: string | null | undefined;

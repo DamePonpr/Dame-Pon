@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { InlineNotice } from '@/components/InlineNotice';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -40,11 +41,13 @@ async function savePushToken() {
 
 export function PushNotificationRegistration() {
   const { user } = useAuth();
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [askedKey, setAskedKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id || !Device.isDevice) return;
     let active = true;
-    const askedKey = `dame-pon:notifications-asked:${user.id}`;
+      const notificationKey = `dame-pon:notifications-asked:${user.id}`;
 
     const registerIfAllowed = async () => {
       const permissions = await Notifications.getPermissionsAsync();
@@ -57,30 +60,10 @@ export function PushNotificationRegistration() {
         return;
       }
 
-      const alreadyAsked = await AsyncStorage.getItem(askedKey);
+      const alreadyAsked = await AsyncStorage.getItem(notificationKey);
       if (alreadyAsked || !active) return;
-      await AsyncStorage.setItem(askedKey, 'true');
-
-      Alert.alert(
-        'Mantente al tanto de tu viaje',
-        'Dame Pon usa notificaciones para avisarte cuando aceptan tu viaje, el conductor inicia el recorrido o aparece una solicitud cercana.',
-        [
-          { text: 'Ahora no', style: 'cancel' },
-          {
-            text: 'Permitir notificaciones',
-            onPress: () => {
-              void Notifications.requestPermissionsAsync().then(async (result) => {
-                if (!result.granted) return;
-                try {
-                  await savePushToken();
-                } catch (error) {
-                  console.error('[Dame Pon] push-token:', error);
-                }
-              });
-            },
-          },
-        ],
-      );
+      setAskedKey(notificationKey);
+      setShowPrompt(true);
     };
 
     void registerIfAllowed();
@@ -89,5 +72,41 @@ export function PushNotificationRegistration() {
     };
   }, [user?.id]);
 
-  return null;
+  async function allowNotifications() {
+    if (askedKey) await AsyncStorage.setItem(askedKey, 'true');
+    setShowPrompt(false);
+    const result = await Notifications.requestPermissionsAsync();
+    if (!result.granted) return;
+    try {
+      await savePushToken();
+    } catch (error) {
+      console.error('[Dame Pon] push-token:', error);
+    }
+  }
+
+  async function dismissPrompt() {
+    if (askedKey) await AsyncStorage.setItem(askedKey, 'true');
+    setShowPrompt(false);
+  }
+
+  if (!showPrompt) return null;
+  return (
+    <View style={styles.overlay}>
+      <InlineNotice
+        title="Mantente al tanto de tu viaje"
+        message="Dame Pon usa notificaciones para avisarte cuando aceptan tu viaje, el conductor inicia el recorrido o aparece una solicitud cercana."
+        actionLabel="Permitir notificaciones"
+        onAction={() => void allowNotifications()}
+      />
+      <Pressable onPress={() => void dismissPrompt()} style={styles.dismiss}>
+        <Text style={styles.dismissText}>Ahora no</Text>
+      </Pressable>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  overlay: { position: 'absolute', top: 54, left: 14, right: 14, zIndex: 100 },
+  dismiss: { alignSelf: 'flex-end', marginTop: 5, paddingHorizontal: 12, paddingVertical: 5 },
+  dismissText: { color: '#FFFFFF', fontFamily: 'Jakarta-SemiBold', fontSize: 12 },
+});

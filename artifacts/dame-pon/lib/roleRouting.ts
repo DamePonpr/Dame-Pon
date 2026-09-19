@@ -7,7 +7,7 @@ export function routeForRole(role: RoutedRole | null | undefined): RoleRoute | n
   return role === "driver" || role === "passenger" ? "/(root)/(tabs)/home" : null;
 }
 
-export function isRoleHomeAuthorized(input: {
+export function isHomeAuthorized(input: {
   isLoading: boolean;
   userId: string | null | undefined;
   profileId: string | null | undefined;
