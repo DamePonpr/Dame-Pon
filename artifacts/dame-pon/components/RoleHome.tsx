@@ -7,9 +7,12 @@ import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, type UserRole } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
+import { brand } from '@/constants/designSystem';
 import { AppButton } from '@/components/AppButton';
 import { BrandMark } from '@/components/BrandMark';
 import { LiveRideMap } from '@/components/LiveRideMap';
+import { RideLayout } from '@/components/RideLayout';
+import { DriverCard } from '@/components/DriverCard';
 import { SettingsModal } from '@/components/SettingsModal';
 import {
   acceptTrip,
@@ -222,7 +225,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   }, [handleServiceError, isDriver, roleActive, user?.id]);
 
   useEffect(() => {
-    if (!roleActive || !activeTrip || activeTrip.status !== 'completado') {
+    if (!roleActive || !activeTrip || !['aceptado', 'en_curso', 'completado'].includes(activeTrip.status)) {
       if (!activeTrip) setParticipantDetails(null);
       return;
     }
@@ -816,11 +819,41 @@ export function RoleHome({ role }: { role: UserRole }) {
     return <Redirect href={correctRoute ?? '/auth/login'} />;
   }
 
+  const usePassengerRideLayout = !isDriver
+    && activeTrip !== null
+    && ['buscando_conductor', 'aceptado', 'en_curso'].includes(activeTrip.status);
+  const useDriverRideLayout = isDriver && activeTrip !== null && ['aceptado', 'en_curso'].includes(activeTrip.status);
+
   return (
     <View
       testID={isDriver ? 'driver-panel' : 'passenger-panel'}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
+      {usePassengerRideLayout ? (
+        <PassengerRideLayout
+          colors={colors}
+          activeTrip={activeTrip}
+          participantDetails={participantDetails}
+          passengerLocation={passengerLocation}
+          driverLocation={driverLocation}
+          driverVehicleColor={participantDetails?.vehicle_color}
+          mapLocationError={mapLocationError}
+          tripActionLoading={tripActionLoading}
+          onCancelTrip={handleCancelTrip}
+        />
+      ) : useDriverRideLayout ? (
+        <DriverRideLayout
+          colors={colors}
+          activeTrip={activeTrip}
+          driverLocation={driverMapLocation}
+          pickupLocation={activeTrip && Number.isFinite(activeTrip.pickup_lat) && Number.isFinite(activeTrip.pickup_lng)
+            ? { latitude: Number(activeTrip.pickup_lat), longitude: Number(activeTrip.pickup_lng) }
+            : null}
+          tripActionLoading={tripActionLoading}
+          onTripStatus={handleTripStatus}
+        />
+      ) : (
+        <>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BrandMark compact />
         <View style={styles.headerActions}>
@@ -946,6 +979,8 @@ export function RoleHome({ role }: { role: UserRole }) {
           </Pressable>
         ) : null}
       </ScrollView>
+        </>
+      )}
 
       <DestinationModal
         colors={colors}
@@ -1168,6 +1203,106 @@ function PassengerContent({
         <Text style={[styles.reassuranceText, { color: colors.primary }]}>Viajes confiables, tarifas claras y apoyo cuando lo necesites.</Text>
       </View>
     </>
+  );
+}
+
+function PassengerRideLayout({
+  colors,
+  activeTrip,
+  participantDetails,
+  passengerLocation,
+  driverLocation,
+  driverVehicleColor,
+  mapLocationError,
+  tripActionLoading,
+  onCancelTrip,
+}: {
+  colors: ReturnType<typeof useColors>;
+  activeTrip: Trip;
+  participantDetails: TripParticipantDetails | null;
+  passengerLocation: { latitude: number; longitude: number } | null;
+  driverLocation: { latitude: number; longitude: number } | null;
+  driverVehicleColor?: string | null;
+  mapLocationError: string;
+  tripActionLoading: boolean;
+  onCancelTrip: () => void;
+}) {
+  const isSearching = activeTrip.status === 'buscando_conductor';
+  return (
+    <RideLayout
+      title={isSearching ? 'Buscando tu conductor' : tripStatusLabel(activeTrip.status)}
+      snapPoints={['40%', '82%']}
+      map={(
+        <LiveRideMap
+          passengerLocation={passengerLocation}
+          driverLocation={driverLocation}
+          pickupLocation={null}
+          driverVehicleColor={driverVehicleColor}
+        />
+      )}
+    >
+      <Text style={[styles.rideSheetSubtitle, { color: colors.mutedForeground }]}>
+        {isSearching ? 'Priorizamos conductores de tu municipio activo.' : 'El mapa se ajusta mientras tu conductor se mueve.'}
+      </Text>
+      {mapLocationError ? <Text style={[styles.inlineError, { color: colors.destructive }]}>{mapLocationError}</Text> : null}
+      {!isSearching ? <DriverCard details={participantDetails} compact /> : null}
+      <View style={[styles.rideRouteCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.rideRouteRow}>
+          <View style={[styles.rideRouteDot, { backgroundColor: colors.primary }]} />
+          <View style={styles.rideRouteCopy}>
+            <Text style={[styles.rideRouteLabel, { color: colors.mutedForeground }]}>DESTINO</Text>
+            <Text style={[styles.rideRouteValue, { color: colors.foreground }]} numberOfLines={2}>
+              {tripDestination(activeTrip)}
+            </Text>
+          </View>
+        </View>
+      </View>
+      <AppButton
+        label="Cancelar viaje"
+        variant="secondary"
+        onPress={onCancelTrip}
+        loading={tripActionLoading}
+        testID="cancel-trip"
+      />
+    </RideLayout>
+  );
+}
+
+function DriverRideLayout({
+  colors,
+  activeTrip,
+  driverLocation,
+  pickupLocation,
+  tripActionLoading,
+  onTripStatus,
+}: {
+  colors: ReturnType<typeof useColors>;
+  activeTrip: Trip;
+  driverLocation: { latitude: number; longitude: number } | null;
+  pickupLocation: { latitude: number; longitude: number } | null;
+  tripActionLoading: boolean;
+  onTripStatus: (status: 'en_curso' | 'completado') => void;
+}) {
+  const isAccepted = activeTrip.status === 'aceptado';
+  return (
+    <RideLayout
+      title={isAccepted ? 'Conductor en camino' : 'Viaje en curso'}
+      snapPoints={['36%', '76%']}
+      map={<LiveRideMap passengerLocation={null} driverLocation={driverLocation} pickupLocation={pickupLocation} />}
+    >
+      <Text style={[styles.rideSheetSubtitle, { color: colors.mutedForeground }]}>
+        {isAccepted ? 'La hoja muestra el destino y el siguiente paso del viaje.' : 'Tu ubicación se comparte con el pasajero.'}
+      </Text>
+      <View style={[styles.rideRouteCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.rideRouteLabel, { color: colors.mutedForeground }]}>DESTINO</Text>
+        <Text style={[styles.rideRouteValue, { color: colors.foreground }]} numberOfLines={2}>{tripDestination(activeTrip)}</Text>
+      </View>
+      <AppButton
+        label={isAccepted ? 'Iniciar viaje' : 'Completar viaje'}
+        onPress={() => onTripStatus(isAccepted ? 'en_curso' : 'completado')}
+        loading={tripActionLoading}
+      />
+    </RideLayout>
   );
 }
 
@@ -2184,7 +2319,7 @@ function RatingControl({
             onPress={() => onRating(score)}
             style={({ pressed }) => [styles.starButton, pressed && { opacity: 0.65 }]}
           >
-        <Feather name="star" size={24} color={colors.star} />
+        <Feather name="star" size={24} color={brand.star} />
           </Pressable>
         ))}
       </View>
@@ -2259,6 +2394,13 @@ const styles = StyleSheet.create({
   driverMapOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, backgroundColor: 'rgba(11,28,38,0.84)', gap: 3 },
   driverMapLabel: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 12 },
   driverMapMeta: { color: 'rgba(255,255,255,0.78)', fontFamily: 'Inter_400Regular', fontSize: 10, lineHeight: 14 },
+  rideSheetSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 19 },
+  rideRouteCard: { borderRadius: 18, borderWidth: 1, gap: 8, padding: 15 },
+  rideRouteRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  rideRouteDot: { borderRadius: 6, height: 12, width: 12 },
+  rideRouteCopy: { flex: 1, gap: 3 },
+  rideRouteLabel: { fontFamily: 'Inter_700Bold', fontSize: 10, letterSpacing: 1.1 },
+  rideRouteValue: { fontFamily: 'Inter_600SemiBold', fontSize: 14, lineHeight: 19 },
   trackingCard: { borderRadius: 15, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.12)' },
   trackingCopy: { flex: 1, gap: 3 },
   trackingTitle: { color: '#FFFFFF', fontFamily: 'Inter_600SemiBold', fontSize: 12 },

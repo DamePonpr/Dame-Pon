@@ -12,6 +12,7 @@ interface LiveRideMapProps {
   passengerLocation: Coordinate | null;
   driverLocation: Coordinate | null;
   pickupLocation: Coordinate | null;
+  driverVehicleColor?: string | null;
 }
 
 export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation }: LiveRideMapProps) {

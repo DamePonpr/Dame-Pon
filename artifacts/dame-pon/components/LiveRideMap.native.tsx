@@ -14,6 +14,7 @@ interface LiveRideMapProps {
   passengerLocation: Coordinate | null;
   driverLocation: Coordinate | null;
   pickupLocation: Coordinate | null;
+  driverVehicleColor?: string | null;
 }
 
 interface Coordinate {
@@ -32,19 +33,39 @@ function toLngLat(location: Coordinate): LngLat {
 function getBounds(locations: Coordinate[]): LngLatBounds {
   const longitudes = locations.map(({ longitude }) => longitude);
   const latitudes = locations.map(({ latitude }) => latitude);
+  const minLongitude = Math.min(...longitudes);
+  const maxLongitude = Math.max(...longitudes);
+  const minLatitude = Math.min(...latitudes);
+  const maxLatitude = Math.max(...latitudes);
+  const longitudePadding = Math.max((maxLongitude - minLongitude) * 0.15, 0.002);
+  const latitudePadding = Math.max((maxLatitude - minLatitude) * 0.15, 0.002);
   return [
-    Math.min(...longitudes),
-    Math.min(...latitudes),
-    Math.max(...longitudes),
-    Math.max(...latitudes),
+    minLongitude - longitudePadding,
+    minLatitude - latitudePadding,
+    maxLongitude + longitudePadding,
+    maxLatitude + latitudePadding,
   ];
 }
 
-export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation }: LiveRideMapProps) {
+function calculateBearing(previous: Coordinate, current: Coordinate) {
+  const latitude = (current.latitude * Math.PI) / 180;
+  const longitudeDelta = ((current.longitude - previous.longitude) * Math.PI) / 180;
+  const latitudeDelta = ((current.latitude - previous.latitude) * Math.PI) / 180;
+  const bearing = (Math.atan2(
+    Math.sin(longitudeDelta) * Math.cos(latitude),
+    Math.cos((previous.latitude * Math.PI) / 180) * Math.sin(latitude)
+      - Math.sin((previous.latitude * Math.PI) / 180) * Math.cos(latitude) * Math.cos(longitudeDelta),
+  ) * 180) / Math.PI;
+  return (bearing + 360) % 360;
+}
+
+export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation, driverVehicleColor }: LiveRideMapProps) {
   const colors = useColors();
   const cameraRef = useRef<CameraRef>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
+  const [driverHeading, setDriverHeading] = useState(0);
+  const previousDriverLocation = useRef<Coordinate | null>(null);
   const mapStyle = colors.isDark ? OPENFREEMAP_DARK_STYLE : OPENFREEMAP_LIGHT_STYLE;
   const locations = useMemo(
     () => [passengerLocation, driverLocation, pickupLocation].filter(
@@ -53,6 +74,15 @@ export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation 
     [driverLocation, passengerLocation, pickupLocation],
   );
   const initialLocation = locations[0];
+
+  useEffect(() => {
+    if (driverLocation && previousDriverLocation.current) {
+      const movedDistance = Math.abs(driverLocation.latitude - previousDriverLocation.current.latitude)
+        + Math.abs(driverLocation.longitude - previousDriverLocation.current.longitude);
+      if (movedDistance > 0.000001) setDriverHeading(calculateBearing(previousDriverLocation.current, driverLocation));
+    }
+    previousDriverLocation.current = driverLocation;
+  }, [driverLocation]);
 
   useEffect(() => {
     if (!mapReady || locations.length === 0) return;
@@ -65,7 +95,7 @@ export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation 
       return;
     }
     cameraRef.current?.fitBounds(getBounds(locations), {
-      padding: { top: 54, right: 54, bottom: 54, left: 54 },
+      padding: { top: 90, right: 48, bottom: 360, left: 48 },
       duration: 650,
     });
   }, [locations, mapReady]);
@@ -117,8 +147,17 @@ export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation 
             id="assigned-driver-location"
             lngLat={toLngLat(driverLocation)}
           >
-            <View style={[styles.driverMarker, { backgroundColor: '#247A48', borderColor: colors.primaryForeground }]}>
-              <View style={styles.driverCore} />
+            <View
+              style={[
+                styles.driverMarker,
+                {
+                  backgroundColor: driverVehicleColor || colors.primary,
+                  borderColor: colors.primaryForeground,
+                  transform: [{ rotate: `${driverHeading}deg` }],
+                },
+              ]}
+            >
+              <Text style={[styles.driverIcon, { color: colors.primaryForeground }]}>▰</Text>
             </View>
           </Marker>
         ) : null}
@@ -176,15 +215,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 16,
     borderWidth: 3,
-    height: 32,
+    height: 38,
     justifyContent: 'center',
-    width: 32,
+    width: 38,
   },
-  driverCore: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 6,
-    height: 12,
-    width: 12,
+  driverIcon: {
+    fontSize: 20,
+    fontWeight: '800',
   },
   statusOverlay: {
     alignSelf: 'center',

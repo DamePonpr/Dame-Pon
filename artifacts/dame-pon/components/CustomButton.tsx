@@ -1,0 +1,1 @@
+export { AppButton as CustomButton } from '@/components/AppButton';

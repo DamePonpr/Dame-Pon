@@ -1,0 +1,1 @@
+export { AppInput as InputField } from '@/components/AppInput';
