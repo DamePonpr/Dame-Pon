@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Text, View } from "react-native";
 
 import Payment from "@/components/Payment";
-import RideLayout from "@/components/RideLayout";
+import { RideLayout } from "@/components/RideLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useLocationStore } from "@/store";
 

@@ -829,7 +829,7 @@ export function RoleHome({ role }: { role: UserRole }) {
   }
 
   if (!user || authIssue === 'profile_unavailable') {
-    return <Redirect href="/auth/login" />;
+    return <Redirect href="/(auth)/sign-in" />;
   }
 
   if (!roleActive) {

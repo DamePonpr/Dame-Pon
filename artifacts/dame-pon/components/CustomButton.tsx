@@ -20,7 +20,7 @@ export function CustomButton({
     secondary: colors.secondary,
     danger: colors.destructive,
     outline: "transparent",
-    success: colors.success,
+    success: colors.primary,
   }[bgVariant];
   const textColor = {
     primary: colors.primaryForeground,

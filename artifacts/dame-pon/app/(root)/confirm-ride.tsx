@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Text, View } from "react-native";
 
 import CustomButton from "@/components/CustomButton";
-import RideLayout from "@/components/RideLayout";
+import { RideLayout } from "@/components/RideLayout";
 import { useLocationStore } from "@/store";
 
 export default function ConfirmRide() {

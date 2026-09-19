@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Alert, Text } from "react-native";
 import { router } from "expo-router";
 import CustomButton from "@/components/CustomButton";
-import RideLayout from "@/components/RideLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useLocationStore } from "@/store";
 import { requestTrip } from "@/lib/rideService";

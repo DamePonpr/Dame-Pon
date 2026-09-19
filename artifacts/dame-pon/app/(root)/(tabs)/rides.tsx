@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import RideCard from "@/components/RideCard";
+import { RideCard } from "@/components/RideCard";
 import CustomButton from "@/components/CustomButton";
 import { useAuth } from "@/context/AuthContext";
 import { getTripHistory, type TripHistoryItem } from "@/lib/rideService";
