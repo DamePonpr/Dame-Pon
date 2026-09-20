@@ -56,14 +56,14 @@ Las credenciales de esa prueba deben pertenecer a un pasajero y un conductor de
 prueba distintos; no tienen que ser los participantes de un viaje histórico real.
 
 Si el conductor aprobado y conectado no puede leer solicitudes con estado
-`buscando_conductor`, aplica primero la migración:
+`requested` u `offered`, aplica primero la migración:
 
 ```text
 supabase/migrations/20260906120000_allow_approved_drivers_to_view_open_trips.sql
 ```
 
 La política solo amplía la lectura de solicitudes todavía abiertas; no expone viajes
-aceptados, en curso ni completados a usuarios ajenos.
+`accepted`, `arrived`, `in_progress` ni `completed` a usuarios ajenos.
 
 Para permitir que ese conductor reclame una solicitud abierta mediante una función
 controlada que conserva pasajero, ruta y tarifa, aplica también:

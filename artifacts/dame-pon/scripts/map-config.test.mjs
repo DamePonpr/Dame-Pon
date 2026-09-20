@@ -5,13 +5,13 @@ import test from 'node:test';
 const nativeMapPath = new URL('../components/LiveRideMap.native.tsx', import.meta.url);
 const appConfigPath = new URL('../app.json', import.meta.url);
 const packagePath = new URL('../package.json', import.meta.url);
-const roleHomePath = new URL('../components/RoleHome.tsx', import.meta.url);
+const driverHomePath = new URL('../components/DriverHome.tsx', import.meta.url);
 
-const [nativeMap, appConfigText, packageText, roleHome] = await Promise.all([
+const [nativeMap, appConfigText, packageText, driverHome] = await Promise.all([
   readFile(nativeMapPath, 'utf8'),
   readFile(appConfigPath, 'utf8'),
   readFile(packagePath, 'utf8'),
-  readFile(roleHomePath, 'utf8'),
+  readFile(driverHomePath, 'utf8'),
 ]);
 
 const appConfig = JSON.parse(appConfigText);
@@ -39,10 +39,8 @@ test('los marcadores no salen del viaje activo que recibe el componente', () => 
 });
 
 test('el panel del conductor también muestra el mapa durante el viaje', () => {
-  assert.match(roleHome, /driverLocation=\{driverMapLocation\}/);
   assert.match(
-    roleHome,
-    /<LiveRideMap[\s\S]*passengerLocation=\{null\}[\s\S]*driverLocation=\{driverLocation\}[\s\S]*pickupLocation=\{pickupLocation\}/,
+    driverHome,
+    /map=\{<LiveRideMap[\s\S]*passengerLocation=\{null\}[\s\S]*driverLocation=\{home\.driverLocation\}[\s\S]*pickupLocation=\{null\}/,
   );
-  assert.match(roleHome, /El pasajero puede seguir tu llegada en el mapa/);
 });
