@@ -166,7 +166,8 @@ async function run() {
       dropoff_address: `RLS destino ${runId}`,
       dropoff_lat: 18.4064,
       dropoff_lng: -66.0644,
-      status: 'buscando_conductor',
+      passenger_pin: '1234',
+      status: 'requested',
       requested_at: new Date().toISOString(),
     })
     .select('id,status,passenger_id,driver_id,pickup_address,dropoff_address,requested_at')
@@ -186,7 +187,7 @@ async function run() {
     .from('trips')
     .select('id,status')
     .eq('id', created.tripId)
-    .eq('status', 'buscando_conductor')
+    .in('status', ['requested', 'offered'])
     .single();
   checkError('visibilidad de solicitudes abiertas', response.error);
 
@@ -205,18 +206,15 @@ async function run() {
     .from('trips')
     .select('id')
     .neq('driver_id', driver.user.id)
-    .neq('status', 'buscando_conductor');
+    .not('status', 'in', '(requested,offered)');
   checkError('aislamiento de viajes privados para conductor', response.error);
   assertRowsHidden('aislamiento de viajes privados para conductor', response.data);
   console.log('[OK] viaje: aceptación y aislamiento entre usuarios');
 
   response = await driver.supabase
-    .from('trips')
-    .update({ status: 'completado', completed_at: new Date().toISOString() })
-    .eq('id', created.tripId)
-    .eq('driver_id', driver.user.id)
-    .select('id')
-    .single();
+    .rpc('start_trip', { p_trip_id: created.tripId, p_passenger_pin: '1234' });
+  checkError('iniciar viaje de prueba', response.error);
+  response = await driver.supabase.rpc('complete_trip', { p_trip_id: created.tripId });
   checkError('cierre del viaje de prueba', response.error);
 
   response = await driver.supabase
