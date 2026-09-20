@@ -357,6 +357,19 @@ set vehicle_type = coalesce(vehicle_type, 'sedan'::public.vehicle_type),
     seat_capacity = coalesce(seat_capacity, 4),
     status = coalesce(status, 'pending'::public.vehicle_status);
 
+do $$
+begin
+  if exists (
+    select 1
+    from public.vehicles
+    where seat_capacity is null
+       or seat_capacity < 1
+       or seat_capacity > 12
+  ) then
+    raise exception 'A1 preflight failed: vehicles.seat_capacity must be between 1 and 12 before the constraint is added';
+  end if;
+end $$;
+
 alter table public.vehicles
   alter column vehicle_type set default 'sedan'::public.vehicle_type,
   alter column vehicle_type set not null,
@@ -390,6 +403,19 @@ create table if not exists public.driver_documents (
 create index if not exists driver_documents_driver_idx
   on public.driver_documents(driver_id);
 
+do $$
+begin
+  if exists (
+    select 1
+    from public.driver_documents
+    where status = 'approved'
+    group by driver_id, doc_type
+    having count(*) > 1
+  ) then
+    raise exception 'A1 preflight failed: duplicate approved driver documents exist for the same driver and document type';
+  end if;
+end $$;
+
 create unique index if not exists driver_documents_approved_unique
   on public.driver_documents(driver_id, doc_type)
   where status = 'approved';
@@ -410,6 +436,19 @@ create table if not exists public.vehicle_documents (
 
 create index if not exists vehicle_documents_vehicle_idx
   on public.vehicle_documents(vehicle_id);
+
+do $$
+begin
+  if exists (
+    select 1
+    from public.vehicle_documents
+    where status = 'approved'
+    group by vehicle_id, doc_type
+    having count(*) > 1
+  ) then
+    raise exception 'A1 preflight failed: duplicate approved vehicle documents exist for the same vehicle and document type';
+  end if;
+end $$;
 
 create unique index if not exists vehicle_documents_approved_unique
   on public.vehicle_documents(vehicle_id, doc_type)
@@ -437,6 +476,28 @@ create index if not exists trip_offers_trip_idx
 
 create index if not exists trip_offers_driver_idx
   on public.trip_offers(driver_id, offer_status);
+
+do $$
+begin
+  if exists (
+    select 1
+    from public.trip_offers
+    where offer_status = 'pending'
+    group by trip_id
+    having count(*) > 1
+  ) then
+    raise exception 'A1 preflight failed: more than one pending trip offer exists for a trip';
+  end if;
+
+  if exists (
+    select 1
+    from public.trip_offers
+    group by trip_id, driver_id
+    having count(*) > 1
+  ) then
+    raise exception 'A1 preflight failed: duplicate trip offers exist for the same trip and driver';
+  end if;
+end $$;
 
 create unique index if not exists trip_offers_one_pending_per_trip
   on public.trip_offers(trip_id)
@@ -636,6 +697,18 @@ create policy trip_offers_driver_read on public.trip_offers
   for select to authenticated
   using (driver_id = auth.uid() or is_admin());
 
+drop policy if exists trip_offers_passenger_status_read on public.trip_offers;
+create policy trip_offers_passenger_status_read on public.trip_offers
+  for select to authenticated
+  using (
+    exists (
+      select 1
+      from public.trips
+      where trips.id = trip_offers.trip_id
+        and trips.passenger_id = auth.uid()
+    )
+  );
+
 drop policy if exists trip_offers_admin_write on public.trip_offers;
 create policy trip_offers_admin_write on public.trip_offers
   for all to authenticated
@@ -710,11 +783,13 @@ create policy payments_admin_write on public.payments
 -- Rebuild existing trip access policies for the new enum
 -- ============================================================================
 
+drop policy if exists "authenticated_participants_read_openride_trips" on public.trips;
 create policy "authenticated_participants_read_openride_trips"
 on public.trips
 for select to authenticated
 using (auth.uid() = passenger_id or auth.uid() = driver_id or is_admin());
 
+drop policy if exists "approved_online_drivers_read_openride_requests" on public.trips;
 create policy "approved_online_drivers_read_openride_requests"
 on public.trips
 for select to authenticated
@@ -731,6 +806,7 @@ using (
   )
 );
 
+drop policy if exists "authenticated_passengers_insert_openride_requests" on public.trips;
 create policy "authenticated_passengers_insert_openride_requests"
 on public.trips
 for insert to authenticated
@@ -749,6 +825,41 @@ with check (
 -- ============================================================================
 -- Preserve existing RPC behavior against the new status values
 -- ============================================================================
+
+create or replace function public.expand_trip_search(p_trip_id uuid)
+returns setof public.trips
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  updated_trip public.trips;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication is required' using errcode = '42501';
+  end if;
+
+  update public.trips
+  set allow_cross_municipio = true
+  where id = p_trip_id
+    and passenger_id = auth.uid()
+    and status in (
+      'requested'::public.trip_status,
+      'offered'::public.trip_status
+    )
+  returning * into updated_trip;
+
+  if not found then
+    raise exception 'Only the passenger can expand a requested or offered trip'
+      using errcode = '42501';
+  end if;
+
+  return next updated_trip;
+end;
+$$;
+
+revoke all on function public.expand_trip_search(uuid) from public, anon;
+grant execute on function public.expand_trip_search(uuid) to authenticated;
 
 create or replace function public.accept_trip(p_trip_id uuid)
 returns setof public.trips
