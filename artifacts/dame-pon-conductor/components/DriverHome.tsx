@@ -12,6 +12,8 @@ import { useDriverHome } from '@/hooks/useDriverHome';
 import type { Profile } from '@workspace/dame-pon-shared/context/AuthContext';
 import type { MunicipalityDecision } from '@workspace/dame-pon-shared/lib/municipality';
 import { MunicipalityPicker } from '@workspace/dame-pon-shared/components/MunicipalityPicker';
+import { DriverDocumentsPanel } from './DriverDocumentsPanel';
+import { useDriverDocuments } from '../hooks/useDriverDocuments';
 
 export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
   profile: Profile;
@@ -22,6 +24,7 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const home = useDriverHome(userId, onSessionExpired);
+  const documents = useDriverDocuments(userId);
   const [passengerPin, setPassengerPin] = useState('');
   const [pinPromptVisible, setPinPromptVisible] = useState(false);
   const activeMunicipality = home.setup?.driver?.municipio_activo ?? home.setup?.driver?.municipio_base;
@@ -46,15 +49,20 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
             <Feather name="log-out" size={18} color={colors.primary} />
           </Pressable>
         </View>
+        <DriverDocumentsPanel userId={userId} />
         <View style={[styles.onlineCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.onlineCopy}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>En línea</Text>
             <Text style={[styles.cardCaption, { color: colors.mutedForeground }]}>
-              {home.isOnline ? 'Puedes recibir solicitudes de tu municipio activo.' : 'Activa tu disponibilidad para recibir solicitudes.'}
+              {!documents.isFullyApproved
+                ? 'La disponibilidad se habilita cuando todos tus documentos estén aprobados.'
+                : home.isOnline
+                  ? 'Puedes recibir solicitudes de tu municipio activo.'
+                  : 'Activa tu disponibilidad para recibir solicitudes.'}
             </Text>
           </View>
           <View style={styles.switchWrap}>
-            <Switch value={home.isOnline} onValueChange={(value) => void home.toggleOnline(value)} disabled={home.actionLoading} trackColor={{ false: colors.border, true: colors.star }} thumbColor={home.isOnline ? colors.primaryForeground : colors.mutedForeground} />
+            <Switch value={home.isOnline} onValueChange={(value) => void home.toggleOnline(value)} disabled={home.actionLoading || !documents.isFullyApproved} trackColor={{ false: colors.border, true: colors.star }} thumbColor={home.isOnline ? colors.primaryForeground : colors.mutedForeground} />
           </View>
         </View>
         {home.error ? <Text style={[styles.error, { color: colors.destructive }]}>{home.error}</Text> : null}
