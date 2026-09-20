@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/dame-pon-pasajero/"
+title = "Dame Pon"
+description = "App móvil de pasajeros para solicitar y seguir viajes municipales con Supabase."
+version = "1.0.0"
+id = "artifacts/dame-pon-pasajero"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/dame-pon-pasajero/" ]
+localPort = 18648
+
+[services.development]
+run = "pnpm --filter @workspace/dame-pon-pasajero run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/dame-pon-pasajero", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/dame-pon-pasajero", "run", "serve" ]
+
+[services.env]
+PORT = "18648"
+BASE_PATH = "/dame-pon-pasajero/"

@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Dame Pon",
+    "slug": "dame-pon",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/dame-pon-logo.png",
+    "scheme": "dame-pon",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.damepon.damepon"
+    },
+    "web": {
+      "favicon": "./assets/images/dame-pon-logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      "./plugins/withPreviewSigning",
+      "./plugins/withPreviewBuildVersion",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Dame Pon usa tu ubicación para coordinar el punto de recogida y mostrar el conductor en el mapa durante el viaje."
+        }
+      ],
+      [
+        "@maplibre/maplibre-react-native",
+        {
+          "android": {
+            "nativeVariant": "opengl",
+            "locationEngine": "default"
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0B1C26"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b7241380-ec5b-467f-9e2a-761119ab2d50"
+      }
+    }
+  }
+}
