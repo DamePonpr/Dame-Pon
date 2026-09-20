@@ -24,6 +24,7 @@
     "@maplibre/maplibre-react-native": "11.3.10",
     "@supabase/supabase-js": "^2.115.0",
     "@tanstack/react-query": "catalog:",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.7",
     "expo-blur": "~57.0.2",
     "expo-constants": "~57.0.6",
@@ -37,5 +38,8 @@
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2"
   }
 }
