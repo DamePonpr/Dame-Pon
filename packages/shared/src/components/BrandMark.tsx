@@ -7,7 +7,10 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
   const colors = useColors();
   return (
     <View style={styles.row}>
-      <BrandLogo style={[styles.icon, compact && styles.compactIcon]} />
+      <BrandLogo
+        role="pasajero"
+        style={[styles.icon, compact && styles.compactIcon]}
+      />
       <View>
         <Text style={[styles.name, { color: colors.foreground }, compact && styles.compactName]}>Dame Pon</Text>
         {!compact ? <Text style={[styles.tagline, { color: colors.mutedForeground }]}>Muévete a tu manera</Text> : null}
@@ -25,12 +28,10 @@ const styles = StyleSheet.create({
   icon: {
     width: 50,
     height: 50,
-    borderRadius: 15,
   },
   compactIcon: {
     width: 36,
     height: 36,
-    borderRadius: 11,
   },
   name: {
     fontFamily: 'Inter_700Bold',

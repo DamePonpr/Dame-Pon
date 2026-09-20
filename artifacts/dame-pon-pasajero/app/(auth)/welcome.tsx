@@ -36,7 +36,7 @@ const Home = () => {
       >
         {onboarding.map((item) => (
           <View key={item.id} style={styles.slide}>
-              <BrandLogo style={styles.logo} />
+              <BrandLogo role="pasajero" style={styles.logo} />
             <View style={styles.titleWrap}>
               <Text style={[styles.title, { color: colors.foreground }]}>
                 {item.title}

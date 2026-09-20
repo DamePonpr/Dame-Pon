@@ -25,7 +25,7 @@ const selectedMarker = require("../assets/icons/selected-marker.png");
 const star = require("../assets/icons/star.png");
 const target = require("../assets/icons/target.png");
 const to = require("../assets/icons/to.png");
-const logo = require("../assets/dame-pon-logo-passenger.png");
+const logo = require("../assets/dame-pon-mark-white.png");
 
 export const images = {
   logo,

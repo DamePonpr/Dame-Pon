@@ -38,7 +38,7 @@ export default function SignIn() {
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.scrollContent}>
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
         <View style={[styles.hero, { backgroundColor: colors.background }]}>
-          <BrandLogo style={styles.heroLogo} />
+          <BrandLogo role="conductor" style={styles.heroLogo} />
           <Text style={[styles.heroTitle, { color: colors.foreground }]}>Bienvenido a Dame Pon</Text>
           <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>Viajes claros y seguros en tu municipio</Text>
         </View>

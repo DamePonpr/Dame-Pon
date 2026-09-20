@@ -61,7 +61,7 @@ export default function SignUp() {
       >
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
         <View style={[styles.hero, { backgroundColor: colors.background }]}>
-          <BrandLogo style={styles.heroLogo} />
+          <BrandLogo role="pasajero" style={styles.heroLogo} />
           <Text style={[styles.heroTitle, { color: colors.foreground }]}>Crea tu cuenta</Text>
           <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>Elige cómo quieres usar Dame Pon</Text>
         </View>
