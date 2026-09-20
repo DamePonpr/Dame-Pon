@@ -72,7 +72,14 @@ export function DriverDocumentsPanel({ userId }: { userId: string }) {
               </Text>
               {document?.review_notes ? <Text style={[styles.note, { color: colors.destructive }]}>{document.review_notes}</Text> : null}
             </View>
-            {document?.status !== 'approved' ? <AppButton label={document ? 'Reemplazar' : 'Subir'} variant="secondary" onPress={() => openPicker(kind)} loading={documents.uploading} style={styles.action} /> : null}
+            {document?.status !== 'approved' ? <AppButton
+              label={document ? 'Reemplazar' : 'Subir'}
+              variant="secondary"
+              onPress={() => openPicker(kind)}
+              disabled={table === 'vehicle' && !documents.review?.vehicleId}
+              loading={documents.uploading}
+              style={styles.action}
+            /> : null}
           </View>
         );
       }) : null}

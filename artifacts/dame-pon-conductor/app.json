@@ -63,6 +63,7 @@
       "reactCompiler": true
     },
     "extra": {
+      "damePonRole": "conductor",
       "eas": {
         "projectId": "b7241380-ec5b-467f-9e2a-761119ab2d50"
       }
