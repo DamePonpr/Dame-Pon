@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
 import { radii, spacing, typography } from '@/constants/designSystem';
@@ -11,6 +11,7 @@ interface AppButtonProps {
   disabled?: boolean;
   loading?: boolean;
   testID?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function AppButton({
@@ -20,6 +21,7 @@ export function AppButton({
   disabled = false,
   loading = false,
   testID,
+  style,
 }: AppButtonProps) {
   const colors = useColors();
   const isDisabled = disabled || loading;
@@ -35,6 +37,7 @@ export function AppButton({
       }}
       style={({ pressed }) => [
         styles.button,
+        style,
         variant === 'primary' && { backgroundColor: colors.primary },
         variant === 'secondary' && {
           backgroundColor: colors.secondary,

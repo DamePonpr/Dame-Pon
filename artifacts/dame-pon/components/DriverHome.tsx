@@ -2,7 +2,6 @@ import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BrandMark } from '@/components/BrandMark';
 import { AppButton } from '@/components/AppButton';
 import { LiveRideMap } from '@/components/LiveRideMap';
 import { RideLayout } from '@/components/RideLayout';
@@ -45,7 +44,7 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
           </Pressable>
         </View>
         <View style={[styles.onlineCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View>
+          <View style={styles.onlineCopy}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>En línea</Text>
             <Text style={[styles.cardCaption, { color: colors.mutedForeground }]}>
               {home.isOnline ? 'Puedes recibir solicitudes de tu municipio activo.' : 'Activa tu disponibilidad para recibir solicitudes.'}

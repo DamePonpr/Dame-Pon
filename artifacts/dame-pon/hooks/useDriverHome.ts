@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   acceptTrip,
   getDriverActiveTrip,
@@ -7,6 +7,7 @@ import {
   getMunicipalities,
   getOpenTrips,
   getReceivedRatingAverage,
+  getTripParticipantDetails,
   isLikelySessionError,
   saveDriverSetup,
   setDriverActiveMunicipality,
@@ -18,11 +19,13 @@ import {
   type DriverLocation,
   type DriverSetup,
   type Trip,
+  type TripParticipantDetails,
   type VehicleDraft,
 } from '@/lib/rideService';
 import {
   isTripInActiveMunicipality,
   municipalityAfterDecision,
+  orderMunicipalitiesForDriver,
   sortTripsForDriver,
   type Municipality,
   type MunicipalityDecision,
@@ -37,6 +40,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
   const [trips, setTrips] = useState<Trip[]>([]);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
+  const [participantDetails, setParticipantDetails] = useState<TripParticipantDetails | null>(null);
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
   const [ratingAverage, setRatingAverage] = useState<number | null>(null);
   const [isOnline, setIsOnline] = useState(false);
@@ -73,6 +77,13 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
       if (ratingResult.error) handleError(ratingResult.error);
       setSetup(setupResult.data);
       setActiveTrip(tripResult.data?.status === 'completado' ? null : tripResult.data);
+      if (tripResult.data && tripResult.data.status !== 'completado') {
+        const participantResult = await getTripParticipantDetails(tripResult.data.id);
+        if (participantResult.error) handleError(participantResult.error);
+        setParticipantDetails(participantResult.data);
+      } else {
+        setParticipantDetails(null);
+      }
       setTrips(sortTripsForDriver(
         openResult.data ?? [],
         setupResult.data?.driver?.municipio_activo ?? setupResult.data?.driver?.municipio_base,
@@ -88,12 +99,23 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
           latitude: Number(setupResult.data.driver.current_lat),
           longitude: Number(setupResult.data.driver.current_lng),
         });
+      } else {
+        setDriverLocation(null);
       }
     } finally {
       refreshInFlight.current = false;
       setLoading(false);
     }
   }, [handleError, userId]);
+
+  const orderedMunicipalities = useMemo(() => orderMunicipalitiesForDriver(
+    municipalities,
+    setup?.driver?.municipio_base,
+    trips,
+    driverLocation
+      ? { latitude: driverLocation.latitude, longitude: driverLocation.longitude }
+      : { latitude: null, longitude: null },
+  ), [driverLocation, municipalities, setup?.driver?.municipio_base, trips]);
 
   useEffect(() => {
     if (!userId) return;
@@ -208,6 +230,8 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
     trips,
     municipalities,
     activeTrip,
+    participantDetails,
+    orderedMunicipalities,
     driverLocation,
     ratingAverage,
     isOnline,
