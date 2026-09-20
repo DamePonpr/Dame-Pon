@@ -379,9 +379,19 @@ alter table public.vehicles
   alter column status set default 'pending'::public.vehicle_status,
   alter column status set not null;
 
-alter table public.vehicles
-  add constraint vehicles_openride_seat_capacity
-  check (seat_capacity between 1 and 12);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.vehicles'::regclass
+      and conname = 'vehicles_openride_seat_capacity'
+  ) then
+    alter table public.vehicles
+      add constraint vehicles_openride_seat_capacity
+      check (seat_capacity between 1 and 12);
+  end if;
+end $$;
 
 -- ============================================================================
 -- Driver and vehicle documents
@@ -821,7 +831,57 @@ with check (
   and fare_estimate is null
   and fare_final is null
   and distance_km is null
+  and passenger_pin ~ '^[0-9]{4}$'
 );
+
+-- Column privileges complement RLS: drivers may read open trips, but never the
+-- passenger PIN. The passenger-only view is security-definer and filters by
+-- auth.uid() before exposing that column.
+revoke select on table public.trips from authenticated;
+grant select (
+  id, status, passenger_id, driver_id,
+  pickup_address, pickup_lat, pickup_lng,
+  dropoff_address, dropoff_lat, dropoff_lng,
+  fare_estimate, fare_final, distance_km,
+  requested_at, accepted_at, started_at, completed_at,
+  municipio, allow_cross_municipio, municipio_origen, municipio_destino,
+  arrived_at, cancelled_at, cancelled_by, cancel_reason, payment_status
+) on table public.trips to authenticated;
+
+create or replace view public.passenger_trips as
+select
+  trips.id,
+  trips.status,
+  trips.passenger_id,
+  trips.driver_id,
+  trips.pickup_address,
+  trips.pickup_lat,
+  trips.pickup_lng,
+  trips.dropoff_address,
+  trips.dropoff_lat,
+  trips.dropoff_lng,
+  trips.fare_estimate,
+  trips.fare_final,
+  trips.distance_km,
+  trips.requested_at,
+  trips.accepted_at,
+  trips.started_at,
+  trips.completed_at,
+  trips.municipio,
+  trips.allow_cross_municipio,
+  trips.municipio_origen,
+  trips.municipio_destino,
+  trips.arrived_at,
+  trips.cancelled_at,
+  trips.cancelled_by,
+  trips.cancel_reason,
+  trips.payment_status,
+  trips.passenger_pin
+from public.trips
+where trips.passenger_id = auth.uid();
+
+revoke all on public.passenger_trips from public, anon;
+grant select on public.passenger_trips to authenticated;
 
 -- ============================================================================
 -- Preserve existing RPC behavior against the new status values
@@ -909,7 +969,6 @@ language plpgsql
 security invoker
 set search_path = public
 as $$
-declare
 begin
   update public.trips
   set driver_id = auth.uid(),
@@ -962,7 +1021,6 @@ language plpgsql
 security invoker
 set search_path = public
 as $$
-declare
 begin
   if p_passenger_pin is null or p_passenger_pin !~ '^[0-9]{4}$' then
     raise exception 'A valid four-digit passenger PIN is required'
@@ -1007,7 +1065,6 @@ language plpgsql
 security invoker
 set search_path = public
 as $$
-declare
 begin
   update public.trips
   set status = 'completed'::public.trip_status,
