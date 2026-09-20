@@ -1,0 +1,42 @@
+{
+  "name": "openride",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Open-source ride-booking & dispatch platform for regional operators, co-ops, EV fleets, and community transport.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "db:start": "supabase start --workdir infra --exclude vector",
+    "db:status": "supabase status --workdir infra",
+    "db:stop": "supabase stop --workdir infra",
+    "db:reset": "supabase db reset --workdir infra",
+    "db:diff": "supabase db diff --workdir infra",
+    "db:types": "supabase gen types typescript --workdir infra --local > packages/db/src/generated.ts",
+    "sim": "tsx packages/testing/src/sim/run.ts",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.42",
+    "prettier": "^3.8.4",
+    "supabase": "2.105.0",
+    "tsx": "^4.22.4",
+    "turbo": "^2.9.17",
+    "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.108.1",
+    "next": "16.2.9",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  }
+}

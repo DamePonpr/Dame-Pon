@@ -1,0 +1,90 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# Expo
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Native
+ios/Pods/
+ios/build/
+android/.gradle/
+android/build/
+android/app/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env — ignore every .env variant (.env, .env.local, .env.production, …)
+# but keep the committed, secret-free templates.
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Secrets & credentials — never commit real keys/certs/tokens.
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+id_rsa
+id_ed25519
+*service-account*.json
+gha-creds-*.json
+secrets.json
+*.secret
+.secrets/
+# Supabase CLI local secrets / generated env
+infra/supabase/.env
+google-services.json
+GoogleService-Info.plist
+
+# Supabase
+infra/supabase/.branches/
+infra/supabase/.temp/
+supabase/.branches/
+# Stray CLI scaffold if `supabase` is ever run from the repo root without --workdir.
+# The real project config lives in infra/supabase.
+/supabase/
+
+# This is a pnpm workspace — never commit an npm lockfile.
+package-lock.json
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# Generated types (uncomment once committed once)
+# packages/db/src/generated.ts
