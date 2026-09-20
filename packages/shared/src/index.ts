@@ -25,3 +25,4 @@ export * from './components/RideCard';
 export * from './components/RideLayout';
 export * from './components/SettingsModal';
 export * from './components/TripCompletionScreen';
+export * from './components/RoleMismatchScreen';

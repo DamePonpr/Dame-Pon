@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { icons } from "@/constants";
+import { icons } from "../constants";
 import type { GoogleInputProps, LocationValue } from "../types/type";
 import { useColors } from "../hooks/useColors";
 

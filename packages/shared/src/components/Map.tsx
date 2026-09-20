@@ -1,5 +1,5 @@
 import React from "react";
-import { useLocationStore } from "@/store";
+import { useLocationStore } from "../store";
 import { LiveRideMap } from "../components/LiveRideMap";
 
 export default function Map() {
