@@ -60,7 +60,7 @@ export function BrandLogo({
         accessible={false}
         source={isPassenger ? passengerMark : driverMark}
         resizeMode="stretch"
-        style={[StyleSheet.absoluteFillObject, { borderRadius: radius }]}
+        style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
       />
     </View>
   );

@@ -16,7 +16,7 @@ test('selecciona el trazo correcto según la aplicación', () => {
   assert.match(component, /passengerMark/);
   assert.match(component, /driverMark/);
   assert.match(component, /damePonRole/);
-  assert.match(component, /role === 'conductor'/);
+  assert.match(component, /configuredRole === 'conductor'/);
   assert.match(component, /overflow: 'hidden'/);
   assert.ok(passengerMark.length > 0);
   assert.ok(driverMark.length > 0);
