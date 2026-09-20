@@ -1,16 +1,14 @@
 import { Image, type ImageStyle, type StyleProp } from 'react-native';
-import { useColors } from '../hooks/useColors';
 
-const logo = require('@/assets/images/dame-pon-logo.png');
+const passengerLogo = require('../assets/dame-pon-logo-passenger.png');
+const driverLogo = require('../assets/dame-pon-logo-driver.png');
 
 export function BrandLogo({ style }: { style?: StyleProp<ImageStyle> }) {
-  const colors = useColors();
   return (
     <Image
       accessibilityLabel="Logo de Dame Pon"
-      source={logo}
+      source={process.env.EXPO_PUBLIC_DAME_PON_ROLE === 'conductor' ? driverLogo : passengerLogo}
       resizeMode="contain"
-      tintColor={colors.isDark ? colors.foreground : undefined}
       style={style}
     />
   );
