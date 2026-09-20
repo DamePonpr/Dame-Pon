@@ -1,12 +1,12 @@
--- Dame Pon / OpenRide adoption — Layer B driver document review
+-- Dame Pon / OpenRide adoption — Layer B driver document states
 --
 -- REVIEW ONLY. Do not apply this migration automatically.
 -- Prerequisite: the review-only A1 migration must have been reconciled with
 -- the remote schema first.
 --
--- This migration only adds the document states/storage boundary needed by
--- the conductor app. Admin approval UI and admin write policies remain out
--- of scope; existing A1 admin policies stay authoritative.
+-- Enum values are intentionally kept in their own migration. PostgreSQL does
+-- not allow a newly added enum value to be used safely until its transaction
+-- has committed. The Storage and RLS policies are in the next migration.
 
 do $$
 begin
@@ -56,86 +56,3 @@ drop trigger if exists trg_openride_require_approved_driver on public.drivers;
 create trigger trg_openride_require_approved_driver
   before insert or update of is_online, approval_status on public.drivers
   for each row execute function public.openride_require_approved_driver();
-
-insert into storage.buckets (id, name, public)
-values ('driver-documents', 'driver-documents', false)
-on conflict (id) do update set public = false;
-
-drop policy if exists driver_documents_storage_owner_read on storage.objects;
-create policy driver_documents_storage_owner_read
-on storage.objects for select to authenticated
-using (
-  bucket_id = 'driver-documents'
-  and (storage.foldername(name))[1] = (select auth.uid()::text)
-);
-
-drop policy if exists driver_documents_storage_owner_insert on storage.objects;
-create policy driver_documents_storage_owner_insert
-on storage.objects for insert to authenticated
-with check (
-  bucket_id = 'driver-documents'
-  and (storage.foldername(name))[1] = (select auth.uid()::text)
-);
-
-drop policy if exists driver_documents_storage_owner_update on storage.objects;
-create policy driver_documents_storage_owner_update
-on storage.objects for update to authenticated
-using (
-  bucket_id = 'driver-documents'
-  and (storage.foldername(name))[1] = (select auth.uid()::text)
-)
-with check (
-  bucket_id = 'driver-documents'
-  and (storage.foldername(name))[1] = (select auth.uid()::text)
-);
-
-drop policy if exists driver_documents_storage_owner_delete on storage.objects;
-create policy driver_documents_storage_owner_delete
-on storage.objects for delete to authenticated
-using (
-  bucket_id = 'driver-documents'
-  and (storage.foldername(name))[1] = (select auth.uid()::text)
-);
-
-drop policy if exists driver_documents_owner_update on public.driver_documents;
-create policy driver_documents_owner_update on public.driver_documents
-  for update to authenticated
-  using (driver_id = auth.uid() and status in ('submitted', 'rejected', 'expired'))
-  with check (driver_id = auth.uid() and status = 'submitted');
-
-drop policy if exists vehicle_documents_owner_insert on public.vehicle_documents;
-create policy vehicle_documents_owner_insert on public.vehicle_documents
-  for insert to authenticated
-  with check (
-    exists (
-      select 1
-      from public.vehicles v
-      where v.id = vehicle_documents.vehicle_id
-        and v.driver_id = auth.uid()
-    )
-    and status = 'submitted'
-  );
-
-drop policy if exists vehicle_documents_owner_update on public.vehicle_documents;
-create policy vehicle_documents_owner_update on public.vehicle_documents
-  for update to authenticated
-  using (
-    status in ('submitted', 'rejected', 'expired')
-    and exists (
-      select 1
-      from public.vehicles v
-      where v.id = vehicle_documents.vehicle_id
-        and v.driver_id = auth.uid()
-    )
-  )
-  with check (
-    status = 'submitted'
-    and exists (
-      select 1
-      from public.vehicles v
-      where v.id = vehicle_documents.vehicle_id
-        and v.driver_id = auth.uid()
-    )
-  );
-
-commit;
