@@ -17,7 +17,7 @@ function isThemePreference(value: string | null): value is ThemePreference {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [preference, setPreferenceState] = useState<ThemePreference>('dark');
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
