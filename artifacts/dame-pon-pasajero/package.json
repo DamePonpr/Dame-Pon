@@ -85,6 +85,9 @@
     "react-native-modal": "14.0.0-rc.1",
     "react-native-swiper": "^1.6.0",
     "zustand": "^5.0.15",
-    "@workspace/dame-pon-shared": "workspace:*"
+    "@workspace/dame-pon-shared": "workspace:*",
+    "expo": "~57.0.20",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
   }
 }
