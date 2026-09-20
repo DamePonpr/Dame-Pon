@@ -161,6 +161,7 @@ alter table public.trips
   add column if not exists arrived_at timestamptz,
   add column if not exists cancelled_at timestamptz,
   add column if not exists cancelled_by text,
+  add column if not exists cancel_reason text,
   add column if not exists passenger_pin text,
   add column if not exists payment_status public.trip_payment_status;
 
@@ -826,6 +827,46 @@ with check (
 -- Preserve existing RPC behavior against the new status values
 -- ============================================================================
 
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    join pg_namespace on pg_namespace.oid = pg_type.typnamespace
+    where pg_namespace.nspname = 'public'
+      and pg_type.typname = 'openride_trip_result'
+  ) then
+    create type public.openride_trip_result as (
+      id uuid,
+      status public.trip_status,
+      passenger_id uuid,
+      driver_id uuid,
+      pickup_address text,
+      pickup_lat double precision,
+      pickup_lng double precision,
+      dropoff_address text,
+      dropoff_lat double precision,
+      dropoff_lng double precision,
+      fare_estimate numeric,
+      fare_final numeric,
+      distance_km numeric,
+      requested_at timestamptz,
+      accepted_at timestamptz,
+      started_at timestamptz,
+      completed_at timestamptz,
+      municipio text,
+      allow_cross_municipio boolean,
+      municipio_origen text,
+      municipio_destino text,
+      arrived_at timestamptz,
+      cancelled_at timestamptz,
+      cancelled_by text,
+      cancel_reason text,
+      payment_status public.trip_payment_status
+    );
+  end if;
+end $$;
+
 create or replace function public.expand_trip_search(p_trip_id uuid)
 returns setof public.trips
 language plpgsql
@@ -861,14 +902,14 @@ $$;
 revoke all on function public.expand_trip_search(uuid) from public, anon;
 grant execute on function public.expand_trip_search(uuid) to authenticated;
 
+drop function if exists public.accept_trip(uuid);
 create or replace function public.accept_trip(p_trip_id uuid)
-returns setof public.trips
+returns setof public.openride_trip_result
 language plpgsql
 security invoker
 set search_path = public
 as $$
 declare
-  updated_trip public.trips;
 begin
   update public.trips
   set driver_id = auth.uid(),
@@ -885,51 +926,88 @@ begin
         and drivers.status = 'aprobado'::public.driver_status
         and drivers.is_online = true
     )
-  returning * into updated_trip;
+  returning id into p_trip_id;
 
   if not found then
     raise exception 'Only an approved online driver can accept an open trip'
       using errcode = '42501';
   end if;
 
-  return next updated_trip;
+  return query
+  select
+    t.id, t.status, t.passenger_id, t.driver_id,
+    t.pickup_address, t.pickup_lat, t.pickup_lng,
+    t.dropoff_address, t.dropoff_lat, t.dropoff_lng,
+    t.fare_estimate, t.fare_final, t.distance_km,
+    t.requested_at, t.accepted_at, t.started_at, t.completed_at,
+    t.municipio, t.allow_cross_municipio, t.municipio_origen,
+    t.municipio_destino, t.arrived_at, t.cancelled_at,
+    t.cancelled_by, t.cancel_reason, t.payment_status
+  from public.trips t
+  where t.id = p_trip_id;
 end;
 $$;
 
-create or replace function public.start_trip(p_trip_id uuid)
-returns setof public.trips
+revoke all on function public.accept_trip(uuid) from public, anon;
+grant execute on function public.accept_trip(uuid) to authenticated;
+
+drop function if exists public.start_trip(uuid);
+drop function if exists public.start_trip(uuid, text);
+create or replace function public.start_trip(
+  p_trip_id uuid,
+  p_passenger_pin text
+)
+returns setof public.openride_trip_result
 language plpgsql
 security invoker
 set search_path = public
 as $$
 declare
-  updated_trip public.trips;
 begin
+  if p_passenger_pin is null or p_passenger_pin !~ '^[0-9]{4}$' then
+    raise exception 'A valid four-digit passenger PIN is required'
+      using errcode = '22023';
+  end if;
+
   update public.trips
   set status = 'in_progress'::public.trip_status,
       started_at = clock_timestamp()
   where id = p_trip_id
     and driver_id = auth.uid()
+    and passenger_pin = p_passenger_pin
     and status in ('accepted'::public.trip_status, 'arrived'::public.trip_status);
 
   if not found then
-    raise exception 'Only the assigned driver can start an accepted or arrived trip'
+    raise exception 'Only the assigned driver with the passenger PIN can start this trip'
       using errcode = '42501';
   end if;
 
-  select * into updated_trip from public.trips where id = p_trip_id;
-  return next updated_trip;
+  return query
+  select
+    t.id, t.status, t.passenger_id, t.driver_id,
+    t.pickup_address, t.pickup_lat, t.pickup_lng,
+    t.dropoff_address, t.dropoff_lat, t.dropoff_lng,
+    t.fare_estimate, t.fare_final, t.distance_km,
+    t.requested_at, t.accepted_at, t.started_at, t.completed_at,
+    t.municipio, t.allow_cross_municipio, t.municipio_origen,
+    t.municipio_destino, t.arrived_at, t.cancelled_at,
+    t.cancelled_by, t.cancel_reason, t.payment_status
+  from public.trips t
+  where t.id = p_trip_id;
 end;
 $$;
 
+revoke all on function public.start_trip(uuid, text) from public, anon;
+grant execute on function public.start_trip(uuid, text) to authenticated;
+
+drop function if exists public.complete_trip(uuid);
 create or replace function public.complete_trip(p_trip_id uuid)
-returns setof public.trips
+returns setof public.openride_trip_result
 language plpgsql
 security invoker
 set search_path = public
 as $$
 declare
-  updated_trip public.trips;
 begin
   update public.trips
   set status = 'completed'::public.trip_status,
@@ -937,48 +1015,109 @@ begin
   where id = p_trip_id
     and driver_id = auth.uid()
     and status = 'in_progress'::public.trip_status
-  returning * into updated_trip;
+  returning id into p_trip_id;
 
   if not found then
     raise exception 'Only the assigned driver can complete an in-progress trip'
       using errcode = '42501';
   end if;
 
-  return next updated_trip;
+  return query
+  select
+    t.id, t.status, t.passenger_id, t.driver_id,
+    t.pickup_address, t.pickup_lat, t.pickup_lng,
+    t.dropoff_address, t.dropoff_lat, t.dropoff_lng,
+    t.fare_estimate, t.fare_final, t.distance_km,
+    t.requested_at, t.accepted_at, t.started_at, t.completed_at,
+    t.municipio, t.allow_cross_municipio, t.municipio_origen,
+    t.municipio_destino, t.arrived_at, t.cancelled_at,
+    t.cancelled_by, t.cancel_reason, t.payment_status
+  from public.trips t
+  where t.id = p_trip_id;
 end;
 $$;
 
-create or replace function public.cancel_trip(p_trip_id uuid)
-returns setof public.trips
+revoke all on function public.complete_trip(uuid) from public, anon;
+grant execute on function public.complete_trip(uuid) to authenticated;
+
+drop function if exists public.cancel_trip(uuid);
+drop function if exists public.cancel_trip(uuid, text);
+create or replace function public.cancel_trip(
+  p_trip_id uuid,
+  p_reason text default null
+)
+returns setof public.openride_trip_result
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 declare
-  updated_trip public.trips;
+  trip_row public.trips;
+  actor text;
 begin
-  update public.trips
-  set status = 'cancelled'::public.trip_status,
-      cancelled_at = clock_timestamp(),
-      cancelled_by = 'passenger'
+  if auth.uid() is null then
+    raise exception 'Authentication is required'
+      using errcode = '42501';
+  end if;
+
+  select *
+  into trip_row
+  from public.trips
   where id = p_trip_id
-    and passenger_id = auth.uid()
-    and status in (
+  for update;
+
+  if not found then
+    raise exception 'Trip not found'
+      using errcode = 'P0002';
+  end if;
+
+  if public.is_admin() then
+    actor := 'admin';
+  elsif trip_row.passenger_id = auth.uid()
+    and trip_row.status in (
       'requested'::public.trip_status,
       'offered'::public.trip_status,
       'accepted'::public.trip_status,
       'arrived'::public.trip_status
-    )
-  returning * into updated_trip;
-
-  if not found then
-    raise exception 'Only the passenger can cancel a requested, offered, accepted or arrived trip'
+    ) then
+    actor := 'passenger';
+  elsif trip_row.driver_id = auth.uid()
+    and trip_row.status in (
+      'accepted'::public.trip_status,
+      'arrived'::public.trip_status,
+      'in_progress'::public.trip_status
+    ) then
+    actor := 'driver';
+  else
+    raise exception 'Only the passenger, assigned driver or an admin can cancel this trip'
       using errcode = '42501';
   end if;
 
-  return next updated_trip;
+  update public.trips
+  set status = 'cancelled'::public.trip_status,
+      cancelled_at = clock_timestamp(),
+      cancelled_by = actor,
+      cancel_reason = nullif(trim(p_reason), '')
+  where id = p_trip_id
+  returning * into trip_row;
+
+  return query
+  select
+    t.id, t.status, t.passenger_id, t.driver_id,
+    t.pickup_address, t.pickup_lat, t.pickup_lng,
+    t.dropoff_address, t.dropoff_lat, t.dropoff_lng,
+    t.fare_estimate, t.fare_final, t.distance_km,
+    t.requested_at, t.accepted_at, t.started_at, t.completed_at,
+    t.municipio, t.allow_cross_municipio, t.municipio_origen,
+    t.municipio_destino, t.arrived_at, t.cancelled_at,
+    t.cancelled_by, t.cancel_reason, t.payment_status
+  from public.trips t
+  where t.id = p_trip_id;
 end;
 $$;
+
+revoke all on function public.cancel_trip(uuid, text) from public, anon;
+grant execute on function public.cancel_trip(uuid, text) to authenticated;
 
 create or replace function public.get_trip_participant_details(p_trip_id uuid)
 returns table (
