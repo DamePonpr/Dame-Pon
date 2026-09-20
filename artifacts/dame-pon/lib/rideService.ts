@@ -553,14 +553,24 @@ export async function requestTrip(
       dropoff_lat: destination?.latitude ?? null,
       dropoff_lng: destination?.longitude ?? null,
     })
-    .select(PASSENGER_TRIP_COLUMNS)
+    .select(TRIP_COLUMNS)
     .single();
 
   if (result.error) {
     return serviceError('request-trip', result.error);
   }
 
-  return { data: result.data as Trip, error: null };
+  const passengerResult = await supabase
+    .from('passenger_trips')
+    .select(PASSENGER_TRIP_COLUMNS)
+    .eq('id', result.data.id)
+    .single();
+
+  if (passengerResult.error) {
+    return serviceError('request-trip', passengerResult.error);
+  }
+
+  return { data: passengerResult.data as Trip, error: null };
 }
 
 export async function getPassengerActiveTrip(passengerId: string): Promise<ServiceResult<Trip>> {

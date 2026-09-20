@@ -966,7 +966,7 @@ drop function if exists public.accept_trip(uuid);
 create or replace function public.accept_trip(p_trip_id uuid)
 returns setof public.openride_trip_result
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 begin
@@ -1018,7 +1018,7 @@ create or replace function public.start_trip(
 )
 returns setof public.openride_trip_result
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 begin
@@ -1062,7 +1062,7 @@ drop function if exists public.complete_trip(uuid);
 create or replace function public.complete_trip(p_trip_id uuid)
 returns setof public.openride_trip_result
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 begin
