@@ -134,14 +134,33 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Create GitHub Release and upload APK
+  release:
+    name: Create combined Android preview release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download APK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dame-pon-*-preview-${{ github.run_number }}
+          path: release-assets
+          merge-multiple: false
+
+      - name: Create GitHub Release with both APKs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="preview-${{ matrix.role }}-${{ github.run_number }}"
-          gh release create "$tag" \
-            "${{ matrix.app_dir }}/android/app/build/outputs/apk/release/app-release.apk" \
+          pasajero="release-assets/dame-pon-pasajero-preview-${{ github.run_number }}/app-release.apk"
+          conductor="release-assets/dame-pon-conductor-preview-${{ github.run_number }}/app-release.apk"
+          test -f "$pasajero"
+          test -f "$conductor"
+          mv "$pasajero" "release-assets/dame-pon-pasajero-preview-${{ github.run_number }}.apk"
+          mv "$conductor" "release-assets/dame-pon-conductor-preview-${{ github.run_number }}.apk"
+          gh release create "preview-${{ github.run_number }}" \
+            "release-assets/dame-pon-pasajero-preview-${{ github.run_number }}.apk" \
+            "release-assets/dame-pon-conductor-preview-${{ github.run_number }}.apk" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Dame Pon ${{ matrix.label }} Android preview ${{ github.run_number }}" \
-            --notes "APK de prueba generado por GitHub Actions para la app ${{ matrix.label }}."
+            --title "Dame Pon Android preview ${{ github.run_number }}" \
+            --notes "APKs de prueba generados para las apps Pasajero y Conductor."
