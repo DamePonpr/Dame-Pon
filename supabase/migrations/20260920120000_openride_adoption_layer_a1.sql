@@ -176,17 +176,45 @@ where payment_status is null;
 -- historical meaning remain recoverable. The old column values are already
 -- copied to status_legacy above.
 alter table public.trips alter column status drop default;
-alter type public.trip_status rename to trip_status_legacy_20260920;
+do $$
+begin
+  if exists (
+    select 1
+    from pg_type
+    join pg_namespace on pg_namespace.oid = pg_type.typnamespace
+    where pg_namespace.nspname = 'public'
+      and pg_type.typname = 'trip_status'
+  ) and not exists (
+    select 1
+    from pg_type
+    join pg_namespace on pg_namespace.oid = pg_type.typnamespace
+    where pg_namespace.nspname = 'public'
+      and pg_type.typname = 'trip_status_legacy_20260920'
+  ) then
+    alter type public.trip_status rename to trip_status_legacy_20260920;
+  end if;
+end $$;
 
-create type public.trip_status as enum (
-  'requested',
-  'offered',
-  'accepted',
-  'arrived',
-  'in_progress',
-  'completed',
-  'cancelled'
-);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    join pg_namespace on pg_namespace.oid = pg_type.typnamespace
+    where pg_namespace.nspname = 'public'
+      and pg_type.typname = 'trip_status'
+  ) then
+    create type public.trip_status as enum (
+      'requested',
+      'offered',
+      'accepted',
+      'arrived',
+      'in_progress',
+      'completed',
+      'cancelled'
+    );
+  end if;
+end $$;
 
 alter table public.trips
   alter column status type public.trip_status
@@ -215,15 +243,75 @@ alter table public.trips
   alter column status set default 'requested'::public.trip_status,
   alter column payment_status set default 'pending'::public.trip_payment_status;
 
-alter table public.trips
-  add constraint trips_passenger_pin_format
-  check (passenger_pin is null or passenger_pin ~ '^[0-9]{4}$');
+do $$
+begin
+  if exists (
+    select 1
+    from public.trips
+    where passenger_pin is not null
+      and passenger_pin !~ '^[0-9]{4}$'
+  ) then
+    raise exception 'A1 preflight failed: trips.passenger_pin contains a value that is not exactly four digits';
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.trips'::regclass
+      and conname = 'trips_passenger_pin_format'
+  ) then
+    alter table public.trips
+      add constraint trips_passenger_pin_format
+      check (passenger_pin is null or passenger_pin ~ '^[0-9]{4}$');
+  end if;
+end $$;
 
 create index if not exists trips_openride_status_requested_idx
   on public.trips(status, requested_at desc);
 
 create index if not exists trips_openride_driver_status_idx
   on public.trips(driver_id, status);
+
+-- The legacy app could leave several accepted trips assigned to one driver.
+-- Keep the most recently requested/accepted trip and close the older rows
+-- without changing status_legacy.
+with ranked_active_trips as (
+  select
+    id,
+    row_number() over (
+      partition by driver_id
+      order by coalesce(accepted_at, requested_at) desc nulls last, id desc
+    ) as trip_rank
+  from public.trips
+  where driver_id is not null
+    and status in ('accepted', 'arrived', 'in_progress')
+)
+update public.trips
+set status = 'cancelled'::public.trip_status,
+    cancelled_at = clock_timestamp(),
+    cancelled_by = 'migration_cleanup'
+where id in (
+  select id
+  from ranked_active_trips
+  where trip_rank > 1
+);
+
+do $$
+begin
+  if exists (
+    select 1
+    from public.trips
+    where driver_id is not null
+      and status in ('accepted', 'arrived', 'in_progress')
+    group by driver_id
+    having count(*) > 1
+  ) then
+    raise exception 'A1 preflight failed: more than one active trip remains for a driver; trips_one_openride_active_per_driver cannot be created';
+  end if;
+end $$;
 
 create unique index if not exists trips_one_openride_active_per_driver
   on public.trips(driver_id)
