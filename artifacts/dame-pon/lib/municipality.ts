@@ -85,6 +85,45 @@ export function sortTripsForDriver<T extends MunicipalityTrip>(
     .map(({ trip }) => trip);
 }
 
+export function orderMunicipalitiesForDriver(
+  municipalities: Municipality[],
+  baseMunicipality: string | null | undefined,
+  trips: MunicipalityTrip[],
+  driverLocation: DriverCoordinates,
+): Municipality[] {
+  const tripMunicipalities = new Set(
+    trips.map((trip) => trip.municipio_origen).filter((name): name is string => Boolean(name)),
+  );
+  const hasLocation = Number.isFinite(driverLocation.latitude) && Number.isFinite(driverLocation.longitude);
+  const distanceToDriver = (municipality: Municipality) => (
+    hasLocation
+      ? distanceKm(
+        { latitude: Number(driverLocation.latitude), longitude: Number(driverLocation.longitude) },
+        { latitude: municipality.centro_lat, longitude: municipality.centro_lng },
+      )
+      : Number.POSITIVE_INFINITY
+  );
+
+  return municipalities
+    .map((municipality, index) => {
+      const distance = distanceToDriver(municipality);
+      const nearby = distance <= 35;
+      const priority = municipality.nombre === baseMunicipality
+        ? 0
+        : tripMunicipalities.has(municipality.nombre) || nearby
+          ? 1
+          : 2;
+      return { municipality, distance, index, priority };
+    })
+    .sort((left, right) => (
+      left.priority - right.priority
+      || left.distance - right.distance
+      || left.municipality.nombre.localeCompare(right.municipality.nombre, 'es')
+      || left.index - right.index
+    ))
+    .map(({ municipality }) => municipality);
+}
+
 export type MunicipalityDecision = 'return' | 'stay';
 
 export function municipalityAfterDecision(

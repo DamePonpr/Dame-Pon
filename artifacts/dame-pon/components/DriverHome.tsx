@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandMark } from '@/components/BrandMark';
 import { AppButton } from '@/components/AppButton';
@@ -10,6 +11,7 @@ import { useColors } from '@/hooks/useColors';
 import { useDriverHome } from '@/hooks/useDriverHome';
 import type { Profile } from '@/context/AuthContext';
 import type { MunicipalityDecision } from '@/lib/municipality';
+import { MunicipalityPicker } from '@/components/MunicipalityPicker';
 
 export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
   profile: Profile;
@@ -29,12 +31,12 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
   return (
     <RideLayout
       title="Dame Pon"
-      snapPoints={['45%', '86%']}
+      snapPoints={['45%', '90%']}
       map={<LiveRideMap passengerLocation={null} driverLocation={home.driverLocation} pickupLocation={null} />}
     >
-      <View style={[styles.sheetContent, { paddingBottom: insets.bottom + 28 }]}>
+      <View style={[styles.sheetContent, { paddingBottom: insets.bottom + 72 + 28 }]}>
         <View style={styles.sheetHeader}>
-          <View>
+          <View style={styles.onlineCopy}>
             <Text style={[styles.eyebrow, { color: colors.mutedForeground }]}>PANEL DEL CONDUCTOR</Text>
             <Text style={[styles.title, { color: colors.foreground }]}>Hola, {profile.full_name?.split(' ')[0] ?? 'conductor'}</Text>
           </View>
@@ -49,32 +51,58 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
               {home.isOnline ? 'Puedes recibir solicitudes de tu municipio activo.' : 'Activa tu disponibilidad para recibir solicitudes.'}
             </Text>
           </View>
-          <Switch value={home.isOnline} onValueChange={(value) => void home.toggleOnline(value)} disabled={home.actionLoading} trackColor={{ false: colors.border, true: colors.primary }} thumbColor={colors.primaryForeground} />
+          <View style={styles.switchWrap}>
+            <Switch value={home.isOnline} onValueChange={(value) => void home.toggleOnline(value)} disabled={home.actionLoading} trackColor={{ false: colors.border, true: colors.star }} thumbColor={home.isOnline ? colors.primaryForeground : colors.mutedForeground} />
+          </View>
         </View>
         {home.error ? <Text style={[styles.error, { color: colors.destructive }]}>{home.error}</Text> : null}
 
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Pueblo activo</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.municipalityRow}>
-          {home.municipalities.map((municipality) => {
-            const selected = municipality.nombre === activeMunicipality;
-            return (
-              <Pressable
-                key={municipality.id}
-                onPress={() => void home.changeActiveMunicipality(municipality.nombre)}
-                style={[styles.municipalityChip, { backgroundColor: selected ? colors.primary : colors.secondary, borderColor: selected ? colors.primary : colors.border }]}
-              >
-                <Text style={{ color: selected ? colors.primaryForeground : colors.foreground, fontFamily: 'Jakarta-SemiBold', fontSize: 12 }}>{municipality.nombre}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <View style={styles.municipalityControls}>
+          <View style={styles.municipalityRow}>
+            {home.orderedMunicipalities.slice(0, 4).map((municipality) => {
+              const selected = municipality.nombre === activeMunicipality;
+              return (
+                <Pressable
+                  key={municipality.id}
+                  onPress={() => void home.changeActiveMunicipality(municipality.nombre)}
+                  style={({ pressed }) => [
+                    styles.municipalityChip,
+                    { backgroundColor: selected ? colors.primary : colors.secondary, borderColor: selected ? colors.primary : colors.border },
+                    pressed && { opacity: 0.78 },
+                  ]}
+                >
+                  <Text style={{ color: selected ? colors.primaryForeground : colors.foreground, fontFamily: 'Jakarta-SemiBold', fontSize: 12 }}>{municipality.nombre}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <MunicipalityPicker
+            compact
+            placeholder="Buscar municipio"
+            value={activeMunicipality}
+            municipalities={home.municipalities}
+            onSelect={(municipality) => void home.changeActiveMunicipality(municipality.nombre)}
+          />
+        </View>
 
         {!home.setup?.vehicle ? <VehicleForm home={home} colors={colors} /> : null}
         {home.activeTrip ? (
-          <View style={[styles.activeTrip, { backgroundColor: colors.primary }]}>
-            <Text style={styles.inverseLabel}>VIAJE ACTIVO</Text>
-            <Text style={styles.inverseTitle}>{home.activeTrip.dropoff_address}</Text>
-            <AppButton label={home.activeTrip.status === 'aceptado' ? 'Iniciar viaje' : 'Completar viaje'} onPress={() => void home.updateStatus(home.activeTrip?.status === 'aceptado' ? 'en_curso' : 'completado')} loading={home.actionLoading} />
+          <View style={[styles.activeTrip, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.tripLabel, { color: colors.mutedForeground }]}>VIAJE ACTIVO</Text>
+            <Text style={[styles.passengerName, { color: colors.foreground }]}>{home.participantDetails?.passenger_name ?? 'Pasajero'}</Text>
+            <Text style={[styles.routeText, { color: colors.mutedForeground }]} numberOfLines={2}>
+              {home.activeTrip.pickup_address || home.activeTrip.municipio_origen || 'Origen'} → {home.activeTrip.dropoff_address || home.activeTrip.municipio_destino || 'Destino'}
+            </Text>
+            <View style={styles.tripActions}>
+              <AppButton
+                label={home.activeTrip.status === 'aceptado' ? 'Iniciar viaje' : 'Completar viaje'}
+                onPress={() => void home.updateStatus(home.activeTrip?.status === 'aceptado' ? 'en_curso' : 'completado')}
+                loading={home.actionLoading}
+                style={styles.tripAction}
+              />
+              <AppButton label="Chat" variant="secondary" onPress={() => router.push('/(root)/(tabs)/chat')} style={styles.tripAction} />
+            </View>
           </View>
         ) : (
           <>
@@ -141,18 +169,24 @@ const styles = StyleSheet.create({
   iconButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   eyebrow: { fontFamily: 'Jakarta-SemiBold', fontSize: 10, letterSpacing: 1.2 },
   title: { fontFamily: 'Jakarta-Bold', fontSize: 25, marginTop: 5 },
-  onlineCard: { borderWidth: 1, borderRadius: 18, padding: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  onlineCard: { borderWidth: 1, borderRadius: 18, padding: 15, flexDirection: 'row', alignItems: 'center' },
+  onlineCopy: { flex: 1, minWidth: 0 },
+  switchWrap: { marginLeft: 12 },
   cardTitle: { fontFamily: 'Jakarta-SemiBold', fontSize: 15 },
   cardCaption: { fontFamily: 'Jakarta', fontSize: 12, lineHeight: 18, marginTop: 4 },
   error: { fontFamily: 'Jakarta-Medium', fontSize: 13, lineHeight: 19 },
   sectionTitle: { fontFamily: 'Jakarta-Bold', fontSize: 17, marginTop: 4 },
-  municipalityRow: { gap: 8, paddingVertical: 2 },
+  municipalityControls: { gap: 9 },
+  municipalityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 2 },
   municipalityChip: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 9 },
   vehicleCard: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 8 },
   input: { borderWidth: 1, borderRadius: 12, minHeight: 44, paddingHorizontal: 12, fontFamily: 'Jakarta', fontSize: 13 },
-  activeTrip: { borderRadius: 18, padding: 16, gap: 9 },
-  inverseLabel: { color: '#FFFFFF', fontFamily: 'Jakarta-SemiBold', fontSize: 10, letterSpacing: 1.2 },
-  inverseTitle: { color: '#FFFFFF', fontFamily: 'Jakarta-Bold', fontSize: 18 },
+  activeTrip: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 9 },
+  tripLabel: { fontFamily: 'Jakarta-SemiBold', fontSize: 10, letterSpacing: 1.2 },
+  passengerName: { fontFamily: 'Jakarta-Bold', fontSize: 19 },
+  routeText: { fontFamily: 'Jakarta', fontSize: 13, lineHeight: 19 },
+  tripActions: { flexDirection: 'row', gap: 9, marginTop: 4 },
+  tripAction: { flex: 1, minHeight: 52, paddingHorizontal: 10 },
   requestCard: { borderWidth: 1, borderRadius: 18, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 10 },
   decisionCard: { borderRadius: 18, padding: 14, gap: 8 },
   decisionRow: { gap: 8 },
