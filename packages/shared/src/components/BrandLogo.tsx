@@ -8,8 +8,8 @@ import {
 } from 'react-native';
 import { useColors } from '../hooks/useColors';
 
-const passengerMark = require('../assets/dame-pon-mark-white.png');
-const driverMark = require('../assets/dame-pon-mark-navy.png');
+const passengerMark = require('../assets/dame-pon-mark-passenger-tile.png');
+const driverMark = require('../assets/dame-pon-mark-conductor-tile.png');
 
 export type BrandLogoRole = 'pasajero' | 'conductor';
 
@@ -62,6 +62,19 @@ export function BrandLogo({
         resizeMode="stretch"
         style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
       />
+      {showDarkModeEdge ? (
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              borderColor: 'rgba(255,255,255,0.15)',
+              borderRadius: radius,
+              borderWidth: 1,
+            },
+          ]}
+        />
+      ) : null}
     </View>
   );
 }
