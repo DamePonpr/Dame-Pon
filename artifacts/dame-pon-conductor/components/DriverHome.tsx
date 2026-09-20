@@ -169,7 +169,7 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
 }
 
 function VehicleForm({ home, colors }: { home: ReturnType<typeof useDriverHome>; colors: ReturnType<typeof useColors> }) {
-  const fields: Array<[keyof typeof home.vehicle, string]> = [
+  const fields: Array<['make' | 'model' | 'year' | 'color' | 'licensePlate', string]> = [
     ['make', 'Marca'], ['model', 'Modelo'], ['year', 'Año'], ['color', 'Color'], ['licensePlate', 'Matrícula'],
   ];
   return (

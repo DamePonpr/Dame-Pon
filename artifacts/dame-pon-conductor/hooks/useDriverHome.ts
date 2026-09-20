@@ -22,7 +22,7 @@ import {
   type Trip,
   type TripParticipantDetails,
   type VehicleDraft,
-} from '@/lib/rideService';
+} from '@workspace/dame-pon-shared/lib/rideService';
 import {
   isTripInActiveMunicipality,
   municipalityAfterDecision,
@@ -30,7 +30,7 @@ import {
   sortTripsForDriver,
   type Municipality,
   type MunicipalityDecision,
-} from '@/lib/municipality';
+} from '@workspace/dame-pon-shared/lib/municipality';
 
 const emptyVehicle: VehicleDraft = { make: '', model: '', year: '', color: '', licensePlate: '' };
 

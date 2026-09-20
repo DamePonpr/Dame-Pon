@@ -16,7 +16,7 @@ import {
   type TripHistoryItem,
   type TripParticipantDetails,
   getTripParticipantDetails,
-} from '@/lib/rideService';
+} from '@workspace/dame-pon-shared/lib/rideService';
 
 interface CompletionState {
   trip: Trip;
