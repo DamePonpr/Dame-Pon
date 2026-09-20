@@ -2,17 +2,21 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const componentPath = new URL('../components/BrandLogo.tsx', import.meta.url);
-const lightLogoPath = new URL('../assets/images/dame-pon-logo.png', import.meta.url);
+const componentPath = new URL('../../../packages/shared/src/components/BrandLogo.tsx', import.meta.url);
+const passengerLogoPath = new URL('../../../packages/shared/src/assets/dame-pon-logo-passenger.png', import.meta.url);
+const driverLogoPath = new URL('../../../packages/shared/src/assets/dame-pon-logo-driver.png', import.meta.url);
 
-const [component, lightLogo] = await Promise.all([
+const [component, passengerLogo, driverLogo] = await Promise.all([
   readFile(componentPath, 'utf8'),
-  readFile(lightLogoPath),
+  readFile(passengerLogoPath),
+  readFile(driverLogoPath),
 ]);
 
-test('tinta el logo transparente según el tema activo', () => {
-  assert.match(component, /colors\.isDark/);
-  assert.match(component, /tintColor=\{colors\.isDark \? colors\.foreground : undefined\}/);
-  assert.match(component, /dame-pon-logo\.png/);
-  assert.ok(lightLogo.length > 0);
+test('selecciona el logo exacto según la aplicación', () => {
+  assert.match(component, /passengerLogo/);
+  assert.match(component, /driverLogo/);
+  assert.match(component, /damePonRole/);
+  assert.match(component, /role === 'conductor'/);
+  assert.ok(passengerLogo.length > 0);
+  assert.ok(driverLogo.length > 0);
 });
