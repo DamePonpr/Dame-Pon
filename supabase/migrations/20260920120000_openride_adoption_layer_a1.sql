@@ -873,7 +873,8 @@ using (
     join public.drivers on drivers.id = profiles.id
     where profiles.id = auth.uid()
       and profiles.role = 'conductor'::public.user_role
-      and drivers.status = 'aprobado'::public.driver_status
+        and drivers.approval_status = 'approved'::public.driver_approval_status
+        and drivers.status_kind = 'online'::public.driver_status_kind
       and drivers.is_online = true
   )
 );
@@ -893,6 +894,64 @@ with check (
   and fare_final is null
   and distance_km is null
   and passenger_pin ~ '^[0-9]{4}$'
+);
+
+drop policy if exists "trip_participants_can_rate_each_other" on public.ratings;
+create policy "trip_participants_can_rate_each_other"
+on public.ratings
+for insert
+to authenticated
+with check (
+  rated_by = auth.uid()
+  and score between 1 and 5
+  and exists (
+    select 1
+    from public.trips
+    where trips.id = ratings.trip_id
+      and trips.status = 'completed'::public.trip_status
+      and (
+        (
+          trips.passenger_id = auth.uid()
+          and trips.driver_id = ratings.rated_user
+        )
+        or
+        (
+          trips.driver_id = auth.uid()
+          and trips.passenger_id = ratings.rated_user
+        )
+      )
+  )
+);
+
+drop policy if exists "authenticated_drivers_insert_pending_record" on public.drivers;
+create policy "authenticated_drivers_insert_pending_record"
+on public.drivers
+for insert
+to authenticated
+with check (
+  auth.uid() = id
+  and approval_status = 'pending_documents'::public.driver_approval_status
+  and is_online = false
+  and municipio_base is not null
+  and exists (
+    select 1
+    from public.municipios
+    where nombre = municipio_base
+  )
+);
+
+drop policy if exists "authenticated_drivers_update_safe_runtime_fields" on public.drivers;
+create policy "authenticated_drivers_update_safe_runtime_fields"
+on public.drivers
+for update
+to authenticated
+using (auth.uid() = id)
+with check (
+  auth.uid() = id
+  and (
+    approval_status = 'approved'::public.driver_approval_status
+    or is_online = false
+  )
 );
 
 -- Column privileges complement RLS: drivers may read open trips, but never the
