@@ -103,13 +103,14 @@ async function createTrip(passenger) {
       pickup_lat: 18.4655,
       pickup_lng: -66.1057,
       dropoff_address: `RLS destino ${runId}`,
+    passenger_pin: '1234',
     })
     .select('id,status,driver_id')
     .single();
   checkError('crear viaje de prueba', response.error);
   if (!response.data) fail('crear viaje de prueba', 'Supabase no devolvió el viaje.');
   createdTripIds.push(response.data.id);
-  if (response.data.status !== 'buscando_conductor' || response.data.driver_id !== null) {
+  if (response.data.status !== 'requested' || response.data.driver_id !== null) {
     fail('estado inicial del viaje', 'El viaje no comenzó abierto y sin conductor.');
   }
   return response.data.id;
@@ -247,7 +248,7 @@ async function run() {
         dropoff_address: `RLS inserción protegida ${runId}`,
         dropoff_lat: 18.4064,
         dropoff_lng: -66.0644,
-        status: 'completado',
+        status: 'completed',
         fare_final: 1,
       })
       .select('id')
@@ -259,7 +260,7 @@ async function run() {
     passenger.supabase
       .from('trips')
       .update({
-        status: 'completado',
+        status: 'completed',
         driver_id: driver.user.id,
         fare_final: 1,
         distance_km: 999,
@@ -283,7 +284,7 @@ async function run() {
 
   const cancelled = await passenger.supabase.rpc('cancel_trip', { p_trip_id: firstTripId }).single();
   checkError('cancelar viaje como pasajero', cancelled.error);
-  if (cancelled.data?.status !== 'cancelado') fail('cancelar viaje como pasajero', 'El viaje no quedó cancelado.');
+  if (cancelled.data?.status !== 'cancelled') fail('cancelar viaje como pasajero', 'El viaje no quedó cancelado.');
   console.log('[OK] cancelación válida del pasajero');
 
   const activeTripId = await createTrip(passenger);
@@ -291,7 +292,7 @@ async function run() {
 
   const accepted = await driver.supabase.rpc('accept_trip', { p_trip_id: activeTripId }).single();
   checkError('aceptar viaje como conductor aprobado', accepted.error);
-  if (accepted.data?.driver_id !== driver.user.id || accepted.data?.status !== 'aceptado') {
+  if (accepted.data?.driver_id !== driver.user.id || accepted.data?.status !== 'accepted') {
     fail('aceptar viaje como conductor aprobado', 'La aceptación no asignó el viaje correctamente.');
   }
   console.log('[OK] conductor aprobado y en línea aceptó el viaje');
@@ -322,16 +323,16 @@ async function run() {
   await expectRpcDenied('pasajero no puede completar el viaje', passenger, 'complete_trip', activeTripId);
   await expectRpcDenied('conductor no puede completar sin iniciar', driver, 'complete_trip', activeTripId);
 
-  const started = await driver.supabase.rpc('start_trip', { p_trip_id: activeTripId }).single();
+  const started = await driver.supabase.rpc('start_trip', { p_trip_id: activeTripId, p_passenger_pin: '1234' }).single();
   checkError('iniciar viaje aceptado', started.error);
-  if (started.data?.status !== 'en_curso') fail('iniciar viaje aceptado', 'El viaje no pasó a en_curso.');
+  if (started.data?.status !== 'in_progress') fail('iniciar viaje aceptado', 'El viaje no pasó a in_progress.');
 
   await expectRpcDenied('pasajero no puede saltar a en_curso', passenger, 'start_trip', activeTripId);
 
   const completed = await driver.supabase.rpc('complete_trip', { p_trip_id: activeTripId }).single();
   checkError('completar viaje en curso', completed.error);
-  if (completed.data?.status !== 'completado') fail('completar viaje en curso', 'El viaje no pasó a completado.');
-  console.log('[OK] las transiciones válidas respetan el orden solicitado → aceptado → en_curso → completado');
+  if (completed.data?.status !== 'completed') fail('completar viaje en curso', 'El viaje no pasó a completed.');
+  console.log('[OK] las transiciones válidas respetan el orden requested → accepted → in_progress → completed');
 
   await Promise.all([
     expectParticipantDetails(
