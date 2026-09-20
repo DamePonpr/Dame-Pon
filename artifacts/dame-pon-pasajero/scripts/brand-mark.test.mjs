@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const componentPath = new URL('../../../packages/shared/src/components/BrandLogo.tsx', import.meta.url);
-const markPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-white.png', import.meta.url);
+const markPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-passenger-tile.png', import.meta.url);
 
 const [component, mark] = await Promise.all([
   readFile(componentPath, 'utf8'),
@@ -12,7 +12,7 @@ const [component, mark] = await Promise.all([
 
 test('renderiza el cuadro pasajero con trazo blanco y borde oscuro sutil', () => {
   assert.match(component, /role\?: BrandLogoRole/);
-  assert.match(component, /dame-pon-mark-white\.png/);
+  assert.match(component, /dame-pon-mark-passenger-tile\.png/);
   assert.match(component, /backgroundColor: isPassenger \? '#081321' : '#FFFFFF'/);
   assert.match(component, /showDarkModeEdge/);
   assert.match(component, /LOGO_RADIUS_RATIO = 0\.22/);

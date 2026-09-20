@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const componentPath = new URL('../../../packages/shared/src/components/BrandLogo.tsx', import.meta.url);
-const passengerMarkPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-white.png', import.meta.url);
-const driverMarkPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-navy.png', import.meta.url);
+const passengerMarkPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-passenger-tile.png', import.meta.url);
+const driverMarkPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-conductor-tile.png', import.meta.url);
 
 const [component, passengerMark, driverMark] = await Promise.all([
   readFile(componentPath, 'utf8'),
