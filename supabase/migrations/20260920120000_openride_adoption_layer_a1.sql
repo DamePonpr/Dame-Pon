@@ -152,9 +152,70 @@ end $$;
 
 -- These policies compare trips.status with the old enum and must be rebuilt
 -- after the column changes type.
+do $$
+declare
+  unexpected_policies text;
+  unexpected_dependents text;
+begin
+  select string_agg(
+    format('%s.%s on %s', schemaname, policyname, tablename),
+    ', ' order by schemaname, tablename, policyname
+  )
+  into unexpected_policies
+  from pg_policies
+  where (
+    coalesce(qual, '') ilike '%status%'
+    or coalesce(with_check, '') ilike '%status%'
+  )
+  and not (
+    schemaname = 'public'
+    and (
+      (tablename = 'ratings' and policyname = 'trip_participants_can_rate_each_other')
+      or (tablename = 'trips' and policyname = 'approved_online_drivers_can_view_all_open_trips')
+      or (tablename = 'trips' and policyname = 'authenticated_passengers_insert_initial_trips')
+      or (tablename = 'drivers' and policyname = 'authenticated_drivers_insert_pending_record')
+      or (tablename = 'drivers' and policyname = 'authenticated_drivers_update_safe_runtime_fields')
+    )
+  );
+
+  if unexpected_policies is not null then
+    raise exception
+      'A1 preflight failed: unexpected policies mentioning status: %',
+      unexpected_policies;
+  end if;
+
+  select string_agg(
+    pg_identify_object(d.classid, d.objid, d.objsubid),
+    E'\n' order by d.classid::regclass::text, d.objid, d.objsubid
+  )
+  into unexpected_dependents
+  from pg_depend d
+  join pg_class ref on ref.oid = d.refobjid
+  join pg_attribute refatt
+    on refatt.attrelid = ref.oid
+   and refatt.attnum = d.refobjsubid
+  where ref.relnamespace = 'public'::regnamespace
+    and ref.relname in ('trips', 'drivers')
+    and refatt.attname = 'status'
+    and d.classid in (
+      'pg_rewrite'::regclass,
+      'pg_trigger'::regclass,
+      'pg_proc'::regclass
+    );
+
+  if unexpected_dependents is not null then
+    raise exception
+      'A1 preflight failed: unsupported views, triggers or functions depend on trips.status or drivers.status:%',
+      unexpected_dependents;
+  end if;
+end $$;
+
+drop policy if exists "trip_participants_can_rate_each_other" on public.ratings;
 drop policy if exists "approved_online_drivers_can_view_all_open_trips" on public.trips;
 drop policy if exists "authenticated_participants_read_shared_trips" on public.trips;
 drop policy if exists "authenticated_passengers_insert_initial_trips" on public.trips;
+drop policy if exists "authenticated_drivers_insert_pending_record" on public.drivers;
+drop policy if exists "authenticated_drivers_update_safe_runtime_fields" on public.drivers;
 
 alter table public.trips
   add column if not exists status_legacy text,
