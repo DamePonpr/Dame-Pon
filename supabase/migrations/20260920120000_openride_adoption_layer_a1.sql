@@ -1,6 +1,6 @@
 -- Dame Pon / OpenRide adoption — Layer A1
 --
--- REVIEW ONLY. This migration is intentionally not applied by the agent.
+-- Apply only after reconciling the remote schema and validating the backup.
 --
 -- Goals:
 --   * Preserve every existing trip, rating, municipality, driver and vehicle row.
@@ -1238,5 +1238,24 @@ grant execute on function public.get_trip_participant_details(uuid) to authentic
 -- The existing municipality functions continue to write the exact catalog
 -- name. A2 will add municipality-aware dispatch ranking; this migration does
 -- not change the base/active municipality or return/stay behavior.
+
+-- ============================================================================
+-- Manual rollback guidance (commented; do not run automatically)
+-- ============================================================================
+-- A1 changes existing trips, drivers and vehicles, so a rollback must be
+-- planned against respaldo_20260920 and executed with the application offline.
+-- Do not drop the new enums, columns, indexes, tables, views or functions until
+-- dependent policies, triggers and application code have been removed.
+--
+-- Suggested manual sequence:
+--   1. Restore the affected public.trips, public.drivers and public.vehicles
+--      rows from respaldo_20260920 after reviewing post-migration changes.
+--   2. Recreate the legacy public.trip_status type and convert trips.status back
+--      from the OpenRide values using the preserved status_legacy column.
+--   3. Restore the pre-A1 trips policies, grants and RPC definitions.
+--   4. Drop passenger_trips, the OpenRide indexes, triggers, functions and
+--      adoption tables only after their callers and RLS policies are removed.
+--   5. Drop the OpenRide enum types last, only after no column or policy refers
+--      to them. Keep the backup untouched until the rollback is verified.
 
 commit;

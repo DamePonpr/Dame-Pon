@@ -1,7 +1,8 @@
 -- Dame Pon / OpenRide adoption — Layer B private document policies
 --
--- REVIEW ONLY. Do not apply this migration automatically.
--- Requires 20260920130000_driver_document_review_b.sql to be reconciled first.
+-- Requires 20260920130000_driver_document_review_b.sql to be applied first.
+
+begin;
 
 insert into storage.buckets (id, name, public)
 values ('driver-documents', 'driver-documents', false)
@@ -83,3 +84,5 @@ create policy vehicle_documents_owner_update on public.vehicle_documents
         and v.driver_id = auth.uid()
     )
   );
+
+commit;
