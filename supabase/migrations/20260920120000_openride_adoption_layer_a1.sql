@@ -1102,7 +1102,8 @@ begin
       join public.drivers on drivers.id = profiles.id
       where profiles.id = auth.uid()
         and profiles.role = 'conductor'::public.user_role
-        and drivers.status = 'aprobado'::public.driver_status
+          and drivers.approval_status = 'approved'::public.driver_approval_status
+          and drivers.status_kind = 'online'::public.driver_status_kind
         and drivers.is_online = true
     )
   returning id into p_trip_id;
