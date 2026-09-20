@@ -74,7 +74,7 @@ Deno.serve(async (request) => {
     let message = '';
 
     if (body.action === 'new_trip') {
-      if (callerId !== trip.passenger_id || trip.status !== 'buscando_conductor') {
+      if (callerId !== trip.passenger_id || !['requested', 'offered'].includes(trip.status)) {
         return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
       }
       if (!Number.isFinite(trip.pickup_lat) || !Number.isFinite(trip.pickup_lng)) {
@@ -98,21 +98,21 @@ Deno.serve(async (request) => {
       title = 'Nuevo viaje disponible cerca';
       message = `${trip.pickup_address} → ${trip.dropoff_address}`;
     } else if (body.action === 'driver_accept') {
-      if (callerId !== trip.driver_id || trip.status !== 'aceptado') {
+      if (callerId !== trip.driver_id || !['accepted', 'arrived'].includes(trip.status)) {
         return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
       }
       recipientIds = [trip.passenger_id];
       title = '¡Tu conductor va en camino!';
       message = 'Abre Dame Pon para seguir su llegada en el mapa.';
     } else if (body.action === 'driver_start') {
-      if (callerId !== trip.driver_id || trip.status !== 'en_curso') {
+      if (callerId !== trip.driver_id || trip.status !== 'in_progress') {
         return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
       }
       recipientIds = [trip.passenger_id];
       title = 'Tu viaje comenzó';
       message = `Ya van camino a ${trip.dropoff_address}.`;
     } else if (body.action === 'passenger_cancel') {
-      if (callerId !== trip.passenger_id || trip.status !== 'cancelado' || !trip.driver_id) {
+      if (callerId !== trip.passenger_id || trip.status !== 'cancelled' || !trip.driver_id) {
         return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
       }
       recipientIds = [trip.driver_id];

@@ -36,6 +36,7 @@ async function run() {
   // This is intentionally the same shape sent by requestTrip in rideService.ts.
   const payload = {
     passenger_id: auth.data.user.id,
+    passenger_pin: '1234',
     pickup_address: 'Ubicación actual',
     pickup_lat: 18.4655,
     pickup_lng: -66.1057,
@@ -54,7 +55,7 @@ async function run() {
   const assertions = [
     ['passenger_id', trip.passenger_id === auth.data.user.id],
     ['driver_id NULL', trip.driver_id === null],
-    ['status inicial', trip.status === 'buscando_conductor'],
+    ['status inicial', trip.status === 'requested'],
     ['pickup_address', trip.pickup_address === payload.pickup_address],
     ['pickup_lat', trip.pickup_lat === payload.pickup_lat],
     ['pickup_lng', trip.pickup_lng === payload.pickup_lng],
@@ -75,7 +76,7 @@ async function run() {
 
   const cancelled = await supabase.rpc('cancel_trip', { p_trip_id: trip.id }).single();
   checkError('limpiar viaje de prueba', cancelled.error);
-  if (cancelled.data?.status !== 'cancelado') {
+  if (cancelled.data?.status !== 'cancelled') {
     throw new Error('[FAIL] limpiar viaje de prueba: no quedó cancelado.');
   }
   console.log('[OK] viaje de prueba limpiado mediante cancel_trip');

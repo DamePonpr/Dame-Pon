@@ -161,8 +161,11 @@ function deliveryLabel(result) {
 }
 
 async function updateStatus(driver, status, timestampColumn) {
-  const rpcName = status === 'en_curso' ? 'start_trip' : 'complete_trip';
-  const response = await driver.supabase.rpc(rpcName, { p_trip_id: created.tripId }).maybeSingle();
+  const rpcName = status === 'in_progress' ? 'start_trip' : 'complete_trip';
+  const response = await driver.supabase.rpc(rpcName, {
+    p_trip_id: created.tripId,
+    ...(status === 'in_progress' ? { p_passenger_pin: '1234' } : {}),
+  }).maybeSingle();
   checkError(`cambiar viaje a ${status}`, response.error);
   if (!response.data || response.data.status !== status || response.data.driver_id !== driver.user.id) {
     fail(`cambiar viaje a ${status}`, 'La función no devolvió el viaje asignado en el estado esperado.');
@@ -241,13 +244,14 @@ async function run() {
     .single();
   checkError('poner conductor en línea', response.error);
 
-  const requestWatch = watchTrip(driver.supabase, 'conductor-solicitud', null, 'buscando_conductor', 'INSERT');
+  const requestWatch = watchTrip(driver.supabase, 'conductor-solicitud', null, 'requested', 'INSERT');
   await subscribe('solicitudes abiertas del conductor', requestWatch.channel);
 
   response = await passenger.supabase
     .from('trips')
     .insert({
       passenger_id: passenger.user.id,
+      passenger_pin: '1234',
       pickup_address: `Realtime origen ${runId}`,
       pickup_lat: 18.4655,
       pickup_lng: -66.1057,
@@ -266,7 +270,7 @@ async function run() {
     passenger.supabase,
     'pasajero-aceptacion',
     `passenger_id=eq.${passenger.user.id}`,
-    'aceptado',
+    'accepted',
   );
   await subscribe('viaje del pasajero', acceptedWatch.channel);
 
@@ -275,12 +279,12 @@ async function run() {
     .from('trips')
     .update({
       driver_id: driver.user.id,
-      status: 'aceptado',
+      status: 'accepted',
       accepted_at: new Date().toISOString(),
       dropoff_address: tamperedDestination,
     })
     .eq('id', created.tripId)
-    .eq('status', 'buscando_conductor')
+    .eq('status', 'requested')
     .select('id');
   if (!tamperResponse.error && (tamperResponse.data ?? []).length > 0) {
     fail('integridad de aceptación', 'RLS permitió alterar el destino durante una aceptación directa.');
@@ -301,7 +305,7 @@ async function run() {
     passenger.supabase,
     'pasajero-inicio',
     `passenger_id=eq.${passenger.user.id}`,
-    'en_curso',
+    'in_progress',
     'UPDATE',
     () => passenger.network.online,
   );
@@ -309,7 +313,7 @@ async function run() {
     driver.supabase,
     'conductor-inicio',
     `driver_id=eq.${driver.user.id}`,
-    'en_curso',
+    'in_progress',
   );
   await Promise.all([
     subscribe('inicio para pasajero', passengerStartedWatch.channel),
@@ -325,7 +329,7 @@ async function run() {
     ),
   );
   console.log(`[OK] reconexión: socket cerrado y canal en estado ${passengerStartedWatch.channel.state}`);
-  await updateStatus(driver, 'en_curso', 'started_at');
+  await updateStatus(driver, 'in_progress', 'started_at');
   const driverStartedDelivery = await driverStartedWatch.observed.promise;
   await assertStillOffline(passengerStartedWatch.observed, 'reconexión');
   await waitForConnection(
@@ -350,19 +354,19 @@ async function run() {
     passenger.supabase,
     'pasajero-finalizacion',
     `passenger_id=eq.${passenger.user.id}`,
-    'completado',
+    'completed',
   );
   const driverCompletedWatch = watchTrip(
     driver.supabase,
     'conductor-finalizacion',
     `driver_id=eq.${driver.user.id}`,
-    'completado',
+    'completed',
   );
   await Promise.all([
     subscribe('finalización para pasajero', passengerCompletedWatch.channel),
     subscribe('finalización para conductor', driverCompletedWatch.channel),
   ]);
-  await updateStatus(driver, 'completado', 'completed_at');
+  await updateStatus(driver, 'completed', 'completed_at');
   const [passengerCompletedDelivery, driverCompletedDelivery] = await Promise.all([
     passengerCompletedWatch.observed.promise,
     driverCompletedWatch.observed.promise,
