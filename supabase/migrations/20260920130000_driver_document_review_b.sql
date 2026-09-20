@@ -1,12 +1,12 @@
 -- Dame Pon / OpenRide adoption — Layer B driver document states
 --
--- REVIEW ONLY. Do not apply this migration automatically.
--- Prerequisite: the review-only A1 migration must have been reconciled with
--- the remote schema first.
+-- Prerequisite: A1 must have been reconciled with the remote schema first.
 --
 -- Enum values are intentionally kept in their own migration. PostgreSQL does
 -- not allow a newly added enum value to be used safely until its transaction
 -- has committed. The Storage and RLS policies are in the next migration.
+
+begin;
 
 do $$
 begin
@@ -56,3 +56,5 @@ drop trigger if exists trg_openride_require_approved_driver on public.drivers;
 create trigger trg_openride_require_approved_driver
   before insert or update of is_online, approval_status on public.drivers
   for each row execute function public.openride_require_approved_driver();
+
+commit;
