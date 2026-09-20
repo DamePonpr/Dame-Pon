@@ -17,7 +17,7 @@ export function TripCompletionScreen({ trip, isDriver, onContinue }: TripComplet
   return (
     <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 18, paddingBottom: insets.bottom + 18 }]}>
       <View style={[styles.icon, { backgroundColor: colors.secondary }]}>
-        <Feather name="check" size={34} color={colors.primary} />
+        <Feather name="check" size={34} color={colors.star} />
       </View>
       <Text style={[styles.title, { color: colors.foreground }]}>
         {isDriver ? 'Viaje completado. Gracias por Darle Pon.' : '¡Llegaste! Gracias por pedir Pon.'}

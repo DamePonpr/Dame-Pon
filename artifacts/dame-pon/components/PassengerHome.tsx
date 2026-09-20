@@ -61,10 +61,10 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
         {home.error ? <Text style={[styles.error, { color: colors.destructive }]}>{home.error}</Text> : null}
 
         {home.activeTrip ? (
-          <View style={[styles.activeCard, { backgroundColor: colors.primary }]}>
-            <Text style={styles.inverseEyebrow}>PON ACTIVO</Text>
-            <Text style={styles.activeTitle}>{tripStatus(home.activeTrip.status)}</Text>
-            <Text style={styles.activeDestination}>{home.activeTrip.dropoff_address}</Text>
+          <View style={[styles.activeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.activeEyebrow, { color: colors.mutedForeground }]}>PON ACTIVO</Text>
+            <Text style={[styles.activeTitle, { color: colors.foreground }]}>{tripStatus(home.activeTrip.status)}</Text>
+            <Text style={[styles.activeDestination, { color: colors.mutedForeground }]}>{home.activeTrip.dropoff_address}</Text>
             {home.activeTrip.status === 'completado' ? null : (
               <AppButton label="Cancelar Pon" variant="secondary" onPress={home.cancel} loading={home.actionLoading} />
             )}
@@ -123,10 +123,10 @@ const styles = StyleSheet.create({
   subtitle: { fontFamily: 'Jakarta', fontSize: 15, marginTop: 5 },
   helper: { paddingHorizontal: 20, marginTop: 8, fontFamily: 'Jakarta', fontSize: 13 },
   error: { paddingHorizontal: 20, marginTop: 9, fontFamily: 'Jakarta-Medium', fontSize: 13, lineHeight: 19 },
-  activeCard: { margin: 20, marginBottom: 4, borderRadius: 22, padding: 18, gap: 9 },
-  inverseEyebrow: { color: '#FFFFFF', fontFamily: 'Jakarta-SemiBold', fontSize: 10, letterSpacing: 1.2 },
-  activeTitle: { color: '#FFFFFF', fontFamily: 'Jakarta-Bold', fontSize: 22 },
-  activeDestination: { color: 'rgba(255,255,255,0.76)', fontFamily: 'Jakarta', fontSize: 14, marginBottom: 5 },
+  activeCard: { margin: 20, marginBottom: 4, borderRadius: 22, borderWidth: 1, padding: 18, gap: 9 },
+  activeEyebrow: { fontFamily: 'Jakarta-SemiBold', fontSize: 10, letterSpacing: 1.2 },
+  activeTitle: { fontFamily: 'Jakarta-Bold', fontSize: 22 },
+  activeDestination: { fontFamily: 'Jakarta', fontSize: 14, marginBottom: 5 },
   sectionCard: { margin: 20, marginTop: 22, padding: 14, borderRadius: 22, borderWidth: 1 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   sectionTitle: { fontFamily: 'Jakarta-Bold', fontSize: 18 },

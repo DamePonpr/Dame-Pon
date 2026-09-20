@@ -1,4 +1,5 @@
 import { Image, ScrollView, Text, View } from "react-native";
+import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native";
 
@@ -8,10 +9,12 @@ import { BuildStamp } from "@/components/BuildStamp";
 import { useAuth } from "@/context/AuthContext";
 import { icons } from "@/constants";
 import { useColors } from "@/hooks/useColors";
+import { SettingsModal } from "@/components/SettingsModal";
 
 export default function Profile() {
   const colors = useColors();
   const { user, profile, signOut } = useAuth();
+  const [settingsVisible, setSettingsVisible] = useState(false);
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -27,9 +30,11 @@ export default function Profile() {
           <InputField label="Teléfono" value={profile?.phone ?? "No registrado"} editable={false} icon={icons.person} />
           <InputField label="Rol" value={profile?.role === "conductor" ? "Conductor" : "Pasajero"} editable={false} icon={icons.profile} />
         </View>
+        <CustomButton title="Apariencia" bgVariant="secondary" textVariant="secondary" onPress={() => setSettingsVisible(true)} style={styles.settings} />
         <CustomButton title="Cerrar sesión" bgVariant="outline" textVariant="secondary" onPress={() => void signOut()} style={styles.logout} />
         <View style={styles.stamp}><BuildStamp /></View>
       </ScrollView>
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -44,5 +49,6 @@ const styles = StyleSheet.create({
   initial: { fontFamily: "Jakarta-Bold", fontSize: 40 },
   card: { borderRadius: 18, borderWidth: 1, paddingHorizontal: 20, paddingVertical: 14 },
   logout: { marginTop: 24 },
+  settings: { marginTop: 20 },
   stamp: { marginTop: 14 },
 });

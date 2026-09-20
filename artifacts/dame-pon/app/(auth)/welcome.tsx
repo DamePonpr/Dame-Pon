@@ -24,14 +24,14 @@ const Home = () => {
         }}
         style={styles.skip}
       >
-        <Text style={[styles.skipText, { color: colors.primary }]}>Saltar</Text>
+        <Text style={[styles.skipText, { color: colors.foreground }]}>Saltar</Text>
       </TouchableOpacity>
 
       <Swiper
         ref={swiperRef}
         loop={false}
         dot={<View style={[styles.dot, { backgroundColor: colors.border }]} />}
-        activeDot={<View style={[styles.dot, { backgroundColor: colors.primary }]} />}
+        activeDot={<View style={[styles.dot, { backgroundColor: colors.star }]} />}
         onIndexChanged={(index) => setActiveIndex(index)}
       >
         {onboarding.map((item) => (
