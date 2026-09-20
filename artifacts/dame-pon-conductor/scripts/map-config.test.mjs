@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const nativeMapPath = new URL('../components/LiveRideMap.native.tsx', import.meta.url);
+const nativeMapPath = new URL('../../../packages/shared/src/components/LiveRideMap.native.tsx', import.meta.url);
 const appConfigPath = new URL('../app.json', import.meta.url);
 const packagePath = new URL('../package.json', import.meta.url);
 const driverHomePath = new URL('../components/DriverHome.tsx', import.meta.url);
