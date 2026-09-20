@@ -1,4 +1,4 @@
-name: Dame Pon Android APK
+name: Dame Pon Android APKs
 
 on:
   workflow_dispatch:
@@ -11,8 +11,18 @@ permissions:
 
 jobs:
   build:
-    name: Build signed Android APK
+    name: Build ${{ matrix.label }} APK
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app_dir: artifacts/dame-pon-pasajero
+            role: pasajero
+            label: Pasajero
+          - app_dir: artifacts/dame-pon-conductor
+            role: conductor
+            label: Conductor
 
     steps:
       - name: Check out repository
@@ -44,7 +54,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Load public production variables
-        working-directory: artifacts/dame-pon
+        working-directory: ${{ matrix.app_dir }}
         run: |
           grep -v '^[[:space:]]*#' .env.production >> "$GITHUB_ENV"
 
@@ -65,7 +75,7 @@ jobs:
             12) month="dic" ;;
           esac
           {
-            echo "EXPO_PUBLIC_BUILD_TAG=preview-${GITHUB_RUN_NUMBER}"
+            echo "EXPO_PUBLIC_BUILD_TAG=preview-${{ matrix.role }}-${GITHUB_RUN_NUMBER}"
             echo "EXPO_PUBLIC_BUILD_SHA=${GITHUB_SHA:0:7}"
             echo "EXPO_PUBLIC_BUILD_DATE=$(date -u +%-d) ${month} $(date -u +%Y)"
           } >> "$GITHUB_ENV"
@@ -78,15 +88,15 @@ jobs:
           echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" >> "$GITHUB_ENV"
 
       - name: Validate public Supabase configuration
-        working-directory: artifacts/dame-pon
+        working-directory: ${{ matrix.app_dir }}
         run: pnpm run verify:supabase-config
 
       - name: Generate Android project
-        working-directory: artifacts/dame-pon
+        working-directory: ${{ matrix.app_dir }}
         run: pnpm exec expo prebuild --platform android --no-install
 
       - name: Copy preview signing keystore
-        working-directory: artifacts/dame-pon
+        working-directory: ${{ matrix.app_dir }}
         run: cp android-signing/dame-pon-preview.keystore android/app/dame-pon-preview.keystore
 
       - name: Patch legacy clipboard repository declaration
@@ -108,7 +118,7 @@ jobs:
             "$clipboard_java"
 
       - name: Assemble release APK
-        working-directory: artifacts/dame-pon/android
+        working-directory: ${{ matrix.app_dir }}/android
         run: |
           test -n "${EXPO_PUBLIC_DOMAIN:-}"
           test -n "${EXPO_PUBLIC_SUPABASE_URL:-}"
@@ -119,8 +129,8 @@ jobs:
       - name: Upload APK to this workflow run
         uses: actions/upload-artifact@v4
         with:
-          name: dame-pon-preview-${{ github.run_number }}
-          path: artifacts/dame-pon/android/app/build/outputs/apk/release/app-release.apk
+          name: dame-pon-${{ matrix.role }}-preview-${{ github.run_number }}
+          path: ${{ matrix.app_dir }}/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -128,10 +138,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="preview-${{ github.run_number }}"
+          tag="preview-${{ matrix.role }}-${{ github.run_number }}"
           gh release create "$tag" \
-            artifacts/dame-pon/android/app/build/outputs/apk/release/app-release.apk \
+            "${{ matrix.app_dir }}/android/app/build/outputs/apk/release/app-release.apk" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Dame Pon Android preview ${{ github.run_number }}" \
-            --notes "APK de prueba generado por GitHub Actions. La primera instalación debe reemplazar el APK firmado por EAS."
+            --title "Dame Pon ${{ matrix.label }} Android preview ${{ github.run_number }}" \
+            --notes "APK de prueba generado por GitHub Actions para la app ${{ matrix.label }}."
