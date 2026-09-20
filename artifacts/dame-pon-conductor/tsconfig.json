@@ -5,6 +5,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@workspace/dame-pon-shared": [
+        "../../packages/shared/src/index.ts"
+      ],
+      "@workspace/dame-pon-shared/*": [
+        "../../packages/shared/src/*"
       ]
     }
   },
