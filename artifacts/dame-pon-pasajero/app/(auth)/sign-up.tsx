@@ -9,7 +9,7 @@ import { InlineNotice } from "@workspace/dame-pon-shared/components/InlineNotice
 import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
 import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 import type { UserRole } from "@workspace/dame-pon-shared/lib/roles";
-import { icons } from "@/constants";
+import { icons } from "@workspace/dame-pon-shared/constants";
 import { MunicipalityPicker } from "@workspace/dame-pon-shared/components/MunicipalityPicker";
 import type { Municipality } from "@workspace/dame-pon-shared/lib/municipality";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

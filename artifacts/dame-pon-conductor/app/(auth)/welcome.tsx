@@ -6,7 +6,7 @@ import Swiper from "react-native-swiper";
 
 import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
 import { BrandLogo } from "@workspace/dame-pon-shared/components/BrandLogo";
-import { onboarding } from "@/constants";
+import { onboarding } from "@workspace/dame-pon-shared/constants";
 import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 
 const Home = () => {

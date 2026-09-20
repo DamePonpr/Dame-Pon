@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { Image, ImageSourcePropType, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { icons } from "@/constants";
+import { icons } from "@workspace/dame-pon-shared/constants";
 import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 
 const TabIcon = ({

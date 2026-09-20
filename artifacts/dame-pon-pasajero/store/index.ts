@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { LocationValue, MarkerData } from "@/types/type";
+import type { LocationValue, MarkerData } from "@workspace/dame-pon-shared/types/type";
 
 interface LocationState {
   userLocation: LocationValue | null;

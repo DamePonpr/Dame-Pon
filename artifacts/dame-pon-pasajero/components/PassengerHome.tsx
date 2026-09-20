@@ -8,11 +8,11 @@ import GoogleTextInput from '@workspace/dame-pon-shared/components/GoogleTextInp
 import { LiveRideMap } from '@workspace/dame-pon-shared/components/LiveRideMap';
 import { RideCard } from '@workspace/dame-pon-shared/components/RideCard';
 import { TripCompletionScreen } from '@workspace/dame-pon-shared/components/TripCompletionScreen';
-import { icons } from '@/constants';
+import { icons } from '@workspace/dame-pon-shared/constants';
 import { useColors } from '@workspace/dame-pon-shared/hooks/useColors';
 import { usePassengerHome } from '@/hooks/usePassengerHome';
 import type { Profile } from '@workspace/dame-pon-shared/context/AuthContext';
-import type { LocationValue } from '@/types/type';
+import type { LocationValue } from '@workspace/dame-pon-shared/types/type';
 
 export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: {
   profile: Profile;

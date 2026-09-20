@@ -9,7 +9,7 @@ import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 import InputField from "@workspace/dame-pon-shared/components/InputField";
 import { InlineNotice } from "@workspace/dame-pon-shared/components/InlineNotice";
 import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
-import { icons } from "@/constants";
+import { icons } from "@workspace/dame-pon-shared/constants";
 
 export default function SignIn() {
   const colors = useColors();

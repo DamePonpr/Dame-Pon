@@ -6,7 +6,7 @@ import { InlineNotice } from "@workspace/dame-pon-shared/components/InlineNotice
 import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
 import { useLocationStore } from "@/store";
 import { requestTrip } from "@workspace/dame-pon-shared/lib/rideService";
-import type { PaymentProps } from "@/types/type";
+import type { PaymentProps } from "@workspace/dame-pon-shared/types/type";
 import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 
 export default function Payment({ amount }: PaymentProps) {

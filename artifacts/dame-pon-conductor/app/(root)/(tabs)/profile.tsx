@@ -7,7 +7,7 @@ import InputField from "@workspace/dame-pon-shared/components/InputField";
 import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
 import { BuildStamp } from "@workspace/dame-pon-shared/components/BuildStamp";
 import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
-import { icons } from "@/constants";
+import { icons } from "@workspace/dame-pon-shared/constants";
 import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 import { SettingsModal } from "@workspace/dame-pon-shared/components/SettingsModal";
 

@@ -6,7 +6,7 @@ import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
 import GoogleTextInput from "@workspace/dame-pon-shared/components/GoogleTextInput";
 import { InlineNotice } from "@workspace/dame-pon-shared/components/InlineNotice";
 import { RideLayout } from "@workspace/dame-pon-shared/components/RideLayout";
-import { icons } from "@/constants";
+import { icons } from "@workspace/dame-pon-shared/constants";
 import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 import { useLocationStore } from "@/store";
 
