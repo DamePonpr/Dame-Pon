@@ -150,8 +150,8 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
               <AppButton
                 label="Iniciar viaje"
                 onPress={() => {
-                  void home.updateStatus('in_progress', passengerPin).then(() => {
-                    if (!home.error) {
+                  void home.updateStatus('in_progress', passengerPin).then((success) => {
+                    if (success) {
                       setPassengerPin('');
                       setPinPromptVisible(false);
                     }

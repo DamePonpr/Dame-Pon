@@ -158,14 +158,14 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
   const updateStatus = useCallback(async (
     status: 'in_progress' | 'completed',
     passengerPin?: string,
-  ) => {
-    if (!userId || !activeTrip) return;
+  ): Promise<boolean> => {
+    if (!userId || !activeTrip) return false;
     setActionLoading(true);
-    const result = await updateTripStatus(activeTrip.id, userId, status);
+    const result = await updateTripStatus(activeTrip.id, userId, status, passengerPin);
     setActionLoading(false);
     if (result.error) {
       handleError(result.error);
-      return;
+      return false;
     }
     if (status === 'completed' && result.data) {
       const base = setup?.driver?.municipio_base;
@@ -181,6 +181,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
       setActiveTrip(result.data);
     }
     void refresh();
+    return true;
   }, [activeTrip, handleError, refresh, setup?.driver?.municipio_base, userId]);
 
   const cancel = useCallback(async () => {

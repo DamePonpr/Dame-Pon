@@ -615,7 +615,7 @@ export async function getTripHistory(
     return serviceError('load-history', tripsResult.error);
   }
 
-  const trips = (tripsResult.data as Trip[] | null) ?? [];
+  const trips = (tripsResult.data as unknown as Trip[] | null) ?? [];
   if (!trips.length) return { data: [], error: null };
 
   const ratingsResult = await supabase
