@@ -8,3 +8,4 @@
 - [NativeWind with Expo and pnpm](nativewind-expo-pnpm.md) — expose CSS interop directly to Metro and configure NativeWind v4 as a Babel preset.
 - [Android APK workflow compatibility](android-apk-workflow.md) — Expo release builds need direct Babel dependencies; legacy clipboard needs Gradle and RN 0.86 CI patches.
 - [Passenger PIN visibility](passenger-pin-visibility.md) — expose the trip PIN only through a passenger-scoped read path; RLS alone does not protect columns.
+- [Shared mobile asset ownership](shared-mobile-assets.md) — assets imported by shared Expo code must live inside the shared package for both apps to bundle.
