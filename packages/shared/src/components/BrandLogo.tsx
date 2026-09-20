@@ -68,6 +68,7 @@ export function BrandLogo({
 
 const styles = StyleSheet.create({
   container: {
+    position: 'relative',
     overflow: 'hidden',
   },
 });
