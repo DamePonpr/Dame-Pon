@@ -7,7 +7,7 @@ import {
   ratingSummaryForUser,
 } from '@/lib/ratingLogic';
 
-export type TripStatus = 'buscando_conductor' | 'aceptado' | 'en_curso' | 'completado' | 'cancelado';
+export type TripStatus = 'requested' | 'offered' | 'accepted' | 'arrived' | 'in_progress' | 'completed' | 'cancelled';
 export type DriverStatus = 'pendiente' | 'aprobado' | 'suspendido';
 
 export interface Trip {
@@ -30,6 +30,12 @@ export interface Trip {
   completed_at: string | null;
   municipio_origen: string | null;
   municipio_destino: string | null;
+  arrived_at?: string | null;
+  cancelled_at?: string | null;
+  cancelled_by?: string | null;
+  cancel_reason?: string | null;
+  payment_status?: string | null;
+  passenger_pin?: string | null;
 }
 
 export interface TripHistoryItem {
@@ -137,7 +143,8 @@ type RideAction =
 
 const DRIVER_COLUMNS = 'id,status,is_online,current_lat,current_lng,updated_at,municipio_base,municipio_activo,municipios_activos';
 const VEHICLE_COLUMNS = 'id,driver_id,make,model,year,color,plate';
-const TRIP_COLUMNS = 'id,status,passenger_id,driver_id,pickup_address,pickup_lat,pickup_lng,dropoff_address,dropoff_lat,dropoff_lng,fare_estimate,fare_final,distance_km,requested_at,accepted_at,started_at,completed_at,municipio_origen,municipio_destino';
+const TRIP_COLUMNS = 'id,status,passenger_id,driver_id,pickup_address,pickup_lat,pickup_lng,dropoff_address,dropoff_lat,dropoff_lng,fare_estimate,fare_final,distance_km,requested_at,accepted_at,started_at,completed_at,municipio,allow_cross_municipio,municipio_origen,municipio_destino,arrived_at,cancelled_at,cancelled_by,cancel_reason,payment_status';
+const PASSENGER_TRIP_COLUMNS = `${TRIP_COLUMNS},passenger_pin`;
 
 const TRIP_RECONCILIATION_INTERVAL_MS = 3_000;
 const actionFallbacks: Record<RideAction, string> = {
@@ -538,6 +545,7 @@ export async function requestTrip(
     .from('trips')
     .insert({
       passenger_id: passengerId,
+      passenger_pin: generatePassengerPin(),
       pickup_address: pickup.address,
       pickup_lat: pickup.latitude,
       pickup_lng: pickup.longitude,
@@ -545,7 +553,7 @@ export async function requestTrip(
       dropoff_lat: destination?.latitude ?? null,
       dropoff_lng: destination?.longitude ?? null,
     })
-    .select(TRIP_COLUMNS)
+    .select(PASSENGER_TRIP_COLUMNS)
     .single();
 
   if (result.error) {
@@ -557,10 +565,10 @@ export async function requestTrip(
 
 export async function getPassengerActiveTrip(passengerId: string): Promise<ServiceResult<Trip>> {
   const activeResult = await supabase
-    .from('trips')
-    .select(TRIP_COLUMNS)
+    .from('passenger_trips')
+    .select(PASSENGER_TRIP_COLUMNS)
     .eq('passenger_id', passengerId)
-    .in('status', ['buscando_conductor', 'aceptado', 'en_curso'] satisfies TripStatus[])
+    .in('status', ['requested', 'offered', 'accepted', 'arrived', 'in_progress'] satisfies TripStatus[])
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -578,7 +586,7 @@ export async function getDriverActiveTrip(driverId: string): Promise<ServiceResu
     .from('trips')
     .select(TRIP_COLUMNS)
     .eq('driver_id', driverId)
-    .in('status', ['aceptado', 'en_curso'] satisfies TripStatus[])
+    .in('status', ['accepted', 'arrived', 'in_progress'] satisfies TripStatus[])
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -597,10 +605,10 @@ export async function getTripHistory(
 ): Promise<ServiceResult<TripHistoryItem[]>> {
   const participantColumn = role === 'conductor' ? 'driver_id' : 'passenger_id';
   const tripsResult = await supabase
-    .from('trips')
-    .select(TRIP_COLUMNS)
+    .from(role === 'pasajero' ? 'passenger_trips' : 'trips')
+    .select(role === 'pasajero' ? PASSENGER_TRIP_COLUMNS : TRIP_COLUMNS)
     .eq(participantColumn, userId)
-    .eq('status', 'completado' satisfies TripStatus)
+    .eq('status', 'completed' satisfies TripStatus)
     .order('completed_at', { ascending: false });
 
   if (tripsResult.error) {
@@ -645,10 +653,10 @@ async function getUnratedCompletedTrip(
   participantColumn: 'passenger_id' | 'driver_id',
 ): Promise<ServiceResult<Trip>> {
   const tripsResult = await supabase
-    .from('trips')
+    .from(participantColumn === 'passenger_id' ? 'passenger_trips' : 'trips')
     .select(TRIP_COLUMNS)
     .eq(participantColumn, userId)
-    .eq('status', 'completado' satisfies TripStatus)
+    .eq('status', 'completed' satisfies TripStatus)
     .order('completed_at', { ascending: false })
     .limit(10);
 
@@ -684,7 +692,7 @@ export async function getOpenTrips(): Promise<ServiceResult<Trip[]>> {
   const result = await supabase
     .from('trips')
     .select(TRIP_COLUMNS)
-    .eq('status', 'buscando_conductor' satisfies TripStatus)
+    .in('status', ['requested', 'offered'] satisfies TripStatus[])
     .order('requested_at', { ascending: false });
 
   if (result.error) {
@@ -720,11 +728,17 @@ export async function acceptTrip(tripId: string, driverId: string): Promise<Serv
 export async function updateTripStatus(
   tripId: string,
   driverId: string,
-  status: Extract<TripStatus, 'en_curso' | 'completado'>,
+  status: Extract<TripStatus, 'in_progress' | 'completed'>,
+  passengerPin?: string,
 ): Promise<ServiceResult<Trip>> {
+  if (status === 'in_progress' && !/^\d{4}$/.test(passengerPin ?? '')) {
+    return { data: null, error: 'Escribe el PIN de cuatro dígitos que muestra el pasajero.' };
+  }
+
   const result = await supabase
-    .rpc(status === 'en_curso' ? 'start_trip' : 'complete_trip', {
+    .rpc(status === 'in_progress' ? 'start_trip' : 'complete_trip', {
       p_trip_id: tripId,
+      ...(status === 'in_progress' ? { p_passenger_pin: passengerPin } : {}),
     })
     .maybeSingle();
 
@@ -742,10 +756,11 @@ export async function updateTripStatus(
 
 export async function cancelTrip(
   tripId: string,
-  passengerId: string,
+  participantId: string,
+  reason?: string,
 ): Promise<ServiceResult<Trip>> {
   const result = await supabase
-    .rpc('cancel_trip', { p_trip_id: tripId })
+    .rpc('cancel_trip', { p_trip_id: tripId, p_reason: reason?.trim() || null })
     .maybeSingle();
 
   if (result.error) {
@@ -754,10 +769,11 @@ export async function cancelTrip(
   if (!result.data) {
     return { data: null, error: 'Este viaje ya no puede cancelarse.' };
   }
-  if ((result.data as Trip).passenger_id !== passengerId) {
-    return { data: null, error: 'Supabase devolvió un pasajero inválido.' };
+  const trip = result.data as Trip;
+  if (trip.passenger_id !== participantId && trip.driver_id !== participantId) {
+    return { data: null, error: 'Supabase devolvió participantes inválidos.' };
   }
-  return { data: result.data as Trip, error: null };
+  return { data: trip, error: null };
 }
 
 export async function rateTrip(
@@ -766,7 +782,7 @@ export async function rateTrip(
   score: number,
 ): Promise<ServiceResult<boolean>> {
   const ratedUser = trip.passenger_id === userId ? trip.driver_id : trip.passenger_id;
-  if (!ratedUser || trip.status !== 'completado') {
+  if (!ratedUser || trip.status !== 'completed') {
     return { data: null, error: 'Solo puedes calificar a la otra persona cuando el viaje haya terminado.' };
   }
 
@@ -841,4 +857,8 @@ export function subscribeToDriverLocation(driverId: string, onChange: () => void
 
 export function tripDestination(trip: Trip) {
   return trip.dropoff_address || 'Destino sin especificar';
+}
+
+function generatePassengerPin() {
+  return String(Math.floor(Math.random() * 10_000)).padStart(4, '0');
 }

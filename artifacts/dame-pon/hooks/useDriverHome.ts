@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   acceptTrip,
+  cancelTrip,
   getDriverActiveTrip,
   getDriverLocation,
   getDriverSetup,
@@ -76,8 +77,8 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
       if (municipalityResult.error) handleError(municipalityResult.error);
       if (ratingResult.error) handleError(ratingResult.error);
       setSetup(setupResult.data);
-      setActiveTrip(tripResult.data?.status === 'completado' ? null : tripResult.data);
-      if (tripResult.data && tripResult.data.status !== 'completado') {
+      setActiveTrip(tripResult.data?.status === 'completed' ? null : tripResult.data);
+      if (tripResult.data && tripResult.data.status !== 'completed') {
         const participantResult = await getTripParticipantDetails(tripResult.data.id);
         if (participantResult.error) handleError(participantResult.error);
         setParticipantDetails(participantResult.data);
@@ -154,7 +155,10 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
     void refresh();
   }, [handleError, refresh, userId]);
 
-  const updateStatus = useCallback(async (status: 'en_curso' | 'completado') => {
+  const updateStatus = useCallback(async (
+    status: 'in_progress' | 'completed',
+    passengerPin?: string,
+  ) => {
     if (!userId || !activeTrip) return;
     setActionLoading(true);
     const result = await updateTripStatus(activeTrip.id, userId, status);
@@ -163,7 +167,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
       handleError(result.error);
       return;
     }
-    if (status === 'completado' && result.data) {
+    if (status === 'completed' && result.data) {
       const base = setup?.driver?.municipio_base;
       const destination = result.data.municipio_destino;
       if (base && destination && base !== destination) {
@@ -178,6 +182,19 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
     }
     void refresh();
   }, [activeTrip, handleError, refresh, setup?.driver?.municipio_base, userId]);
+
+  const cancel = useCallback(async () => {
+    if (!userId || !activeTrip) return;
+    setActionLoading(true);
+    const result = await cancelTrip(activeTrip.id, userId);
+    setActionLoading(false);
+    if (result.error) {
+      handleError(result.error);
+      return;
+    }
+    setActiveTrip(null);
+    void refresh();
+  }, [activeTrip, handleError, refresh, userId]);
 
   const saveVehicle = useCallback(async () => {
     if (!userId || !setup?.driver?.municipio_base) {
@@ -243,6 +260,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
     toggleOnline,
     accept,
     updateStatus,
+    cancel,
     saveVehicle,
     chooseMunicipality,
     changeActiveMunicipality,

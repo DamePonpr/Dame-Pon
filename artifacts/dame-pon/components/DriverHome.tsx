@@ -1,7 +1,8 @@
 import { Feather } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
 import { AppButton } from '@/components/AppButton';
 import { LiveRideMap } from '@/components/LiveRideMap';
 import { RideLayout } from '@/components/RideLayout';
@@ -21,6 +22,8 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const home = useDriverHome(userId, onSessionExpired);
+  const [passengerPin, setPassengerPin] = useState('');
+  const [pinPromptVisible, setPinPromptVisible] = useState(false);
   const activeMunicipality = home.setup?.driver?.municipio_activo ?? home.setup?.driver?.municipio_base;
 
   if (home.completion) {
@@ -95,11 +98,18 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
             </Text>
             <View style={styles.tripActions}>
               <AppButton
-                label={home.activeTrip.status === 'aceptado' ? 'Iniciar viaje' : 'Completar viaje'}
-                onPress={() => void home.updateStatus(home.activeTrip?.status === 'aceptado' ? 'en_curso' : 'completado')}
+                label={home.activeTrip.status === 'accepted' || home.activeTrip.status === 'arrived' ? 'Iniciar viaje' : 'Completar viaje'}
+                onPress={() => {
+                  if (home.activeTrip?.status === 'accepted' || home.activeTrip?.status === 'arrived') {
+                    setPinPromptVisible(true);
+                  } else {
+                    void home.updateStatus('completed');
+                  }
+                }}
                 loading={home.actionLoading}
                 style={styles.tripAction}
               />
+              <AppButton label="Cancelar" variant="secondary" onPress={() => void home.cancel()} loading={home.actionLoading} style={styles.tripAction} />
               <AppButton label="Chat" variant="secondary" onPress={() => router.push('/(root)/(tabs)/chat')} style={styles.tripAction} />
             </View>
           </View>
@@ -121,6 +131,39 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
         )}
         {home.decision ? <MunicipalityDecisionCard home={home} colors={colors} /> : null}
       </View>
+      <Modal visible={pinPromptVisible} transparent animationType="fade" onRequestClose={() => setPinPromptVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.pinModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Confirma el PIN del pasajero</Text>
+            <Text style={[styles.cardCaption, { color: colors.mutedForeground }]}>Pídele el PIN de cuatro dígitos antes de iniciar el viaje.</Text>
+            <TextInput
+              value={passengerPin}
+              onChangeText={(value) => setPassengerPin(value.replace(/\D/g, '').slice(0, 4))}
+              keyboardType="number-pad"
+              maxLength={4}
+              placeholder="0000"
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.pinInput, { color: colors.foreground, borderColor: colors.border }]}
+            />
+            <View style={styles.modalActions}>
+              <AppButton label="Volver" variant="secondary" onPress={() => setPinPromptVisible(false)} style={styles.tripAction} />
+              <AppButton
+                label="Iniciar viaje"
+                onPress={() => {
+                  void home.updateStatus('in_progress', passengerPin).then(() => {
+                    if (!home.error) {
+                      setPassengerPin('');
+                      setPinPromptVisible(false);
+                    }
+                  });
+                }}
+                loading={home.actionLoading}
+                style={styles.tripAction}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </RideLayout>
   );
 }
@@ -189,4 +232,8 @@ const styles = StyleSheet.create({
   requestCard: { borderWidth: 1, borderRadius: 18, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 10 },
   decisionCard: { borderRadius: 18, padding: 14, gap: 8 },
   decisionRow: { gap: 8 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 22 },
+  pinModal: { borderRadius: 22, borderWidth: 1, padding: 18, gap: 10 },
+  pinInput: { borderWidth: 1, borderRadius: 12, minHeight: 52, paddingHorizontal: 14, textAlign: 'center', fontFamily: 'Jakarta-Bold', fontSize: 24, letterSpacing: 5 },
+  modalActions: { flexDirection: 'row', gap: 9, marginTop: 4 },
 });

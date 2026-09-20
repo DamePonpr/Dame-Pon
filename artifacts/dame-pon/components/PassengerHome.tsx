@@ -65,7 +65,14 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
             <Text style={[styles.activeEyebrow, { color: colors.mutedForeground }]}>PON ACTIVO</Text>
             <Text style={[styles.activeTitle, { color: colors.foreground }]}>{tripStatus(home.activeTrip.status)}</Text>
             <Text style={[styles.activeDestination, { color: colors.mutedForeground }]}>{home.activeTrip.dropoff_address}</Text>
-            {home.activeTrip.status === 'completado' ? null : (
+            {home.activeTrip.passenger_pin ? (
+              <View style={[styles.pinCard, { backgroundColor: colors.secondary }]}>
+                <Text style={[styles.pinLabel, { color: colors.mutedForeground }]}>PIN PARA INICIAR</Text>
+                <Text style={[styles.pinValue, { color: colors.primary }]}>{home.activeTrip.passenger_pin}</Text>
+                <Text style={[styles.pinHint, { color: colors.mutedForeground }]}>Compártelo con tu conductor al encontrarte.</Text>
+              </View>
+            ) : null}
+            {home.activeTrip.status === 'completed' ? null : (
               <AppButton label="Cancelar Pon" variant="secondary" onPress={home.cancel} loading={home.actionLoading} />
             )}
           </View>
@@ -107,9 +114,12 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
 }
 
 function tripStatus(status: string) {
-  if (status === 'buscando_conductor') return 'Buscando conductor';
-  if (status === 'aceptado') return 'Conductor en camino';
-  if (status === 'en_curso') return 'Viaje en curso';
+  if (status === 'requested') return 'Buscando conductor';
+  if (status === 'offered') return 'Buscando conductor';
+  if (status === 'accepted') return 'Conductor en camino';
+  if (status === 'arrived') return 'Conductor llegó';
+  if (status === 'in_progress') return 'Viaje en curso';
+  if (status === 'cancelled') return 'Viaje cancelado';
   return 'Viaje completado';
 }
 
@@ -134,4 +144,8 @@ const styles = StyleSheet.create({
   mapFrame: { height: 180, overflow: 'hidden', borderRadius: 16 },
   recentHeader: { paddingHorizontal: 20, marginTop: 4, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   empty: { paddingHorizontal: 20, marginTop: 14, fontFamily: 'Jakarta', fontSize: 14 },
+  pinCard: { borderRadius: 15, padding: 12, marginTop: 2 },
+  pinLabel: { fontFamily: 'Jakarta-SemiBold', fontSize: 10, letterSpacing: 1.2 },
+  pinValue: { fontFamily: 'Jakarta-Bold', fontSize: 28, letterSpacing: 5, marginTop: 2 },
+  pinHint: { fontFamily: 'Jakarta', fontSize: 11, marginTop: 3 },
 });
