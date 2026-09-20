@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Image, ImageSourcePropType, View } from "react-native";
+import { Image, ImageSourcePropType, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { icons } from "@workspace/dame-pon-shared/constants";
@@ -31,6 +31,8 @@ const TabIcon = ({
 export default function Layout() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const webTabBar = Platform.OS === "web";
+  const bottomInset = webTabBar ? 0 : insets.bottom;
   return (
     <Tabs
       initialRouteName="home"
@@ -41,18 +43,19 @@ export default function Layout() {
         tabBarLabelStyle: {
           fontFamily: "Jakarta-SemiBold",
           fontSize: 11,
-          marginTop: -1,
-          marginBottom: 2,
+           lineHeight: 14,
+           marginTop: 0,
+           marginBottom: 0,
         },
         tabBarStyle: {
           backgroundColor: colors.background,
           borderTopWidth: 0,
           borderRadius: 24,
-          paddingTop: 8,
-          paddingBottom: insets.bottom,
+           paddingTop: 6,
+           paddingBottom: bottomInset,
           marginHorizontal: 14,
-          marginBottom: Math.max(insets.bottom, 10),
-          height: 72 + insets.bottom,
+           marginBottom: 0,
+           height: webTabBar ? 84 : 58 + bottomInset,
           overflow: "hidden",
           position: "absolute",
         },

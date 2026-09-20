@@ -8,8 +8,8 @@ import {
 } from 'react-native';
 import { useColors } from '../hooks/useColors';
 
-const passengerMark = require('../assets/dame-pon-mark-passenger-tile.png');
-const driverMark = require('../assets/dame-pon-mark-conductor-tile.png');
+const lightMark = require('../assets/dame-pon-mark-navy.png');
+const darkMark = require('../assets/dame-pon-mark-white.png');
 
 export type BrandLogoRole = 'pasajero' | 'conductor';
 
@@ -35,7 +35,7 @@ export function BrandLogo({
   const height = typeof flattenedStyle.height === 'number' ? flattenedStyle.height : size;
   const radius = Math.round(Math.min(width, height) * LOGO_RADIUS_RATIO);
   const isPassenger = role === 'pasajero';
-  const showDarkModeEdge = isPassenger && colors.isDark;
+  const showDarkModeEdge = colors.isDark;
 
   return (
     <View
@@ -46,7 +46,7 @@ export function BrandLogo({
           width,
           height,
           borderRadius: radius,
-          backgroundColor: isPassenger ? '#081321' : '#FFFFFF',
+          backgroundColor: colors.background,
           borderColor: showDarkModeEdge
             ? 'rgba(255,255,255,0.15)'
             : 'transparent',
@@ -58,8 +58,8 @@ export function BrandLogo({
     >
       <Image
         accessible={false}
-        source={isPassenger ? passengerMark : driverMark}
-        resizeMode="stretch"
+        source={colors.isDark ? darkMark : lightMark}
+        resizeMode="contain"
         style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
       />
       {showDarkModeEdge ? (

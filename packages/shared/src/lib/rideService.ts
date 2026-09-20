@@ -815,53 +815,106 @@ export function subscribeToTrips(
   onChange: () => void,
 ) {
   const column = role === 'conductor' ? 'driver_id' : 'passenger_id';
-  const channel = supabase
-    .channel(`trips:${role}:${userId}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'trips', filter: `${column}=eq.${userId}` },
-      onChange,
-    )
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') onChange();
-    });
-  const reconciliationTimer = setInterval(onChange, TRIP_RECONCILIATION_INTERVAL_MS);
-
-  return () => {
-    clearInterval(reconciliationTimer);
-    void supabase.removeChannel(channel);
-  };
+  return subscribeToRealtimeTable(
+    `trips:${role}:${userId}`,
+    { event: '*', schema: 'public', table: 'trips', filter: `${column}=eq.${userId}` },
+    onChange,
+  );
 }
 
 export function subscribeToOpenTrips(onChange: () => void) {
-  const channel = supabase
-    .channel('trips:open')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, onChange)
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') onChange();
-    });
-  const reconciliationTimer = setInterval(onChange, TRIP_RECONCILIATION_INTERVAL_MS);
-
-  return () => {
-    clearInterval(reconciliationTimer);
-    void supabase.removeChannel(channel);
-  };
+  return subscribeToRealtimeTable(
+    'trips:open',
+    { event: '*', schema: 'public', table: 'trips' },
+    onChange,
+  );
 }
 
 export function subscribeToDriverLocation(driverId: string, onChange: () => void) {
-  const channel = supabase
-    .channel(`driver-location:${driverId}`)
-    .on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'drivers', filter: `id=eq.${driverId}` },
-      onChange,
-    )
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') onChange();
-    });
+  return subscribeToRealtimeTable(
+    `driver-location:${driverId}`,
+    { event: 'UPDATE', schema: 'public', table: 'drivers', filter: `id=eq.${driverId}` },
+    onChange,
+    10_000,
+  );
+}
+
+type RealtimeTableConfig = {
+  event: '*' | 'INSERT' | 'UPDATE' | 'DELETE';
+  schema: 'public';
+  table: string;
+  filter?: string;
+};
+
+function subscribeToRealtimeTable(
+  channelName: string,
+  config: RealtimeTableConfig,
+  onChange: () => void,
+  reconciliationIntervalMs = TRIP_RECONCILIATION_INTERVAL_MS,
+) {
+  let active = true;
+  let channel: ReturnType<typeof supabase.channel> | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryAttempt = 0;
+
+  const notify = () => {
+    if (!active) return;
+    try {
+      onChange();
+    } catch (error) {
+      console.error(`[Dame Pon] Realtime callback failed for ${channelName}:`, error);
+    }
+  };
+
+  const reconnect = async () => {
+    const previousChannel = channel;
+    channel = null;
+    if (previousChannel) await supabase.removeChannel(previousChannel);
+    if (active) subscribe();
+  };
+
+  const scheduleReconnect = () => {
+    if (!active || retryTimer) return;
+    const delay = Math.min(1_000 * 2 ** retryAttempt, 15_000);
+    retryAttempt += 1;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      void reconnect();
+    }, delay);
+  };
+
+  const subscribe = () => {
+    if (!active) return;
+    channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', config, notify)
+      .subscribe((status) => {
+        if (!active) return;
+        if (status === 'SUBSCRIBED') {
+          retryAttempt = 0;
+          notify();
+        } else if (
+          status === 'CHANNEL_ERROR'
+          || status === 'TIMED_OUT'
+          || status === 'CLOSED'
+        ) {
+          notify();
+          scheduleReconnect();
+        }
+      });
+  };
+
+  subscribe();
+  const reconciliationTimer = setInterval(notify, reconciliationIntervalMs);
 
   return () => {
-    void supabase.removeChannel(channel);
+    active = false;
+    clearInterval(reconciliationTimer);
+    if (retryTimer) clearTimeout(retryTimer);
+    retryTimer = null;
+    const currentChannel = channel;
+    channel = null;
+    if (currentChannel) void supabase.removeChannel(currentChannel);
   };
 }
 

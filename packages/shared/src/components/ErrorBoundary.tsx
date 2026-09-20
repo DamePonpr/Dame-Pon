@@ -1,4 +1,4 @@
-import React, { Component, ComponentType, PropsWithChildren } from 'react';
+import React, { Component, type ComponentType, type PropsWithChildren } from 'react';
 import { ErrorFallback, ErrorFallbackProps } from '../components/ErrorFallback';
 
 export type ErrorBoundaryProps = PropsWithChildren<{
@@ -7,6 +7,16 @@ export type ErrorBoundaryProps = PropsWithChildren<{
 }>;
 
 type ErrorBoundaryState = { error: Error | null };
+
+function normalizeError(error: unknown): Error {
+  if (error instanceof Error) return error;
+  if (typeof error === 'string') return new Error(error);
+  try {
+    return new Error(JSON.stringify(error));
+  } catch {
+    return new Error('Unknown rendering error');
+  }
+}
 
 /**
  * This is a special case for for using the class components. Error boundaries must be class components because React only provides error boundary functionality through lifecycle methods (componentDidCatch and getDerivedStateFromError) which are not available in functional components.
@@ -24,13 +34,13 @@ export class ErrorBoundary extends Component<
     FallbackComponent: ErrorFallback,
   };
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { error };
+  static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
+    return { error: normalizeError(error) };
   }
 
-  componentDidCatch(error: Error, info: { componentStack: string }): void {
+  componentDidCatch(error: unknown, info: { componentStack: string }): void {
     if (typeof this.props.onError === 'function') {
-      this.props.onError(error, info.componentStack);
+      this.props.onError(normalizeError(error), info.componentStack);
     }
   }
 
