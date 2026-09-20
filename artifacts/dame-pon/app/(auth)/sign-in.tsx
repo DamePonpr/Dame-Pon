@@ -1,16 +1,15 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import CustomButton from "@/components/CustomButton";
+import { BrandLogo } from "@/components/BrandLogo";
 import { BuildStamp } from "@/components/BuildStamp";
 import { useColors } from "@/hooks/useColors";
 import InputField from "@/components/InputField";
 import { InlineNotice } from "@/components/InlineNotice";
 import { useAuth } from "@/context/AuthContext";
 import { icons } from "@/constants";
-
-const logo = require("@/assets/images/dame-pon-logo.png");
 
 export default function SignIn() {
   const colors = useColors();
@@ -39,7 +38,7 @@ export default function SignIn() {
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.scrollContent}>
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
         <View style={[styles.hero, { backgroundColor: colors.background }]}>
-          <Image source={logo} style={styles.heroLogo} resizeMode="contain" />
+          <BrandLogo style={styles.heroLogo} />
           <Text style={[styles.heroTitle, { color: colors.foreground }]}>Bienvenido a Dame Pon</Text>
           <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>Viajes claros y seguros en tu municipio</Text>
         </View>

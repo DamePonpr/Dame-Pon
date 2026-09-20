@@ -24,7 +24,7 @@ const TabIcon = ({
        backgroundColor: focused ? colors.secondary : "transparent",
     }}
   >
-    <Image source={source} tintColor={focused ? colors.primary : colors.mutedForeground} resizeMode="contain" style={{ width: 21, height: 21 }} />
+    <Image source={source} tintColor={focused ? colors.star : colors.mutedForeground} resizeMode="contain" style={{ width: 21, height: 21 }} />
   </View>
 );
 
@@ -35,7 +35,7 @@ export default function Layout() {
     <Tabs
       initialRouteName="home"
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.star,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarShowLabel: true,
         tabBarLabelStyle: {

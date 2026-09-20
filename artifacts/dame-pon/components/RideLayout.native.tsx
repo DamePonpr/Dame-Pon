@@ -14,7 +14,7 @@ export interface RideLayoutProps {
   onBack?: () => void;
 }
 
-export function RideLayout({ map, children, title, snapPoints = ['40%', '85%'], onBack }: RideLayoutProps) {
+export function RideLayout({ map, children, title, snapPoints = ['40%', '90%'], onBack }: RideLayoutProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -47,7 +47,7 @@ export function RideLayout({ map, children, title, snapPoints = ['40%', '85%'], 
         <BottomSheetScrollView
           contentContainerStyle={[
             styles.sheetContent,
-            { paddingBottom: insets.bottom + spacing.xl },
+             { paddingBottom: insets.bottom + 72 + spacing.xl },
           ]}
           showsVerticalScrollIndicator={false}
         >

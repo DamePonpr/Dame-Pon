@@ -1,7 +1,8 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { BrandLogo } from "@/components/BrandLogo";
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
 import { InlineNotice } from "@/components/InlineNotice";
@@ -9,11 +10,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import type { UserRole } from "@/lib/roles";
 import { icons } from "@/constants";
-
-const logo = require("@/assets/images/dame-pon-logo.png");
+import { MunicipalityPicker } from "@/components/MunicipalityPicker";
+import type { Municipality } from "@/lib/municipality";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SignUp() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { signUp } = useAuth();
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", baseMunicipality: "" });
   const [role, setRole] = useState<UserRole>("pasajero");
@@ -51,10 +54,14 @@ export default function SignUp() {
   }
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={{ backgroundColor: colors.background }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 36 }]}
+        keyboardShouldPersistTaps="handled"
+      >
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
         <View style={[styles.hero, { backgroundColor: colors.background }]}>
-          <Image source={logo} style={styles.heroLogo} resizeMode="contain" />
+          <BrandLogo style={styles.heroLogo} />
           <Text style={[styles.heroTitle, { color: colors.foreground }]}>Crea tu cuenta</Text>
           <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>Elige cómo quieres usar Dame Pon</Text>
         </View>
@@ -68,7 +75,14 @@ export default function SignUp() {
             <CustomButton title="Pasajero" bgVariant={role === "pasajero" ? "primary" : "outline"} textVariant={role === "pasajero" ? "default" : "secondary"} onPress={() => setRole("pasajero")} style={styles.roleButton} />
             <CustomButton title="Conductor" bgVariant={role === "conductor" ? "primary" : "outline"} textVariant={role === "conductor" ? "default" : "secondary"} onPress={() => setRole("conductor")} style={styles.roleButton} />
           </View>
-          {role === "conductor" ? <InputField label="Municipio base" placeholder="Ej. Bayamón" icon={icons.map} value={form.baseMunicipality} onChangeText={(value) => setForm({ ...form, baseMunicipality: value })} /> : null}
+          {role === "conductor" ? (
+            <MunicipalityPicker
+              label="Municipio base"
+              value={form.baseMunicipality}
+              icon={icons.map}
+              onSelect={(municipality: Municipality) => setForm({ ...form, baseMunicipality: municipality.nombre })}
+            />
+          ) : null}
           <CustomButton title="Crear cuenta" onPress={() => void submit()} loading={loading} style={styles.button} />
           {notice ? (
             <InlineNotice
@@ -89,7 +103,7 @@ export default function SignUp() {
 
 const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
-  screen: { flex: 1, paddingBottom: 24 },
+  screen: { flex: 1 },
   hero: { alignItems: "center", minHeight: 220, justifyContent: "center", paddingHorizontal: 24, paddingTop: 12 },
   heroLogo: { height: 96, marginBottom: 14, width: 96 },
   heroTitle: { fontFamily: "Jakarta-SemiBold", fontSize: 25, textAlign: "center" },
@@ -98,6 +112,6 @@ const styles = StyleSheet.create({
   roleLabel: { fontFamily: "Jakarta-SemiBold", fontSize: 16, marginBottom: 12, marginTop: 2 },
   roleRow: { flexDirection: "row", gap: 12 },
   roleButton: { flex: 1, paddingHorizontal: 10 },
-  button: { marginTop: 4 },
+  button: { marginTop: 16 },
   link: { fontFamily: "Jakarta-SemiBold", fontSize: 16, marginTop: 28, textAlign: "center" },
 });

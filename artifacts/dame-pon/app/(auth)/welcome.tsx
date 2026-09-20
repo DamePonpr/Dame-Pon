@@ -1,14 +1,13 @@
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Swiper from "react-native-swiper";
 
 import CustomButton from "@/components/CustomButton";
+import { BrandLogo } from "@/components/BrandLogo";
 import { onboarding } from "@/constants";
 import { useColors } from "@/hooks/useColors";
-
-const logo = require("@/assets/images/dame-pon-logo.png");
 
 const Home = () => {
   const colors = useColors();
@@ -37,11 +36,7 @@ const Home = () => {
       >
         {onboarding.map((item) => (
           <View key={item.id} style={styles.slide}>
-            <Image
-              source={logo}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+              <BrandLogo style={styles.logo} />
             <View style={styles.titleWrap}>
               <Text style={[styles.title, { color: colors.foreground }]}>
                 {item.title}
@@ -55,7 +50,7 @@ const Home = () => {
       </Swiper>
 
       <CustomButton
-        title={isLastSlide ? "Get Started" : "Next"}
+        title={isLastSlide ? "Empezar" : "Siguiente"}
         onPress={() =>
           isLastSlide
             ? router.replace("/(auth)/sign-up")

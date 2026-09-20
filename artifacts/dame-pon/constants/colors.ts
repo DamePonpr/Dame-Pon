@@ -16,8 +16,38 @@ import { brand } from '@/constants/designSystem';
 
 const colors = {
   light: {
+    text: brand.navy,
+    tint: brand.navy,
+
+    background: brand.white,
+    foreground: brand.navy,
+
+    card: brand.white,
+    cardForeground: brand.navy,
+
+    primary: brand.navy,
+    primaryForeground: brand.white,
+
+    secondary: '#F1F5F8',
+    secondaryForeground: brand.navy,
+
+    muted: '#F7F9FB',
+    mutedForeground: '#5B6878',
+
+    accent: '#E8EEF3',
+    accentForeground: brand.navy,
+
+    destructive: brand.danger,
+    destructiveForeground: brand.white,
+    star: brand.star,
+
+    border: '#D9E2EA',
+    input: '#F7F9FB',
+  },
+
+  dark: {
     text: brand.white,
-    tint: brand.star,
+    tint: brand.white,
 
     background: brand.navy,
     foreground: brand.white,
@@ -25,7 +55,7 @@ const colors = {
     card: '#102235',
     cardForeground: brand.white,
 
-    primary: brand.star,
+    primary: brand.white,
     primaryForeground: brand.navy,
 
     secondary: '#17304D',
@@ -37,42 +67,12 @@ const colors = {
     accent: '#203B59',
     accentForeground: brand.white,
 
-    destructive: brand.danger,
-    destructiveForeground: brand.white,
-    star: brand.star,
-
-    border: 'rgba(255,255,255,0.20)',
-    input: '#17304D',
-  },
-
-  dark: {
-    text: brand.white,
-    tint: brand.white,
-
-    background: brand.navy,
-    foreground: brand.white,
-
-    card: 'rgba(255,255,255,0.08)',
-    cardForeground: brand.white,
-
-    primary: brand.star,
-    primaryForeground: brand.navy,
-
-    secondary: 'rgba(255,255,255,0.12)',
-    secondaryForeground: brand.white,
-
-    muted: 'rgba(255,255,255,0.06)',
-    mutedForeground: 'rgba(255,255,255,0.72)',
-
-    accent: 'rgba(255,255,255,0.16)',
-    accentForeground: brand.white,
-
     destructive: '#FF9DA7',
     destructiveForeground: brand.navy,
     star: brand.star,
 
     border: 'rgba(255,255,255,0.20)',
-    input: 'rgba(255,255,255,0.12)',
+    input: '#17304D',
   },
 
   // Border radius (in px). Sync from the sibling web artifact's --radius

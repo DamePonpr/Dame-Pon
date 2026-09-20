@@ -1,20 +1,13 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { BrandLogo } from '@/components/BrandLogo';
 import { useColors } from '@/hooks/useColors';
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
   const colors = useColors();
   return (
     <View style={styles.row}>
-      <Image
-        source={
-          colors.isDark
-            ? require('@/assets/images/dame-pon-logo-dark.png')
-            : require('@/assets/images/dame-pon-logo.png')
-        }
-        resizeMode="contain"
-        style={[styles.icon, compact && styles.compactIcon]}
-      />
+      <BrandLogo style={[styles.icon, compact && styles.compactIcon]} />
       <View>
         <Text style={[styles.name, { color: colors.foreground }, compact && styles.compactName]}>Dame Pon</Text>
         {!compact ? <Text style={[styles.tagline, { color: colors.mutedForeground }]}>Muévete a tu manera</Text> : null}
