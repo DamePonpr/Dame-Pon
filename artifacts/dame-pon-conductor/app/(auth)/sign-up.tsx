@@ -2,16 +2,16 @@ import { Link, router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { BrandLogo } from "@/components/BrandLogo";
-import CustomButton from "@/components/CustomButton";
-import InputField from "@/components/InputField";
-import { InlineNotice } from "@/components/InlineNotice";
-import { useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
-import type { UserRole } from "@/lib/roles";
+import { BrandLogo } from "@workspace/dame-pon-shared/components/BrandLogo";
+import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
+import InputField from "@workspace/dame-pon-shared/components/InputField";
+import { InlineNotice } from "@workspace/dame-pon-shared/components/InlineNotice";
+import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
+import type { UserRole } from "@workspace/dame-pon-shared/lib/roles";
 import { icons } from "@/constants";
-import { MunicipalityPicker } from "@/components/MunicipalityPicker";
-import type { Municipality } from "@/lib/municipality";
+import { MunicipalityPicker } from "@workspace/dame-pon-shared/components/MunicipalityPicker";
+import type { Municipality } from "@workspace/dame-pon-shared/lib/municipality";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SignUp() {

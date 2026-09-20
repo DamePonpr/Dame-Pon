@@ -2,13 +2,13 @@ import { Link, router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import CustomButton from "@/components/CustomButton";
-import { BrandLogo } from "@/components/BrandLogo";
-import { BuildStamp } from "@/components/BuildStamp";
-import { useColors } from "@/hooks/useColors";
-import InputField from "@/components/InputField";
-import { InlineNotice } from "@/components/InlineNotice";
-import { useAuth } from "@/context/AuthContext";
+import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
+import { BrandLogo } from "@workspace/dame-pon-shared/components/BrandLogo";
+import { BuildStamp } from "@workspace/dame-pon-shared/components/BuildStamp";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
+import InputField from "@workspace/dame-pon-shared/components/InputField";
+import { InlineNotice } from "@workspace/dame-pon-shared/components/InlineNotice";
+import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
 import { icons } from "@/constants";
 
 export default function SignIn() {

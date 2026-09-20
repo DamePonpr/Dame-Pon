@@ -12,7 +12,7 @@
  * The useColors() hook will automatically pick it up.
  */
 
-import { brand } from '@/constants/designSystem';
+import { brand } from '../constants/designSystem';
 
 const colors = {
   light: {

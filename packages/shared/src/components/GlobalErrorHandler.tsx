@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ErrorFallback } from '@/components/ErrorFallback';
+import { ErrorFallback } from '../components/ErrorFallback';
 
 type GlobalErrorHandlerFunction = (error: unknown, isFatal?: boolean) => void;
 

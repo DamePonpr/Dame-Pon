@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 import { router } from "expo-router";
-import CustomButton from "@/components/CustomButton";
-import { InlineNotice } from "@/components/InlineNotice";
-import { useAuth } from "@/context/AuthContext";
+import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
+import { InlineNotice } from "@workspace/dame-pon-shared/components/InlineNotice";
+import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
 import { useLocationStore } from "@/store";
-import { requestTrip } from "@/lib/rideService";
+import { requestTrip } from "@workspace/dame-pon-shared/lib/rideService";
 import type { PaymentProps } from "@/types/type";
-import { useColors } from "@/hooks/useColors";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 
 export default function Payment({ amount }: PaymentProps) {
   const colors = useColors();

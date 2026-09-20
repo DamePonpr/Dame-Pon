@@ -13,10 +13,10 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getMunicipalities } from '@/lib/rideService';
-import type { Municipality } from '@/lib/municipality';
-import { useColors } from '@/hooks/useColors';
-import { typography } from '@/constants/designSystem';
+import { getMunicipalities } from '../lib/rideService';
+import type { Municipality } from '../lib/municipality';
+import { useColors } from '../hooks/useColors';
+import { typography } from '../constants/designSystem';
 
 interface MunicipalityPickerProps {
   value?: string | null;

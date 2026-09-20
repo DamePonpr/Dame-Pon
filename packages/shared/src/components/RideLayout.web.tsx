@@ -2,8 +2,8 @@ import React, { type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '@/hooks/useColors';
-import { iconSizes, radii, spacing, typography } from '@/constants/designSystem';
+import { useColors } from '../hooks/useColors';
+import { iconSizes, radii, spacing, typography } from '../constants/designSystem';
 import type { RideLayoutProps } from './RideLayout.native';
 
 export function RideLayout({ map, children, title, onBack }: RideLayoutProps) {

@@ -1,1 +1,1 @@
-export { LiveRideMap } from '@/components/LiveRideMap.web';
+export { LiveRideMap } from '../components/LiveRideMap.web';

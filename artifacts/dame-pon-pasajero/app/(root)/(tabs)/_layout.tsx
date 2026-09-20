@@ -3,7 +3,7 @@ import { Image, ImageSourcePropType, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { icons } from "@/constants";
-import { useColors } from "@/hooks/useColors";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 
 const TabIcon = ({
   source,

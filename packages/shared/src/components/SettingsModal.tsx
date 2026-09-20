@@ -2,8 +2,8 @@ import React from 'react';
 import { Feather } from '@expo/vector-icons';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '@/hooks/useColors';
-import { useThemePreference, type ThemePreference } from '@/context/ThemeContext';
+import { useColors } from '../hooks/useColors';
+import { useThemePreference, type ThemePreference } from '../context/ThemeContext';
 
 const options: Array<{ value: ThemePreference; label: string; description: string; icon: keyof typeof Feather.glyphMap }> = [
   { value: 'system', label: 'Automático', description: 'Sigue la apariencia de tu dispositivo', icon: 'smartphone' },

@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { RideCard } from "@/components/RideCard";
-import CustomButton from "@/components/CustomButton";
-import { useAuth } from "@/context/AuthContext";
-import { getTripHistory, type TripHistoryItem } from "@/lib/rideService";
-import { useColors } from "@/hooks/useColors";
+import { RideCard } from "@workspace/dame-pon-shared/components/RideCard";
+import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
+import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
+import { getTripHistory, type TripHistoryItem } from "@workspace/dame-pon-shared/lib/rideService";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 
 export default function Rides() {
   const colors = useColors();

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Feather } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
-import { useColors } from '@/hooks/useColors';
-import { iconSizes, radii, spacing, typography } from '@/constants/designSystem';
-import type { TripParticipantDetails } from '@/lib/rideService';
-import { ParticipantAvatar } from '@/components/ParticipantAvatar';
+import { useColors } from '../hooks/useColors';
+import { iconSizes, radii, spacing, typography } from '../constants/designSystem';
+import type { TripParticipantDetails } from '../lib/rideService';
+import { ParticipantAvatar } from '../components/ParticipantAvatar';
 
 export function DriverCard({
   details,

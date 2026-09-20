@@ -2,9 +2,9 @@ import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
 import Payment from "@/components/Payment";
-import { RideLayout } from "@/components/RideLayout";
-import { useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import { RideLayout } from "@workspace/dame-pon-shared/components/RideLayout";
+import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 import { useLocationStore } from "@/store";
 
 export default function BookRide() {

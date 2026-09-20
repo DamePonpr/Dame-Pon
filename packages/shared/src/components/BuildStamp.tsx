@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { useColors } from '@/hooks/useColors';
+import { useColors } from '../hooks/useColors';
 
 function buildStampText() {
   const tag = process.env.EXPO_PUBLIC_BUILD_TAG;

@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '@/hooks/useColors';
-import type { Trip } from '@/lib/rideService';
+import { useColors } from '../hooks/useColors';
+import type { Trip } from '../lib/rideService';
 
 interface TripCompletionScreenProps {
   trip: Trip;

@@ -3,8 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '@/hooks/useColors';
-import { iconSizes, radii, spacing, typography } from '@/constants/designSystem';
+import { useColors } from '../hooks/useColors';
+import { iconSizes, radii, spacing, typography } from '../constants/designSystem';
 
 export interface RideLayoutProps {
   map?: ReactNode;

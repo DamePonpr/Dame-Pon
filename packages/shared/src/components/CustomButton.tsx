@@ -1,7 +1,7 @@
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
-import type { ButtonProps } from "@/types/type";
-import { useColors } from "@/hooks/useColors";
+import type { ButtonProps } from "../types/type";
+import { useColors } from "../hooks/useColors";
 
 export function CustomButton({
   title,

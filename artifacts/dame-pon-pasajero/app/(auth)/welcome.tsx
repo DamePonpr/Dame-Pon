@@ -4,10 +4,10 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Swiper from "react-native-swiper";
 
-import CustomButton from "@/components/CustomButton";
-import { BrandLogo } from "@/components/BrandLogo";
+import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
+import { BrandLogo } from "@workspace/dame-pon-shared/components/BrandLogo";
 import { onboarding } from "@/constants";
-import { useColors } from "@/hooks/useColors";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 
 const Home = () => {
   const colors = useColors();

@@ -2,12 +2,12 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import CustomButton from "@/components/CustomButton";
-import GoogleTextInput from "@/components/GoogleTextInput";
-import { InlineNotice } from "@/components/InlineNotice";
-import { RideLayout } from "@/components/RideLayout";
+import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
+import GoogleTextInput from "@workspace/dame-pon-shared/components/GoogleTextInput";
+import { InlineNotice } from "@workspace/dame-pon-shared/components/InlineNotice";
+import { RideLayout } from "@workspace/dame-pon-shared/components/RideLayout";
 import { icons } from "@/constants";
-import { useColors } from "@/hooks/useColors";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 import { useLocationStore } from "@/store";
 
 export default function FindRide() {

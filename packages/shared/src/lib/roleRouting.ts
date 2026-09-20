@@ -1,4 +1,4 @@
-import type { UserRole } from "@/lib/roles";
+import type { UserRole } from "../lib/roles";
 
 export type RoutedRole = UserRole;
 export type RoleRoute = "/(root)/(tabs)/home";

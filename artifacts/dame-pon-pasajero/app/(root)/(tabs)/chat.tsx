@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useColors } from "@/hooks/useColors";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 
 const Chat = () => {
   const colors = useColors();

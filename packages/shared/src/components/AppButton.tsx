@@ -1,8 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useColors } from '@/hooks/useColors';
-import { radii, spacing, typography } from '@/constants/designSystem';
+import { useColors } from '../hooks/useColors';
+import { radii, spacing, typography } from '../constants/designSystem';
 
 interface AppButtonProps {
   label: string;

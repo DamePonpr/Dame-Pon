@@ -1,5 +1,5 @@
 import type { ImageSourcePropType, StyleProp, TextInputProps, TouchableOpacityProps, ViewStyle } from "react-native";
-import type { TripHistoryItem } from "@/lib/rideService";
+import type { TripHistoryItem } from "../lib/rideService";
 
 export interface LocationValue {
   latitude: number;

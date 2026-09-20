@@ -3,15 +3,15 @@ import { Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'rea
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { AppButton } from '@/components/AppButton';
-import { LiveRideMap } from '@/components/LiveRideMap';
-import { RideLayout } from '@/components/RideLayout';
-import { TripCompletionScreen } from '@/components/TripCompletionScreen';
-import { useColors } from '@/hooks/useColors';
+import { AppButton } from '@workspace/dame-pon-shared/components/AppButton';
+import { LiveRideMap } from '@workspace/dame-pon-shared/components/LiveRideMap';
+import { RideLayout } from '@workspace/dame-pon-shared/components/RideLayout';
+import { TripCompletionScreen } from '@workspace/dame-pon-shared/components/TripCompletionScreen';
+import { useColors } from '@workspace/dame-pon-shared/hooks/useColors';
 import { useDriverHome } from '@/hooks/useDriverHome';
-import type { Profile } from '@/context/AuthContext';
-import type { MunicipalityDecision } from '@/lib/municipality';
-import { MunicipalityPicker } from '@/components/MunicipalityPicker';
+import type { Profile } from '@workspace/dame-pon-shared/context/AuthContext';
+import type { MunicipalityDecision } from '@workspace/dame-pon-shared/lib/municipality';
+import { MunicipalityPicker } from '@workspace/dame-pon-shared/components/MunicipalityPicker';
 
 export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
   profile: Profile;

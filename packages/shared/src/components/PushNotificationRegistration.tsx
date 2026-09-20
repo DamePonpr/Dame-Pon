@@ -1,1 +1,1 @@
-export { PushNotificationRegistration } from '@/components/PushNotificationRegistration.web';
+export { PushNotificationRegistration } from '../components/PushNotificationRegistration.web';

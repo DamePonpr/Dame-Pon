@@ -8,11 +8,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { AuthProvider } from "@/context/AuthContext";
-import { ThemeProvider } from "@/context/ThemeContext";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { GlobalErrorHandler } from "@/components/GlobalErrorHandler";
-import { PushNotificationRegistration } from "@/components/PushNotificationRegistration";
+import { AuthProvider } from "@workspace/dame-pon-shared/context/AuthContext";
+import { ThemeProvider } from "@workspace/dame-pon-shared/context/ThemeContext";
+import { ErrorBoundary } from "@workspace/dame-pon-shared/components/ErrorBoundary";
+import { GlobalErrorHandler } from "@workspace/dame-pon-shared/components/GlobalErrorHandler";
+import { PushNotificationRegistration } from "@workspace/dame-pon-shared/components/PushNotificationRegistration";
 
 SplashScreen.preventAutoHideAsync();
 

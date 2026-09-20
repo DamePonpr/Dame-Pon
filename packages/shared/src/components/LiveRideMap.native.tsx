@@ -8,7 +8,7 @@ import {
   type LngLatBounds,
 } from '@maplibre/maplibre-react-native';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useColors } from '@/hooks/useColors';
+import { useColors } from '../hooks/useColors';
 
 interface LiveRideMapProps {
   passengerLocation: Coordinate | null;

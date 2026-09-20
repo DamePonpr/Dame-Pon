@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { useColors } from '@/hooks/useColors';
+import { useColors } from '../hooks/useColors';
 
 export function ParticipantAvatar({
   colors,

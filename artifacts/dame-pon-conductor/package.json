@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/dame-pon",
+  "name": "@workspace/dame-pon-conductor",
   "version": "0.0.0",
   "private": true,
   "main": "expo-router/entry",
@@ -84,6 +84,7 @@
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-modal": "14.0.0-rc.1",
     "react-native-swiper": "^1.6.0",
-    "zustand": "^5.0.15"
+    "zustand": "^5.0.15",
+    "@workspace/dame-pon-shared": "workspace:*"
   }
 }

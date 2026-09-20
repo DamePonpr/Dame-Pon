@@ -3,13 +3,13 @@ import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native";
 
-import InputField from "@/components/InputField";
-import CustomButton from "@/components/CustomButton";
-import { BuildStamp } from "@/components/BuildStamp";
-import { useAuth } from "@/context/AuthContext";
+import InputField from "@workspace/dame-pon-shared/components/InputField";
+import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
+import { BuildStamp } from "@workspace/dame-pon-shared/components/BuildStamp";
+import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
 import { icons } from "@/constants";
-import { useColors } from "@/hooks/useColors";
-import { SettingsModal } from "@/components/SettingsModal";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
+import { SettingsModal } from "@workspace/dame-pon-shared/components/SettingsModal";
 
 export default function Profile() {
   const colors = useColors();

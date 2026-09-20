@@ -3,8 +3,8 @@ import { ActivityIndicator, Text, View } from "react-native";
 
 import { DriverHome } from "@/components/DriverHome";
 import { PassengerHome } from "@/components/PassengerHome";
-import { useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 
 export default function Home() {
   const colors = useColors();

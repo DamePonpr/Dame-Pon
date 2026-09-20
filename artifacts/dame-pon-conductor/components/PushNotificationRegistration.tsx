@@ -1,1 +1,0 @@
-export { PushNotificationRegistration } from '@/components/PushNotificationRegistration.web';

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useColors } from '@/hooks/useColors';
-import { iconSizes, radii, spacing, typography } from '@/constants/designSystem';
+import { useColors } from '@workspace/dame-pon-shared/hooks/useColors';
+import { iconSizes, radii, spacing, typography } from '@workspace/dame-pon-shared/constants/designSystem';
 
 export type RoleTab = 'home' | 'rides' | 'chat' | 'profile';
 

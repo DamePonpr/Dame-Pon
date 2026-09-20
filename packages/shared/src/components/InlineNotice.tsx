@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useColors } from '@/hooks/useColors';
+import { useColors } from '../hooks/useColors';
 
 export function InlineNotice({
   title,

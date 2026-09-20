@@ -1,8 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useColors } from '@/hooks/useColors';
-import type { UserRole } from '@/lib/roles';
+import { useColors } from '@workspace/dame-pon-shared/hooks/useColors';
+import type { UserRole } from '@workspace/dame-pon-shared/lib/roles';
 
 interface RoleCardProps {
   role: UserRole;

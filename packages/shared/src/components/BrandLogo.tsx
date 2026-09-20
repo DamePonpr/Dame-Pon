@@ -1,5 +1,5 @@
 import { Image, type ImageStyle, type StyleProp } from 'react-native';
-import { useColors } from '@/hooks/useColors';
+import { useColors } from '../hooks/useColors';
 
 const logo = require('@/assets/images/dame-pon-logo.png');
 

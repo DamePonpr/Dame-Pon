@@ -1,9 +1,9 @@
 import { ActivityIndicator, Text, View } from "react-native";
 import { Redirect } from "expo-router";
 
-import { useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
-import { routeForRole } from "@/lib/roleRouting";
+import { useAuth } from "@workspace/dame-pon-shared/context/AuthContext";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
+import { routeForRole } from "@workspace/dame-pon-shared/lib/roleRouting";
 
 export default function IndexScreen() {
   const colors = useColors();

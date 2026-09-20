@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { BrandLogo } from '@/components/BrandLogo';
-import { useColors } from '@/hooks/useColors';
+import { BrandLogo } from '../components/BrandLogo';
+import { useColors } from '../hooks/useColors';
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
   const colors = useColors();

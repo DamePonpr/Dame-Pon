@@ -1,9 +1,9 @@
 import React from 'react';
 import { Feather } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
-import { useColors } from '@/hooks/useColors';
-import { iconSizes, radii, spacing, typography } from '@/constants/designSystem';
-import type { TripHistoryItem } from '@/lib/rideService';
+import { useColors } from '../hooks/useColors';
+import { iconSizes, radii, spacing, typography } from '../constants/designSystem';
+import type { TripHistoryItem } from '../lib/rideService';
 
 export function RideCard({ item }: { item: TripHistoryItem }) {
   const colors = useColors();

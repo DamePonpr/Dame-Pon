@@ -4,9 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabase';
-import { InlineNotice } from '@/components/InlineNotice';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+import { InlineNotice } from '../components/InlineNotice';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({

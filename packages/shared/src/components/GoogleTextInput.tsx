@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { icons } from "@/constants";
-import type { GoogleInputProps, LocationValue } from "@/types/type";
-import { useColors } from "@/hooks/useColors";
+import type { GoogleInputProps, LocationValue } from "../types/type";
+import { useColors } from "../hooks/useColors";
 
 const PUERTO_RICO_BBOX = "-67.3,17.8,-65.2,18.6";
 

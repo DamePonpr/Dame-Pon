@@ -2,16 +2,16 @@ import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BrandMark } from '@/components/BrandMark';
-import { AppButton } from '@/components/AppButton';
-import GoogleTextInput from '@/components/GoogleTextInput';
-import { LiveRideMap } from '@/components/LiveRideMap';
-import { RideCard } from '@/components/RideCard';
-import { TripCompletionScreen } from '@/components/TripCompletionScreen';
+import { BrandMark } from '@workspace/dame-pon-shared/components/BrandMark';
+import { AppButton } from '@workspace/dame-pon-shared/components/AppButton';
+import GoogleTextInput from '@workspace/dame-pon-shared/components/GoogleTextInput';
+import { LiveRideMap } from '@workspace/dame-pon-shared/components/LiveRideMap';
+import { RideCard } from '@workspace/dame-pon-shared/components/RideCard';
+import { TripCompletionScreen } from '@workspace/dame-pon-shared/components/TripCompletionScreen';
 import { icons } from '@/constants';
-import { useColors } from '@/hooks/useColors';
+import { useColors } from '@workspace/dame-pon-shared/hooks/useColors';
 import { usePassengerHome } from '@/hooks/usePassengerHome';
-import type { Profile } from '@/context/AuthContext';
+import type { Profile } from '@workspace/dame-pon-shared/context/AuthContext';
 import type { LocationValue } from '@/types/type';
 
 export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: {

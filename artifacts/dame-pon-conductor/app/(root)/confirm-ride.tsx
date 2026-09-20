@@ -1,9 +1,9 @@
 import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
-import CustomButton from "@/components/CustomButton";
-import { RideLayout } from "@/components/RideLayout";
-import { useColors } from "@/hooks/useColors";
+import CustomButton from "@workspace/dame-pon-shared/components/CustomButton";
+import { RideLayout } from "@workspace/dame-pon-shared/components/RideLayout";
+import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
 import { useLocationStore } from "@/store";
 
 export default function ConfirmRide() {

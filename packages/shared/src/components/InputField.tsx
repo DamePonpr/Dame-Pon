@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, StyleSheet, Text, TextInput, View } from "react-native";
-import type { InputFieldProps } from "@/types/type";
-import { useColors } from "@/hooks/useColors";
+import type { InputFieldProps } from "../types/type";
+import { useColors } from "../hooks/useColors";
 
 export function InputField({ label, icon, error, ...props }: InputFieldProps & { error?: string }) {
   const colors = useColors();

@@ -1,11 +1,11 @@
-import { supabase } from '@/lib/supabase';
-import type { UserRole } from '@/lib/roles';
-import type { Municipality } from '@/lib/municipality';
+import { supabase } from '../lib/supabase';
+import type { UserRole } from '../lib/roles';
+import type { Municipality } from '../lib/municipality';
 import {
   averageReceivedRating,
   findUnratedCompletedTrip,
   ratingSummaryForUser,
-} from '@/lib/ratingLogic';
+} from '../lib/ratingLogic';
 
 export type TripStatus = 'requested' | 'offered' | 'accepted' | 'arrived' | 'in_progress' | 'completed' | 'cancelled';
 export type DriverStatus = 'pendiente' | 'aprobado' | 'suspendido';

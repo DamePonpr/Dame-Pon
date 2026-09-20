@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase, supabaseConfigError } from '@/lib/supabase';
-import type { UserRole } from '@/lib/roles';
+import { supabase, supabaseConfigError } from '../lib/supabase';
+import type { UserRole } from '../lib/roles';
 
-export type { UserRole } from '@/lib/roles';
+export type { UserRole } from '../lib/roles';
 export type AuthIssue = 'session_expired' | 'profile_unavailable' | null;
 
 export interface Profile {
