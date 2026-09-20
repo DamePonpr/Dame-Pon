@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isHomeAuthorized, routeForRole } from '../lib/roleRouting.js';
+import { isHomeAuthorized, routeForRole } from '../../../packages/shared/src/lib/roleRouting.ts';
 
 test('routes each known profile role to its own home panel', () => {
   assert.equal(routeForRole('pasajero'), '/(root)/(tabs)/home');

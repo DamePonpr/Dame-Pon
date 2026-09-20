@@ -10,7 +10,7 @@
     "serve": "node server/serve.js",
     "typecheck": "pnpm run test:supabase-config && tsc -p tsconfig.json --noEmit",
     "test:supabase-config": "node --test scripts/validate-supabase-config.test.mjs",
-    "test:role-routing": "node --test scripts/role-routing.test.mjs",
+    "test:role-routing": "node --experimental-strip-types --test scripts/role-routing.test.mjs",
     "test:rating-flow": "node --test scripts/rating-flow.test.mjs",
     "test:map-config": "node --test scripts/map-config.test.mjs",
     "test:brand-mark": "node --test scripts/brand-mark.test.mjs",
