@@ -185,7 +185,7 @@ begin
   end if;
 
   select string_agg(
-    pg_identify_object(d.classid, d.objid, d.objsubid),
+    format('%s objid=%s objsubid=%s', d.classid::regclass::text, d.objid, d.objsubid),
     E'\n' order by d.classid::regclass::text, d.objid, d.objsubid
   )
   into unexpected_dependents
