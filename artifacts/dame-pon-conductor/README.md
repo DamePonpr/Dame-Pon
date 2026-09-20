@@ -17,7 +17,7 @@ Después de cambiar una variable, reinicia el workflow de Dame Pon.
 Puedes comprobar únicamente el formato de la configuración, sin imprimir sus valores, con:
 
 ```sh
-pnpm --filter @workspace/dame-pon run verify:supabase-config
+pnpm --filter @workspace/dame-pon-conductor run verify:supabase-config
 ```
 
 ## Comprobación integral del viaje en tiempo real
@@ -35,7 +35,7 @@ Para verificar solicitud, aceptación, inicio, finalización y calificación sin
 manuales:
 
 ```sh
-pnpm --filter @workspace/dame-pon run verify:trip-realtime
+pnpm --filter @workspace/dame-pon-conductor run verify:trip-realtime
 ```
 
 La prueba falla si un canal no queda suscrito o si una actualización no llega a ambas
@@ -49,7 +49,7 @@ del RPC no fue aplicada en el proyecto remoto, la prueba falla en vez de dejar q
 la pantalla de finalización muestre datos incompletos:
 
 ```sh
-pnpm --filter @workspace/dame-pon run verify:rls-hardening
+pnpm --filter @workspace/dame-pon-conductor run verify:rls-hardening
 ```
 
 Las credenciales de esa prueba deben pertenecer a un pasajero y un conductor de
