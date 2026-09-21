@@ -10,6 +10,26 @@ import {
 export type TripStatus = 'requested' | 'offered' | 'accepted' | 'arrived' | 'in_progress' | 'completed' | 'cancelled';
 export type DriverStatus = 'pendiente' | 'aprobado' | 'suspendido';
 
+export const PASSENGER_ACTIVE_TRIP_STATUSES = [
+  'requested',
+  'offered',
+  'accepted',
+  'arrived',
+  'in_progress',
+] as const satisfies readonly TripStatus[];
+
+export const DRIVER_ACTIVE_TRIP_STATUSES = [
+  'accepted',
+  'arrived',
+  'in_progress',
+] as const satisfies readonly TripStatus[];
+
+export function isActiveTripStatus(
+  status: string | null | undefined,
+): status is Exclude<TripStatus, 'completed' | 'cancelled'> {
+  return (PASSENGER_ACTIVE_TRIP_STATUSES as readonly string[]).includes(status ?? '');
+}
+
 export interface Trip {
   id: string;
   status: TripStatus;
@@ -578,7 +598,7 @@ export async function getPassengerActiveTrip(passengerId: string): Promise<Servi
     .from('passenger_trips')
     .select(PASSENGER_TRIP_COLUMNS)
     .eq('passenger_id', passengerId)
-    .in('status', ['requested', 'offered', 'accepted', 'arrived', 'in_progress'] satisfies TripStatus[])
+    .in('status', PASSENGER_ACTIVE_TRIP_STATUSES)
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -586,9 +606,10 @@ export async function getPassengerActiveTrip(passengerId: string): Promise<Servi
   if (activeResult.error) {
     return serviceError('load-passenger-trip', activeResult.error);
   }
-  if (activeResult.data) return { data: activeResult.data as Trip, error: null };
-
-  return getUnratedCompletedTrip(passengerId, 'passenger_id');
+  if (activeResult.data && isActiveTripStatus(activeResult.data.status)) {
+    return { data: activeResult.data as Trip, error: null };
+  }
+  return { data: null, error: null };
 }
 
 export async function getDriverActiveTrip(driverId: string): Promise<ServiceResult<Trip>> {
@@ -596,7 +617,7 @@ export async function getDriverActiveTrip(driverId: string): Promise<ServiceResu
     .from('trips')
     .select(TRIP_COLUMNS)
     .eq('driver_id', driverId)
-    .in('status', ['accepted', 'arrived', 'in_progress'] satisfies TripStatus[])
+    .in('status', DRIVER_ACTIVE_TRIP_STATUSES)
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -604,9 +625,10 @@ export async function getDriverActiveTrip(driverId: string): Promise<ServiceResu
   if (activeResult.error) {
     return serviceError('load-open-trips', activeResult.error);
   }
-  if (activeResult.data) return { data: activeResult.data as Trip, error: null };
-
-  return getUnratedCompletedTrip(driverId, 'driver_id');
+  if (activeResult.data && isActiveTripStatus(activeResult.data.status)) {
+    return { data: activeResult.data as Trip, error: null };
+  }
+  return { data: null, error: null };
 }
 
 export async function getTripHistory(

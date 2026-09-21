@@ -7,6 +7,7 @@ import {
   getPassengerActiveTrip,
   getTripHistory,
   isLikelySessionError,
+  isActiveTripStatus,
   rateTrip,
   requestTrip,
   subscribeToDriverLocation,
@@ -80,12 +81,15 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
       ]);
       if (tripResult.error) handleError(tripResult.error);
       if (historyResult.error) handleError(historyResult.error);
-      setActiveTrip(tripResult.data);
+       const activeTrip = tripResult.data && isActiveTripStatus(tripResult.data.status)
+         ? tripResult.data
+         : null;
+       setActiveTrip(activeTrip);
       setHistory(historyResult.data ?? []);
-      if (tripResult.data?.driver_id) {
-        const details = await getTripParticipantDetails(tripResult.data.id);
+       if (activeTrip?.driver_id) {
+         const details = await getTripParticipantDetails(activeTrip.id);
         setParticipantDetails(details.data);
-        const location = await getDriverLocation(tripResult.data.driver_id);
+         const location = await getDriverLocation(activeTrip.driver_id);
         if (location.error) handleError(location.error);
         setDriverLocation(location.data);
       } else {

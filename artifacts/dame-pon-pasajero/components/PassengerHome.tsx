@@ -11,6 +11,7 @@ import { TripCompletionScreen } from '@workspace/dame-pon-shared/components/Trip
 import { icons } from '@workspace/dame-pon-shared/constants';
 import { useColors } from '@workspace/dame-pon-shared/hooks/useColors';
 import { usePassengerHome } from '@/hooks/usePassengerHome';
+import { isActiveTripStatus } from '@workspace/dame-pon-shared/lib/rideService';
 import type { Profile } from '@workspace/dame-pon-shared/context/AuthContext';
 import type { LocationValue } from '@workspace/dame-pon-shared/types/type';
 
@@ -60,7 +61,7 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
         {home.actionLoading ? <Text style={[styles.helper, { color: colors.mutedForeground }]}>Solicitando tu Pon…</Text> : null}
         {home.error ? <Text style={[styles.error, { color: colors.destructive }]}>{home.error}</Text> : null}
 
-        {home.activeTrip ? (
+        {home.activeTrip && isActiveTripStatus(home.activeTrip.status) ? (
           <View style={[styles.activeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.activeEyebrow, { color: colors.mutedForeground }]}>PON ACTIVO</Text>
             <Text style={[styles.activeTitle, { color: colors.foreground }]}>{tripStatus(home.activeTrip.status)}</Text>
@@ -72,9 +73,7 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
                 <Text style={[styles.pinHint, { color: colors.mutedForeground }]}>Compártelo con tu conductor al encontrarte.</Text>
               </View>
             ) : null}
-            {home.activeTrip.status === 'completed' ? null : (
-              <AppButton label="Cancelar Pon" variant="secondary" onPress={home.cancel} loading={home.actionLoading} />
-            )}
+            <AppButton label="Cancelar Pon" variant="secondary" onPress={home.cancel} loading={home.actionLoading} />
           </View>
         ) : null}
 
@@ -119,8 +118,7 @@ function tripStatus(status: string) {
   if (status === 'accepted') return 'Conductor en camino';
   if (status === 'arrived') return 'Conductor llegó';
   if (status === 'in_progress') return 'Viaje en curso';
-  if (status === 'cancelled') return 'Viaje cancelado';
-  return 'Viaje completado';
+  return 'Viaje no disponible';
 }
 
 const styles = StyleSheet.create({
