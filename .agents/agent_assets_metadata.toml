@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "dfuafzKYohq2IreJW7muR"
+uri = "file://artifacts/launch-assets-preview.png"
+type = "image"
+title = "Dame Pon · preview de launchers"
+description = "Comparación reproducible de Pasajero y Conductor en launcher redondo, cuadrado y squircle. Foreground adaptativo al 60% y splash al 36%."
+logical_id = "2589977c-4775-4825-b9cd-582d53119750"
+content_hash = "sha256:1e58c4817bdc84248dc624dfff941a16429e0f79e511a47099bfc49660d5f653"
+size = 68979
+mtime_ms = 1790005742528
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:958b6dd8-c887-47a2-9c58-38201b1b4b6b/2589977c-4775-4825-b9cd-582d53119750/c8a05aaf-8e1c-4723-9ab1-9cc0ae2720ce"
+storage_version_token = "1790005776338000"
+content_type = "image/png"
