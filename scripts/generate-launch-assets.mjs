@@ -204,7 +204,25 @@ async function extractRoadMask() {
 }
 
 async function tintMask(maskBuffer, color) {
-  return sharp(maskBuffer).tint(color).png().toBuffer();
+  const { data, info } = await sharp(maskBuffer)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const rgb = hexToRgb(color);
+
+  for (let offset = 0; offset < data.length; offset += info.channels) {
+    data[offset] = rgb.r;
+    data[offset + 1] = rgb.g;
+    data[offset + 2] = rgb.b;
+  }
+
+  return sharp(data, {
+    raw: {
+      width: info.width,
+      height: info.height,
+      channels: info.channels,
+    },
+  }).png().toBuffer();
 }
 
 async function centeredLogo(maskBuffer, color, fraction) {
