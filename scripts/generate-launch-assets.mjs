@@ -222,7 +222,9 @@ async function tintMask(maskBuffer, color) {
       height: info.height,
       channels: info.channels,
     },
-  }).png().toBuffer();
+  })
+    .png()
+    .toBuffer();
 }
 
 async function centeredLogo(maskBuffer, color, fraction) {
