@@ -49,6 +49,15 @@ function expandBounds(bounds, x, y) {
   bounds.maxY = Math.max(bounds.maxY, y);
 }
 
+function boundsWithinExpanded(bounds, container, padding) {
+  return (
+    bounds.minX >= container.minX - padding
+    && bounds.minY >= container.minY - padding
+    && bounds.maxX <= container.maxX + padding
+    && bounds.maxY <= container.maxY + padding
+  );
+}
+
 async function extractRoadMask() {
   const { data, info } = await sharp(SOURCE_PATH)
     .ensureAlpha()
@@ -76,33 +85,93 @@ async function extractRoadMask() {
   const width = logoBounds.maxX - logoBounds.minX + 1;
   const height = logoBounds.maxY - logoBounds.minY + 1;
   const radius = Math.round(Math.min(width, height) * LOGO_CORNER_RADIUS_FRACTION);
-  const mask = Buffer.alloc(width * height * 4);
-  const roadBounds = {
-    minX: width,
-    minY: height,
-    maxX: -1,
-    maxY: -1,
+  const visited = new Uint8Array(width * height);
+  const components = [];
+  const roadAlphaThreshold = 64;
+
+  const isRoadCandidate = (x, y) => {
+    if (!insideRoundedRect(x, y, width, height, radius)) return false;
+    const sourceX = logoBounds.minX + x;
+    const sourceY = logoBounds.minY + y;
+    const sourceAlpha = data[(sourceY * info.width + sourceX) * 4 + 3];
+    return sourceAlpha < roadAlphaThreshold;
   };
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const sourceX = logoBounds.minX + x;
-      const sourceY = logoBounds.minY + y;
-      const sourceAlpha = data[(sourceY * info.width + sourceX) * 4 + 3];
-      const roadAlpha = insideRoundedRect(x, y, width, height, radius)
-        ? 255 - sourceAlpha
-        : 0;
-      const offset = (y * width + x) * 4;
-      mask[offset] = 255;
-      mask[offset + 1] = 255;
-      mask[offset + 2] = 255;
-      mask[offset + 3] = roadAlpha;
-      if (roadAlpha >= 16) expandBounds(roadBounds, x, y);
+      const start = y * width + x;
+      if (visited[start] || !isRoadCandidate(x, y)) continue;
+
+      const pixels = [start];
+      const bounds = { minX: x, minY: y, maxX: x, maxY: y };
+      let head = 0;
+      visited[start] = 1;
+      while (head < pixels.length) {
+        const current = pixels[head];
+        head += 1;
+        const currentX = current % width;
+        const currentY = Math.floor(current / width);
+        expandBounds(bounds, currentX, currentY);
+
+        for (const [nextX, nextY] of [
+          [currentX - 1, currentY],
+          [currentX + 1, currentY],
+          [currentX, currentY - 1],
+          [currentX, currentY + 1],
+        ]) {
+          if (
+            nextX < 0
+            || nextX >= width
+            || nextY < 0
+            || nextY >= height
+          ) {
+            continue;
+          }
+          const next = nextY * width + nextX;
+          if (!visited[next] && isRoadCandidate(nextX, nextY)) {
+            visited[next] = 1;
+            pixels.push(next);
+          }
+        }
+      }
+      components.push({ pixels, bounds, area: pixels.length });
     }
   }
 
-  if (roadBounds.maxX < 0) {
+  components.sort((left, right) => right.area - left.area);
+  const mainRoad = components[0];
+  if (!mainRoad) {
     throw new Error('The source logo did not produce a transparent road mask.');
+  }
+
+  const selectedComponents = components.filter(
+    (component) =>
+      component === mainRoad
+      || boundsWithinExpanded(component.bounds, mainRoad.bounds, 32),
+  );
+  const roadBounds = selectedComponents.reduce(
+    (bounds, component) => {
+      expandBounds(bounds, component.bounds.minX, component.bounds.minY);
+      expandBounds(bounds, component.bounds.maxX, component.bounds.maxY);
+      return bounds;
+    },
+    { minX: width, minY: height, maxX: -1, maxY: -1 },
+  );
+  const mask = Buffer.alloc(width * height * 4);
+  const selectedPixels = new Set(
+    selectedComponents.flatMap((component) => component.pixels),
+  );
+  for (const pixel of selectedPixels) {
+    const x = pixel % width;
+    const y = Math.floor(pixel / width);
+    const sourceX = logoBounds.minX + x;
+    const sourceY = logoBounds.minY + y;
+    const sourceAlpha = data[(sourceY * info.width + sourceX) * 4 + 3];
+    const offset = pixel * 4;
+    mask[offset] = 255;
+    mask[offset + 1] = 255;
+    mask[offset + 2] = 255;
+    mask[offset + 3] = 255 - sourceAlpha;
   }
 
   const roadWidth = roadBounds.maxX - roadBounds.minX + 1;
@@ -129,6 +198,7 @@ async function extractRoadMask() {
         width: roadWidth,
         height: roadHeight,
       },
+      selectedComponents: selectedComponents.length,
     },
   };
 }
