@@ -15,13 +15,13 @@
       "package": "com.damepon.damepon",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#081321"
       }
     },
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#081321"
     },
     "web": {
       "favicon": "./assets/images/icon.png"

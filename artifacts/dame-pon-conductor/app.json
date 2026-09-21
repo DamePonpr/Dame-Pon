@@ -19,13 +19,13 @@
       "package": "com.damepon.conductor",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#081321"
+        "backgroundColor": "#ffffff"
       }
     },
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#081321"
+      "backgroundColor": "#ffffff"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
