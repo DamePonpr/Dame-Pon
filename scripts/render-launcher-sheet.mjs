@@ -75,7 +75,7 @@ async function renderTile(role, shape) {
 
 function sheetSvg() {
   const roleNames = roles.map((role, index) => {
-    const y = SHEET_HEIGHT - 72 - index * (CELL_HEIGHT + 8);
+    const y = 96 + index * (CELL_HEIGHT + 8) + TILE_SIZE + 48;
     return `<text x="48" y="${y}" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#142033">${role.label}</text><text x="48" y="${y + 28}" font-family="Arial, sans-serif" font-size="14" fill="#5d6b7e">${role.background} fondo · ${role.foreground} trazo</text>`;
   });
   const labels = shapes.map((shape, index) => {
