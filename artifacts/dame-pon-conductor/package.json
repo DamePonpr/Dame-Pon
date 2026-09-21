@@ -14,6 +14,7 @@
     "test:rating-flow": "node --test scripts/rating-flow.test.mjs",
     "test:map-config": "node --test scripts/map-config.test.mjs",
     "test:brand-mark": "node --test scripts/brand-mark.test.mjs",
+    "test:driver-document-review": "node --experimental-strip-types --test scripts/driver-document-review.test.mjs",
     "verify:supabase-config": "node scripts/validate-supabase-config.mjs",
     "verify:supabase-rls": "pnpm run verify:supabase-config && node scripts/verify-supabase-rls.mjs",
     "verify:trip-realtime": "pnpm run verify:supabase-config && node scripts/verify-trip-realtime.mjs",

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@workspace/dame-pon-shared/lib/supabase';
+import { subscribeToDriverDocumentReview } from '@workspace/dame-pon-shared/lib/driverDocumentReviewRealtime';
 import {
   getDriverDocumentReview,
   reviewIsComplete,
@@ -31,14 +32,7 @@ export function useDriverDocuments(userId: string | undefined) {
   useEffect(() => {
     if (!userId) return;
     void refresh();
-    const channel = supabase
-      .channel(`driver-document-review:${userId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers', filter: `id=eq.${userId}` }, () => void refresh())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_documents', filter: `driver_id=eq.${userId}` }, () => void refresh())
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return subscribeToDriverDocumentReview(supabase, userId, refresh);
   }, [refresh, userId]);
 
   const upload = useCallback(async (kind: DriverDocumentKind, uri: string, mimeType?: string) => {

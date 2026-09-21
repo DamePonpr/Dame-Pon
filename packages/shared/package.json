@@ -16,6 +16,7 @@
     "./lib/*": "./src/lib/*",
     "./constants": "./src/constants/index.ts",
     "./constants/*": "./src/constants/*",
+    "./assets/*": "./src/assets/*",
     "./types/*": "./src/types/*"
   },
   "dependencies": {

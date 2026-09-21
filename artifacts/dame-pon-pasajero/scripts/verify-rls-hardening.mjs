@@ -273,7 +273,7 @@ async function run() {
     'conductor no puede modificar directamente el viaje',
     driver.supabase
       .from('trips')
-      .update({ status: 'completado', dropoff_address: `Robo ${runId}` })
+      .update({ status: 'completed', dropoff_address: `Robo ${runId}` })
       .eq('id', firstTripId)
       .select('id,status')
       .single(),
