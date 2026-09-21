@@ -3,21 +3,24 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const componentPath = new URL('../../../packages/shared/src/components/BrandLogo.tsx', import.meta.url);
-const passengerMarkPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-passenger-tile.png', import.meta.url);
-const driverMarkPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-conductor-tile.png', import.meta.url);
+const lightMarkPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-navy.png', import.meta.url);
+const darkMarkPath = new URL('../../../packages/shared/src/assets/dame-pon-mark-white.png', import.meta.url);
 
-const [component, passengerMark, driverMark] = await Promise.all([
+const [component, lightMark, darkMark] = await Promise.all([
   readFile(componentPath, 'utf8'),
-  readFile(passengerMarkPath),
-  readFile(driverMarkPath),
+  readFile(lightMarkPath),
+  readFile(darkMarkPath),
 ]);
 
-test('selecciona el trazo correcto según la aplicación', () => {
-  assert.match(component, /passengerMark/);
-  assert.match(component, /driverMark/);
+test('selecciona el trazo correcto según el tema', () => {
+  assert.match(component, /lightMark/);
+  assert.match(component, /darkMark/);
+  assert.match(component, /source=\{colors\.isDark \? darkMark : lightMark\}/);
+  assert.match(component, /resizeMode="contain"/);
+  assert.doesNotMatch(component, /tintColor/);
   assert.match(component, /damePonRole/);
   assert.match(component, /configuredRole === 'conductor'/);
   assert.match(component, /overflow: 'hidden'/);
-  assert.ok(passengerMark.length > 0);
-  assert.ok(driverMark.length > 0);
+  assert.ok(lightMark.length > 0);
+  assert.ok(darkMark.length > 0);
 });
