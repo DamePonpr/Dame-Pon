@@ -227,7 +227,6 @@ async function tintMask(maskBuffer, color) {
 
 async function centeredLogo(maskBuffer, color, fraction) {
   const tinted = await tintMask(maskBuffer, color);
-  const metadata = await sharp(tinted).metadata();
   const targetWidth = Math.round(CANVAS_SIZE * fraction);
   const resized = await sharp(tinted)
     .resize({ width: targetWidth, fit: 'inside', withoutEnlargement: false })
