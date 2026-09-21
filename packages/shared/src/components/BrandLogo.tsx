@@ -64,13 +64,13 @@ export function BrandLogo({
       />
       {showDarkModeEdge ? (
         <View
-          pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
             {
               borderColor: 'rgba(255,255,255,0.15)',
               borderRadius: radius,
               borderWidth: 1,
+              pointerEvents: 'none',
             },
           ]}
         />
