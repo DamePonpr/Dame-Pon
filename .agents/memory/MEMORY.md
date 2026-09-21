@@ -10,3 +10,4 @@
 - [Passenger PIN visibility](passenger-pin-visibility.md) — expose the trip PIN only through a passenger-scoped read path; RLS alone does not protect columns.
 - [Shared mobile asset ownership](shared-mobile-assets.md) — assets imported by shared Expo code must live inside the shared package for both apps to bundle.
 - [Sharp RGBA recoloring](sharp-rgba-recoloring.md) — recolor transparent masks by replacing RGB explicitly; sharp.tint can leave white RGBA masks unchanged.
+- [GitHub Actions release uploads](github-actions-release.md) — configure gh's Git credential helper before pushing with the workspace token.
