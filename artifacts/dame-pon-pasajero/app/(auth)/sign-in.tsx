@@ -31,7 +31,7 @@ export default function SignIn() {
       setNotice({ title: "No pudimos iniciar sesión", message: result.error });
       return;
     }
-    router.replace("/(root)/(tabs)/home");
+    router.replace("/onboarding");
   }
 
   return (

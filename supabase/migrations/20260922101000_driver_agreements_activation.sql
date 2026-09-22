@@ -129,6 +129,10 @@ begin
     raise exception 'El conductor todavía no está aprobado' using errcode = '42501';
   end if;
 
+  update public.profiles
+  set onboarding_completed = true
+  where id = auth.uid();
+
   return activated;
 end;
 $$;
