@@ -14,3 +14,31 @@ mtime_ms = 1790005742528
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:958b6dd8-c887-47a2-9c58-38201b1b4b6b/2589977c-4775-4825-b9cd-582d53119750/c8a05aaf-8e1c-4723-9ab1-9cc0ae2720ce"
 storage_version_token = "1790005776338000"
 content_type = "image/png"
+
+[[outputs]]
+id = "I2YHMi0Xq8-GzaHkC3_kl"
+uri = "file://screenshots/preview-30-driver-final.jpg"
+type = "image"
+title = "Preview 30 — Conductor"
+description = "Captura final del primer slide de bienvenida del app Conductor."
+logical_id = "4685daf4-ecbe-4656-8662-d00b16b825e9"
+content_hash = "sha256:e4ded5678aaecd241028496a6c74a7e8a5dd21264bddbefa00485bb47c10d2ff"
+size = 14706
+mtime_ms = 1790084698119
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:958b6dd8-c887-47a2-9c58-38201b1b4b6b/4685daf4-ecbe-4656-8662-d00b16b825e9/479e14e8-ff6b-46c4-9a20-823f6bef5046"
+storage_version_token = "1790086686708101"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "yryU4yTqgLNLH23nV0OEL"
+uri = "file://screenshots/preview-30-passenger-final.jpg"
+type = "image"
+title = "Preview 30 — Pasajero"
+description = "Captura final del primer slide de bienvenida del app Pasajero."
+logical_id = "7244c3a7-8c1b-4a46-a266-5acbee4c1ed9"
+content_hash = "sha256:e4ded5678aaecd241028496a6c74a7e8a5dd21264bddbefa00485bb47c10d2ff"
+size = 14706
+mtime_ms = 1790084701669
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:958b6dd8-c887-47a2-9c58-38201b1b4b6b/7244c3a7-8c1b-4a46-a266-5acbee4c1ed9/c53f19ef-aed8-4f87-bf8d-03776a1d25ff"
+storage_version_token = "1790086687272959"
+content_type = "image/jpeg"
