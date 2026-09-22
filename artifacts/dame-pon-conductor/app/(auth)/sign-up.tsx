@@ -50,7 +50,7 @@ export default function SignUp() {
       setNotice({ title: "Confirma tu correo", message: "Revisa tu correo electrónico y luego inicia sesión.", action: true });
       return;
     }
-    router.replace("/(root)/(tabs)/home");
+    router.replace("/onboarding");
   }
 
   return (
