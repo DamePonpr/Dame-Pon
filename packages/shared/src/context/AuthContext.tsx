@@ -13,6 +13,8 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   base_municipality: string | null;
+  onboarding_completed: boolean;
+  default_payment_method: 'cash' | 'card';
 }
 
 interface AuthContextValue {
@@ -74,6 +76,8 @@ async function fetchProfile(user: User | null): Promise<ProfileFetchResult> {
       phone: data.phone ?? user.user_metadata?.phone ?? null,
       avatar_url: data.avatar_url ?? null,
       base_municipality: data.base_municipality ?? null,
+      onboarding_completed: Boolean(data.onboarding_completed),
+      default_payment_method: data.default_payment_method === 'card' ? 'card' : 'cash',
     },
     error: null,
   };
