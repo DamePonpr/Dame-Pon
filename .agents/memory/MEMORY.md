@@ -12,3 +12,4 @@
 - [Sharp RGBA recoloring](sharp-rgba-recoloring.md) — recolor transparent masks by replacing RGB explicitly; sharp.tint can leave white RGBA masks unchanged.
 - [GitHub Actions release uploads](github-actions-release.md) — configure gh's Git credential helper before pushing with the workspace token.
 - [Expo DevTools environment warning](expo-devtools-environment.md) — missing libglib only prevents the optional RN DevTools helper; Metro, previews, and builds still work.
+- [Supabase MCP migration versions](supabase-mcp-migration-versions.md) — applyMigration records its generated version; verify listMigrations instead of assuming the local filename timestamp.
