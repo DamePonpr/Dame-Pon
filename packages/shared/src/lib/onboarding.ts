@@ -31,6 +31,16 @@ export interface DriverOnboardingState {
   activatedAt: string | null;
 }
 
+export interface DriverVehicleDraft {
+  make: string;
+  model: string;
+  year: string;
+  color: string;
+  plate: string;
+  vin: string;
+  seats: string;
+}
+
 export const DRIVER_AGREEMENTS = [
   {
     key: 'terms_of_service',
@@ -265,6 +275,29 @@ export async function saveDriverVehicle(
   return { vehicleId: result.data?.id ?? null, error: result.error?.message ?? null };
 }
 
+export async function getDriverVehicle(userId: string) {
+  const result = await supabase
+    .from('vehicles')
+    .select('make,model,year,color,plate,vin,seat_capacity')
+    .eq('driver_id', userId)
+    .maybeSingle();
+  if (result.error) return { data: null, error: result.error.message };
+  return {
+    data: result.data
+      ? {
+          make: result.data.make ?? '',
+          model: result.data.model ?? '',
+          year: result.data.year ? String(result.data.year) : '',
+          color: result.data.color ?? '',
+          plate: result.data.plate ?? '',
+          vin: result.data.vin ?? '',
+          seats: result.data.seat_capacity ? String(result.data.seat_capacity) : '4',
+        }
+      : null,
+    error: null,
+  };
+}
+
 export async function acceptDriverAgreement(userId: string, agreementKey: string) {
   const userAgent = `Dame Pon Expo/${Platform.OS}`;
   const result = await supabase.rpc('accept_driver_agreement', {
@@ -278,6 +311,11 @@ export async function acceptDriverAgreement(userId: string, agreementKey: string
 export async function activateDriverWithCode(code: string) {
   const result = await supabase.rpc('activate_driver_with_code', { p_code: code.trim() });
   return { error: result.error?.message ?? null };
+}
+
+export async function ensureDriverActivationCode() {
+  const result = await supabase.rpc('issue_driver_activation_code');
+  return { code: result.data?.code ?? null, error: result.error?.message ?? null };
 }
 
 export function isDriverDocumentsComplete(state: DriverOnboardingState) {
