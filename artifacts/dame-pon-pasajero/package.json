@@ -23,8 +23,8 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/plugin-transform-react-jsx": "7.29.7",
-    "@expo/config-plugins": "57.0.9",
     "@expo-google-fonts/inter": "^0.4.0",
+    "@expo/config-plugins": "57.0.9",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@stardazed/streams-text-encoding": "^1.0.2",
@@ -74,6 +74,8 @@
     "@maplibre/maplibre-react-native": "11.3.10",
     "@supabase/supabase-js": "^2.115.0",
     "@twotalltotems/react-native-otp-input": "^1.3.11",
+    "@workspace/dame-pon-shared": "workspace:*",
+    "expo-camera": "~57.0.5",
     "expo-dev-client": "~57.0.18",
     "expo-device": "~57.0.1",
     "expo-local-authentication": "^57.0.3",
@@ -84,7 +86,6 @@
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-modal": "14.0.0-rc.1",
     "react-native-swiper": "^1.6.0",
-    "zustand": "^5.0.15",
-    "@workspace/dame-pon-shared": "workspace:*"
+    "zustand": "^5.0.15"
   }
 }
