@@ -2,7 +2,7 @@ import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Redirect, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@workspace/dame-pon-shared/components/AppButton';
@@ -118,6 +118,7 @@ export function DriverOnboarding() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [camera, setCamera] = useState<{ docType: string; table: 'driver' | 'vehicle'; facing: CameraType } | null>(null);
+  const [pendingCapture, setPendingCapture] = useState<{ docType: string; table: 'driver' | 'vehicle'; uri: string } | null>(null);
   const [agreementKey, setAgreementKey] = useState<string | null>(null);
   const [activationCode, setActivationCode] = useState('');
 
@@ -248,6 +249,17 @@ export function DriverOnboarding() {
           <OnboardingCard title="Foto de perfil" copy="Toma una foto clara de tu rostro. Usaremos la cámara frontal y una guía ovalada.">
             <View style={[styles.ovalGuide, { borderColor: colors.primary }]} />
             <AppButton label={hasDocument(state, 'photo') ? 'Reemplazar foto' : 'Tomar foto frontal'} onPress={() => setCamera({ docType: 'photo', table: 'driver', facing: 'front' })} loading={busy} />
+            {pendingCapture?.docType === 'photo' ? (
+              <CapturePreview
+                uri={pendingCapture.uri}
+                onCancel={() => setPendingCapture(null)}
+                onSend={() => {
+                  const capture = pendingCapture;
+                  setPendingCapture(null);
+                  void upload(capture.docType, capture.table, capture.uri);
+                }}
+              />
+            ) : null}
             {hasDocument(state, 'photo') ? <StatusText label="Foto enviada para revisión" /> : null}
             <AppButton label="Continuar" onPress={() => void next(1)} disabled={!hasDocument(state, 'photo')} loading={busy} variant="secondary" />
           </OnboardingCard>
@@ -257,6 +269,17 @@ export function DriverOnboarding() {
           <OnboardingCard title="Licencia de conducir de Puerto Rico" copy="Fotografía el frente completo de tu licencia. La cámara trasera ayuda a mantener el documento enfocado.">
             <View style={[styles.documentGuide, { borderColor: colors.primary }]} />
             <AppButton label={hasDocument(state, 'license_front') ? 'Reemplazar licencia' : 'Tomar foto de licencia'} onPress={() => setCamera({ docType: 'license_front', table: 'driver', facing: 'back' })} loading={busy} />
+            {pendingCapture?.docType === 'license_front' ? (
+              <CapturePreview
+                uri={pendingCapture.uri}
+                onCancel={() => setPendingCapture(null)}
+                onSend={() => {
+                  const capture = pendingCapture;
+                  setPendingCapture(null);
+                  void upload(capture.docType, capture.table, capture.uri);
+                }}
+              />
+            ) : null}
             {hasDocument(state, 'license_front') ? <StatusText label="Licencia enviada para revisión" /> : null}
             <AppButton label="Enviar y continuar" onPress={() => void next(2)} disabled={!hasDocument(state, 'license_front')} loading={busy} variant="secondary" />
           </OnboardingCard>
@@ -310,6 +333,14 @@ export function DriverOnboarding() {
               ))}
             </View>
             <AppButton label={state.vehicleId ? 'Actualizar vehículo' : 'Guardar vehículo'} onPress={async () => {
+              if (vehicle.vin.length !== 17) {
+                setError('El VIN debe tener exactamente 17 caracteres.');
+                return;
+              }
+              if (Number(vehicle.seats) < 1 || Number(vehicle.seats) > 12) {
+                setError('La cantidad de asientos debe estar entre 1 y 12.');
+                return;
+              }
               setBusy(true);
               const result = await saveDriverVehicle(user.id, vehicle);
               if (result.error) setError(result.error);
@@ -354,7 +385,7 @@ export function DriverOnboarding() {
             onCaptured={(uri) => {
               const selected = camera;
               setCamera(null);
-              void upload(selected.docType, selected.table, uri);
+              setPendingCapture({ docType: selected.docType, table: selected.table, uri });
             }}
           />
         ) : null}
@@ -405,6 +436,20 @@ function OnboardingCard({ title, copy, children }: { title: string; copy: string
 function StatusText({ label }: { label: string }) {
   const colors = useColors();
   return <Text style={[styles.status, { color: colors.primary }]}>{label}</Text>;
+}
+
+function CapturePreview({ uri, onCancel, onSend }: { uri: string; onCancel: () => void; onSend: () => void }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.capturePreview, { borderColor: colors.border }]}>
+      <Image source={{ uri }} resizeMode="contain" style={styles.captureImage} />
+      <Text style={[styles.rowStatus, { color: colors.mutedForeground }]}>Revisa la imagen antes de enviarla.</Text>
+      <View style={styles.captureActions}>
+        <AppButton label="Tomar otra" variant="secondary" onPress={onCancel} style={styles.captureButton} />
+        <AppButton label="Enviar" onPress={onSend} style={styles.captureButton} />
+      </View>
+    </View>
+  );
 }
 
 function DocumentRow({ label, uploaded, onLibrary, onCamera, loading }: { label: string; uploaded: boolean; onLibrary: () => void; onCamera: () => void; loading: boolean }) {
@@ -496,6 +541,10 @@ const styles = StyleSheet.create({
   cardCopy: { fontFamily: 'Jakarta', fontSize: 12, lineHeight: 18 },
   ovalGuide: { alignSelf: 'center', borderRadius: 80, borderWidth: 2, height: 150, marginVertical: 8, width: 108 },
   documentGuide: { alignSelf: 'center', borderRadius: 12, borderWidth: 2, height: 128, marginVertical: 8, width: 210 },
+  capturePreview: { borderRadius: 14, borderWidth: 1, gap: 8, padding: 10 },
+  captureImage: { alignSelf: 'center', borderRadius: 10, height: 170, width: '100%' },
+  captureActions: { flexDirection: 'row', gap: 8 },
+  captureButton: { flex: 1, minHeight: 44, paddingHorizontal: 8 },
   status: { fontFamily: 'Jakarta-SemiBold', fontSize: 12 },
   backgroundNote: { borderRadius: 14, gap: 4, marginTop: 4, padding: 12 },
   noteTitle: { fontFamily: 'Jakarta-SemiBold', fontSize: 13 },
