@@ -6,6 +6,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { useEffect } from 'react';
 import { useColors } from '../hooks/useColors';
 
 const lightMark = require('../assets/dame-pon-mark-navy.png');
@@ -36,6 +37,16 @@ export function BrandLogo({
   const radius = Math.round(Math.min(width, height) * LOGO_RADIUS_RATIO);
   const isPassenger = role === 'pasajero';
   const showDarkModeEdge = colors.isDark;
+  const logoSource = colors.isDark ? darkMark : lightMark;
+  const resolvedLogoSource = Image.resolveAssetSource(logoSource);
+
+  useEffect(() => {
+    console.info('[Dame Pon] BrandLogo asset resolved', {
+      role,
+      isDark: colors.isDark,
+      source: resolvedLogoSource?.uri ?? resolvedLogoSource,
+    });
+  }, [colors.isDark, resolvedLogoSource, role]);
 
   return (
     <View
@@ -58,7 +69,15 @@ export function BrandLogo({
     >
       <Image
         accessible={false}
-        source={colors.isDark ? darkMark : lightMark}
+        source={logoSource}
+        onError={(event) => {
+          console.error('[Dame Pon] BrandLogo asset failed to load', {
+            role,
+            isDark: colors.isDark,
+            source: resolvedLogoSource?.uri ?? resolvedLogoSource,
+            error: event.nativeEvent.error,
+          });
+        }}
         resizeMode="contain"
         style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
       />
