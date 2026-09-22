@@ -196,18 +196,20 @@ export function DriverOnboarding() {
     return <ReviewScreen state={state} error={error} onRefresh={() => void refresh()} />;
   }
 
+  const driverId = user.id;
+  const currentState = state;
   const step = state.onboardingStep + 1;
   async function upload(docType: string, table: 'driver' | 'vehicle', uri: string, mimeType = 'image/jpeg') {
     setBusy(true);
     setError('');
-    const result = await uploadDriverOnboardingDocument(user.id, table, docType, uri, mimeType, state.vehicleId);
+    const result = await uploadDriverOnboardingDocument(driverId, table, docType, uri, mimeType, currentState.vehicleId);
     if (result.error) setError(result.error);
     await refresh();
     setBusy(false);
   }
   async function next(completedStep: number) {
     setBusy(true);
-    const result = await saveDriverOnboardingStep(user.id, completedStep);
+    const result = await saveDriverOnboardingStep(driverId, completedStep);
     if (result.error) setError(result.error);
     await refresh();
     setBusy(false);
