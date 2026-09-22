@@ -56,4 +56,28 @@ end $$;
 alter table public.vehicles
   add column if not exists vin text;
 
+insert into storage.buckets (id, name, public)
+values ('profile-media', 'profile-media', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists profile_media_owner_insert on storage.objects;
+create policy profile_media_owner_insert
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'profile-media'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+drop policy if exists profile_media_owner_update on storage.objects;
+create policy profile_media_owner_update
+on storage.objects for update to authenticated
+using (
+  bucket_id = 'profile-media'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+)
+with check (
+  bucket_id = 'profile-media'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
 commit;
