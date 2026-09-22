@@ -38,13 +38,16 @@ export function BrandLogo({
   const isPassenger = role === 'pasajero';
   const showDarkModeEdge = colors.isDark;
   const logoSource = colors.isDark ? darkMark : lightMark;
-  const resolvedLogoSource = Image.resolveAssetSource(logoSource);
+  const imageApi = Image as typeof Image & {
+    resolveAssetSource?: (source: unknown) => unknown;
+  };
+  const resolvedLogoSource = imageApi.resolveAssetSource?.(logoSource) ?? logoSource;
 
   useEffect(() => {
     console.info('[Dame Pon] BrandLogo asset resolved', {
       role,
       isDark: colors.isDark,
-      source: resolvedLogoSource?.uri ?? resolvedLogoSource,
+      source: (resolvedLogoSource as { uri?: string })?.uri ?? resolvedLogoSource,
     });
   }, [colors.isDark, resolvedLogoSource, role]);
 
@@ -74,7 +77,7 @@ export function BrandLogo({
           console.error('[Dame Pon] BrandLogo asset failed to load', {
             role,
             isDark: colors.isDark,
-            source: resolvedLogoSource?.uri ?? resolvedLogoSource,
+            source: (resolvedLogoSource as { uri?: string })?.uri ?? resolvedLogoSource,
             error: event.nativeEvent.error,
           });
         }}
