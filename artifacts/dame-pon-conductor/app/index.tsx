@@ -23,7 +23,7 @@ export default function IndexScreen() {
   }
 
   if (!profile?.onboarding_completed) {
-    return <Redirect href="/onboarding" />;
+    return <Redirect href={"/onboarding" as never} />;
   }
 
   return <Redirect href={routeForRole(profile?.role) ?? "/(auth)/sign-in"} />;

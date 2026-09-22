@@ -16,5 +16,6 @@ export default function Home() {
   }
   if (!session || !profile) return <Redirect href="/(auth)/sign-in" />;
   if (profile.role !== "pasajero") return <RoleMismatchScreen expectedRole="pasajero" />;
+  if (!profile.onboarding_completed) return <Redirect href="/onboarding" />;
   return <PassengerHome profile={profile} userId={session.user.id} onSignOut={() => void auth.signOut()} onSessionExpired={() => void auth.expireSession()} />;
 }

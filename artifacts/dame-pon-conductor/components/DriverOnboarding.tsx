@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { Redirect } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -184,7 +184,7 @@ export function DriverOnboarding() {
           const result = await activateDriverWithCode(activationCode);
           if (result.error) setError(result.error);
           else {
-            await refresh();
+            router.replace('/(root)/(tabs)/home');
             return;
           }
           setBusy(false);
