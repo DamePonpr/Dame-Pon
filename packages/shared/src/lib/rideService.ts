@@ -345,16 +345,32 @@ export async function saveDriverSetup(
 
   let driverResult = existingDriver.data
     ? existingDriver
-    : await supabase
+    : await (async () => {
+      const municipality = await supabase
+        .from('municipios')
+        .select('nombre')
+        .eq('nombre', baseMunicipality.trim())
+        .maybeSingle();
+      if (municipality.error) return municipality as typeof existingDriver;
+      if (!municipality.data) {
+        return {
+          data: null,
+          error: { message: 'Selecciona un municipio válido del catálogo.' },
+        } as typeof existingDriver;
+      }
+      return supabase
         .from('drivers')
         .insert({
           id: userId,
-          license_number: draft.licensePlate.trim().toUpperCase(),
-          municipio_base: baseMunicipality,
+          license_number: draft.licensePlate.trim().toUpperCase() || null,
+          municipio_base: municipality.data.nombre,
+          approval_status: 'pending_documents',
+          status: 'pendiente',
           is_online: false,
         })
         .select(DRIVER_COLUMNS)
         .single();
+    })();
 
   if (driverResult.data && !driverResult.data.municipio_base) {
     const baseResult = await supabase

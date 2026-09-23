@@ -76,18 +76,23 @@ function errorMessage(error: { message?: string } | null, fallback: string) {
 }
 
 async function uploadImage(bucket: string, userId: string, prefix: string, uri: string, mimeType = 'image/jpeg') {
-  const response = await fetch(uri);
-  if (!response.ok) return { path: null, error: 'No pudimos leer la imagen seleccionada.' };
-  const body = await response.arrayBuffer();
-  const extension = mimeType.includes('png') ? 'png' : 'jpg';
-  const path = `${userId}/${prefix}-${Date.now()}.${extension}`;
-  const result = await supabase.storage.from(bucket).upload(path, body, {
-    contentType: mimeType,
-    cacheControl: '3600',
-    upsert: false,
-  });
-  if (result.error) return { path: null, error: result.error.message };
-  return { path, error: null };
+  try {
+    const response = await fetch(uri);
+    if (!response.ok) return { path: null, error: 'No pudimos leer la imagen seleccionada.' };
+    const body = await response.arrayBuffer();
+    const extension = mimeType.includes('png') ? 'png' : 'jpg';
+    const path = `${userId}/${prefix}-${Date.now()}.${extension}`;
+    const result = await supabase.storage.from(bucket).upload(path, body, {
+      contentType: mimeType,
+      cacheControl: '3600',
+      upsert: false,
+    });
+    if (result.error) return { path: null, error: result.error.message };
+    return { path, error: null };
+  } catch (error) {
+    console.error('[Dame Pon] subida de imagen falló:', error);
+    return { path: null, error: error instanceof Error ? error.message : 'No pudimos guardar la imagen.' };
+  }
 }
 
 export async function getPassengerOnboardingState(userId: string) {
@@ -109,8 +114,10 @@ export async function getPassengerOnboardingState(userId: string) {
   };
 }
 
-export async function completePassengerOnboarding(
+export async function completeProfileOnboarding(
   userId: string,
+  fullName: string,
+  phone: string,
   paymentMethod: PaymentMethod,
   avatarUri?: string | null,
   mimeType?: string,
@@ -123,12 +130,25 @@ export async function completePassengerOnboarding(
   }
 
   const payload: Record<string, unknown> = {
+    full_name: fullName.trim(),
+    phone: phone.trim(),
     onboarding_completed: true,
     default_payment_method: paymentMethod,
   };
   if (avatarUrl) payload.avatar_url = avatarUrl;
   const result = await supabase.from('profiles').update(payload).eq('id', userId);
   return { error: result.error?.message ?? null };
+}
+
+export async function completePassengerOnboarding(
+  userId: string,
+  fullName: string,
+  phone: string,
+  paymentMethod: PaymentMethod,
+  avatarUri?: string | null,
+  mimeType?: string,
+) {
+  return completeProfileOnboarding(userId, fullName, phone, paymentMethod, avatarUri, mimeType);
 }
 
 export async function getDriverOnboardingState(userId: string) {
@@ -222,27 +242,72 @@ export async function uploadDriverOnboardingDocument(
   mimeType = 'image/jpeg',
   vehicleId?: string | null,
 ) {
+  const existing = table === 'driver'
+    ? await supabase
+      .from('driver_documents')
+      .select('id,status,storage_path')
+      .eq('driver_id', userId)
+      .eq('doc_type', docType)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    : vehicleId
+      ? await supabase
+        .from('vehicle_documents')
+        .select('id,status,storage_path')
+        .eq('vehicle_id', vehicleId)
+        .eq('doc_type', docType)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      : { data: null, error: { message: 'Guarda primero los datos del vehículo.' } };
+
+  if (existing.error) return { error: existing.error.message };
+  if (existing.data?.status === 'approved') {
+    return { error: 'Este documento ya está aprobado; solicita una revisión para reemplazarlo.' };
+  }
+
   const upload = await uploadImage('driver-documents', userId, docType, uri, mimeType);
   if (upload.error || !upload.path) return { error: upload.error ?? 'No pudimos guardar el documento.' };
 
   if (table === 'driver') {
-    const result = await supabase.from('driver_documents').insert({
-      driver_id: userId,
+    const result = existing.data
+      ? await supabase
+        .from('driver_documents')
+        .update({ storage_path: upload.path, status: 'submitted' })
+        .eq('id', existing.data.id)
+      : await supabase.from('driver_documents').insert({
+        driver_id: userId,
+        doc_type: docType,
+        storage_path: upload.path,
+        status: 'submitted',
+      });
+    if (result.error) return { error: result.error.message };
+    if (existing.data?.storage_path && existing.data.storage_path !== upload.path) {
+      const removed = await supabase.storage.from('driver-documents').remove([existing.data.storage_path]);
+      if (removed.error) console.warn('[Dame Pon] No se pudo limpiar el documento anterior:', removed.error.message);
+    }
+    return { error: null };
+  }
+
+  if (!vehicleId) return { error: 'Guarda primero los datos del vehículo.' };
+  const result = existing.data
+    ? await supabase
+      .from('vehicle_documents')
+      .update({ storage_path: upload.path, status: 'submitted' })
+      .eq('id', existing.data.id)
+    : await supabase.from('vehicle_documents').insert({
+      vehicle_id: vehicleId,
       doc_type: docType,
       storage_path: upload.path,
       status: 'submitted',
     });
-    return { error: result.error?.message ?? null };
+  if (result.error) return { error: result.error.message };
+  if (existing.data?.storage_path && existing.data.storage_path !== upload.path) {
+    const removed = await supabase.storage.from('driver-documents').remove([existing.data.storage_path]);
+    if (removed.error) console.warn('[Dame Pon] No se pudo limpiar el documento anterior:', removed.error.message);
   }
-
-  if (!vehicleId) return { error: 'Guarda primero los datos del vehículo.' };
-  const result = await supabase.from('vehicle_documents').insert({
-    vehicle_id: vehicleId,
-    doc_type: docType,
-    storage_path: upload.path,
-    status: 'submitted',
-  });
-  return { error: result.error?.message ?? null };
+  return { error: null };
 }
 
 export async function saveDriverVehicle(
