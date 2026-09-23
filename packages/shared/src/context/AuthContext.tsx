@@ -32,6 +32,7 @@ interface AuthContextValue {
     role: UserRole;
     baseMunicipality?: string;
   }) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
+  refreshProfile: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   expireSession: () => Promise<void>;
   clearAuthIssue: () => void;
@@ -221,45 +222,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: null };
       },
       signUp: async ({ email, password, fullName, phone, role, baseMunicipality }) => {
-        const normalizedPhone = phone.trim();
-        if (normalizedPhone) {
-          const availability = await supabase.rpc('is_phone_available', { p_phone: normalizedPhone });
-          if (availability.error) {
-            return { error: availability.error.message, needsEmailConfirmation: false };
+        try {
+          const normalizedPhone = phone.trim();
+          if (normalizedPhone) {
+            const availability = await supabase.rpc('is_phone_available', { p_phone: normalizedPhone });
+            if (availability.error) {
+              console.error('[Dame Pon] is_phone_available falló:', availability.error);
+              return { error: availability.error.message, needsEmailConfirmation: false };
+            }
+            if (availability.data === false) {
+              return { error: 'PHONE_ALREADY_REGISTERED', needsEmailConfirmation: false };
+            }
           }
-          if (availability.data === false) {
-            return { error: 'PHONE_ALREADY_REGISTERED', needsEmailConfirmation: false };
-          }
-        }
 
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              phone: normalizedPhone || null,
-              role,
-              ...(role === 'conductor' ? { base_municipality: baseMunicipality } : {}),
+          const { data, error } = await supabase.auth.signUp({
+            email: email.trim(),
+            password,
+            options: {
+              data: {
+                full_name: fullName.trim(),
+                phone: normalizedPhone || null,
+                role,
+                ...(role === 'conductor' ? { base_municipality: baseMunicipality } : {}),
+              },
             },
-          },
-        });
+          });
 
-        if (error) return { error: error.message, needsEmailConfirmation: false };
+          if (error) {
+            console.error('[Dame Pon] signUp falló:', error);
+            return { error: error.message, needsEmailConfirmation: false };
+          }
 
-        // When email confirmation is enabled, Supabase intentionally returns
-        // no session here. Do not write to profiles yet: RLS policies that
-        // require auth.uid() will reject an anonymous insert. The profile is
-        // synchronized after the user confirms the email and signs in.
-        if (data.user && data.session) {
-          const profileError = await ensureProfile(data.user);
-          if (profileError) return { error: profileError, needsEmailConfirmation: false };
+          // When email confirmation is enabled, Supabase intentionally returns
+          // no session here. Do not write to profiles yet: RLS policies that
+          // require auth.uid() will reject an anonymous insert. The profile is
+          // synchronized after the user confirms the email and signs in.
+          if (data.user && data.session) {
+            const profileError = await ensureProfile(data.user);
+            if (profileError) return { error: profileError, needsEmailConfirmation: false };
+          }
+
+          return {
+            error: null,
+            needsEmailConfirmation: !data.session,
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'No pudimos crear la cuenta.';
+          console.error('[Dame Pon] signUp lanzó una excepción:', error);
+          return { error: message, needsEmailConfirmation: false };
         }
-
-        return {
-          error: null,
-          needsEmailConfirmation: !data.session,
-        };
+      },
+      refreshProfile: async () => {
+        const result = await fetchProfile(session?.user ?? null);
+        setProfile(result.profile);
+        if (result.error) {
+          console.error('[Dame Pon] No se pudo refrescar el perfil:', result.error);
+          setAuthIssue('profile_unavailable');
+        } else {
+          setAuthIssue(null);
+        }
+        return { error: result.error };
       },
       signOut: async () => {
         hydrationVersion.current += 1;
