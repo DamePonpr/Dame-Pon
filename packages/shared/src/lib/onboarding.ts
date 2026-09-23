@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
+import { normalizePhoneForRole, type PhoneRole } from './profileCompletion';
 
 export type PaymentMethod = 'cash' | 'card';
 export type OnboardingDocumentTable = 'driver' | 'vehicle';
@@ -121,7 +122,11 @@ export async function completeProfileOnboarding(
   paymentMethod: PaymentMethod,
   avatarUri?: string | null,
   mimeType?: string,
+  role: PhoneRole = 'pasajero',
 ) {
+  const normalizedPhone = normalizePhoneForRole(phone, role);
+  if (!normalizedPhone) return { error: 'INVALID_PHONE' };
+
   let avatarUrl: string | null | undefined;
   if (avatarUri) {
     const upload = await uploadImage('profile-media', userId, 'avatar', avatarUri, mimeType);
@@ -131,7 +136,7 @@ export async function completeProfileOnboarding(
 
   const payload: Record<string, unknown> = {
     full_name: fullName.trim(),
-    phone: phone.trim(),
+    phone: normalizedPhone,
     onboarding_completed: true,
     default_payment_method: paymentMethod,
   };

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '../lib/supabase';
 import type { UserRole } from '../lib/roles';
+import { normalizePhoneForRole } from '../lib/profileCompletion';
 
 export type { UserRole } from '../lib/roles';
 export type AuthIssue = 'session_expired' | 'profile_unavailable' | null;
@@ -90,9 +91,10 @@ function sessionIsExpiring(session: Session) {
 }
 
 async function ensureProfile(user: User): Promise<string | null> {
+  const role = normalizeRole(user.user_metadata?.role) ?? 'pasajero';
   const profileFields = {
     full_name: user.user_metadata?.full_name ?? '',
-    phone: user.user_metadata?.phone?.trim() || null,
+    phone: normalizePhoneForRole(user.user_metadata?.phone, role),
   };
   const existing = await supabase
     .from('profiles')
@@ -223,16 +225,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       signUp: async ({ email, password, fullName, phone, role, baseMunicipality }) => {
         try {
-          const normalizedPhone = phone.trim();
-          if (normalizedPhone) {
-            const availability = await supabase.rpc('is_phone_available', { p_phone: normalizedPhone });
-            if (availability.error) {
-              console.error('[Dame Pon] is_phone_available falló:', availability.error);
-              return { error: availability.error.message, needsEmailConfirmation: false };
-            }
-            if (availability.data === false) {
-              return { error: 'PHONE_ALREADY_REGISTERED', needsEmailConfirmation: false };
-            }
+          const normalizedPhone = normalizePhoneForRole(phone, role);
+          if (!normalizedPhone) {
+            return { error: 'INVALID_PHONE', needsEmailConfirmation: false };
+          }
+          const availability = await supabase.rpc('is_phone_available', { p_phone: normalizedPhone });
+          if (availability.error) {
+            console.error('[Dame Pon] is_phone_available falló:', availability.error);
+            return { error: availability.error.message, needsEmailConfirmation: false };
+          }
+          if (availability.data === false) {
+            return { error: 'PHONE_ALREADY_REGISTERED', needsEmailConfirmation: false };
           }
 
           const { data, error } = await supabase.auth.signUp({
@@ -241,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             options: {
               data: {
                 full_name: fullName.trim(),
-                phone: normalizedPhone || null,
+                phone: normalizedPhone,
                 role,
                 ...(role === 'conductor' ? { base_municipality: baseMunicipality } : {}),
               },

@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@workspace/dame-pon-shared/components/AppButton';
 import { BrandLogo } from '@workspace/dame-pon-shared/components/BrandLogo';
+import { InlineNotice } from '@workspace/dame-pon-shared/components/InlineNotice';
+import { ProfileOnboarding } from '@workspace/dame-pon-shared/components/ProfileOnboarding';
 import { useAuth } from '@workspace/dame-pon-shared/context/AuthContext';
 import { useColors } from '@workspace/dame-pon-shared/hooks/useColors';
 import { supabase } from '@workspace/dame-pon-shared/lib/supabase';
@@ -123,7 +125,7 @@ export function DriverOnboarding() {
   const [activationCode, setActivationCode] = useState('');
 
   async function refresh() {
-    if (!user) return;
+    if (!user) return null;
     const result = await getDriverOnboardingState(user.id);
     if (result.error) setError(result.error);
     else {
@@ -131,6 +133,7 @@ export function DriverOnboarding() {
       if (result.data?.activationCode && !activationCode) setActivationCode(result.data.activationCode);
     }
     setLoading(false);
+    return result.data;
   }
 
   useEffect(() => {
@@ -159,10 +162,13 @@ export function DriverOnboarding() {
   );
 
   if (!user || !profile) return <Redirect href="/(auth)/sign-in" />;
-  if (profile.onboarding_completed) return <Redirect href="/(root)/(tabs)/home" />;
   if (loading || !state) {
     return <View style={[styles.center, { backgroundColor: colors.background }]}><Text style={[styles.copy, { color: colors.mutedForeground }]}>Cargando tu registro…</Text></View>;
   }
+  if (state.approvalStatus === 'approved' && !profile.onboarding_completed) {
+    return <ProfileOnboarding role="conductor" />;
+  }
+  if (profile.onboarding_completed) return <Redirect href="/(root)/(tabs)/home" />;
   if (state.approvalStatus === 'approved' && state.onboardingStep >= 6 && !state.activatedAt) {
     return (
       <ActivationScreen
@@ -200,20 +206,55 @@ export function DriverOnboarding() {
   const driverId = user.id;
   const currentState = state;
   const step = state.onboardingStep + 1;
+  function stepDocumentsComplete(nextState: DriverOnboardingState, completedStep: number) {
+    if (completedStep === 1) return hasDocument(nextState, 'photo');
+    if (completedStep === 2) return hasDocument(nextState, 'license_front');
+    if (completedStep === 3) {
+      return hasDocument(nextState, 'ntsp_certificate_1')
+        && hasDocument(nextState, 'ntsp_certificate_2');
+    }
+    if (completedStep === 4) {
+      return hasDocument(nextState, 'conduct_certificate_1')
+        && hasDocument(nextState, 'conduct_certificate_2');
+    }
+    return Boolean(nextState.vehicleId && vehicleDocuments.every(([type]) => hasDocument(nextState, type)));
+  }
+
   async function upload(docType: string, table: 'driver' | 'vehicle', uri: string, mimeType = 'image/jpeg') {
+    if (busy) return;
     setBusy(true);
     setError('');
-    const result = await uploadDriverOnboardingDocument(driverId, table, docType, uri, mimeType, currentState.vehicleId);
-    if (result.error) setError(result.error);
-    await refresh();
-    setBusy(false);
+    try {
+      const result = await uploadDriverOnboardingDocument(driverId, table, docType, uri, mimeType, currentState.vehicleId);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      const nextState = await refresh();
+      if (nextState && stepDocumentsComplete(nextState, step)) {
+        const saved = await saveDriverOnboardingStep(driverId, step);
+        if (saved.error) setError(saved.error);
+        else await refresh();
+      }
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'No pudimos guardar el documento.');
+    } finally {
+      setBusy(false);
+    }
   }
   async function next(completedStep: number) {
+    if (busy) return;
     setBusy(true);
-    const result = await saveDriverOnboardingStep(driverId, completedStep);
-    if (result.error) setError(result.error);
-    await refresh();
-    setBusy(false);
+    try {
+      const result = await saveDriverOnboardingStep(driverId, completedStep);
+      if (result.error) setError(result.error);
+      else {
+        setError('');
+        await refresh();
+      }
+    } finally {
+      setBusy(false);
+    }
   }
   async function pickDocument(docType: string, table: 'driver' | 'vehicle') {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -244,6 +285,7 @@ export function DriverOnboarding() {
           <Text style={[styles.copy, { color: colors.mutedForeground }]}>Paso {step} de 6 · Puedes cerrar y continuar después.</Text>
         </View>
         <StepBar step={step} />
+        {error ? <InlineNotice title="No pudimos completar este paso" message={error} /> : null}
 
         {step === 1 ? (
           <OnboardingCard title="Foto de perfil" copy="Toma una foto clara de tu rostro. Usaremos la cámara frontal y una guía ovalada.">
@@ -460,12 +502,10 @@ function DocumentRow({ label, uploaded, onLibrary, onCamera, loading }: { label:
         <Text style={[styles.rowTitle, { color: colors.foreground }]}>{label}</Text>
         <Text style={[styles.rowStatus, { color: uploaded ? colors.primary : colors.mutedForeground }]}>{uploaded ? 'Enviado para revisión' : 'Pendiente'}</Text>
       </View>
-      {!uploaded ? (
-        <View style={styles.rowActions}>
+      <View style={styles.rowActions}>
           <AppButton label="Cámara" variant="secondary" onPress={onCamera} loading={loading} style={styles.rowButton} />
           <AppButton label="Galería" variant="secondary" onPress={onLibrary} loading={loading} style={styles.rowButton} />
-        </View>
-      ) : null}
+      </View>
     </View>
   );
 }
@@ -478,8 +518,8 @@ function ReviewScreen({ state, error, onRefresh }: { state: DriverOnboardingStat
       <Text style={[styles.title, { color: colors.foreground, textAlign: 'center' }]}>Registro en revisión</Text>
       <Text style={[styles.copy, { color: colors.mutedForeground, textAlign: 'center' }]}>Recibimos tus documentos y términos. Te avisaremos cuando el equipo termine la revisión.</Text>
       <Text style={[styles.copy, { color: colors.mutedForeground, textAlign: 'center' }]}>Verificación de antecedentes — La coordinamos contigo.</Text>
-      {state.reviewNotes ? <Text style={[styles.error, { color: colors.destructive }]}>{state.reviewNotes}</Text> : null}
-      {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
+      {state.reviewNotes ? <InlineNotice title="Notas de revisión" message={state.reviewNotes} /> : null}
+      {error ? <InlineNotice title="No pudimos actualizar el estado" message={error} /> : null}
       <AppButton label="Actualizar estado" onPress={onRefresh} variant="secondary" style={{ width: '100%' }} />
     </View>
   );
@@ -506,7 +546,7 @@ function ActivationScreen({ code, setCode, expiresAt, error, busy, onGenerate, o
       {expiresAt ? <Text style={[styles.rowStatus, { color: colors.mutedForeground }]}>Vence en siete días · {new Date(expiresAt).toLocaleDateString()}</Text> : null}
       {!code ? <AppButton label="Generar código" onPress={() => void onGenerate()} loading={busy} variant="secondary" style={{ width: '100%' }} /> : null}
       <AppButton label="Activar conductor" onPress={() => void onActivate()} loading={busy} disabled={code.length !== 6} style={{ width: '100%' }} />
-      {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
+      {error ? <InlineNotice title="No pudimos activar tu cuenta" message={error} /> : null}
     </View>
   );
 }

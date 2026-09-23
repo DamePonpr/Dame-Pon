@@ -10,6 +10,7 @@ import { InlineNotice } from './InlineNotice';
 import { useAuth } from '../context/AuthContext';
 import { useColors } from '../hooks/useColors';
 import { completeProfileOnboarding, type PaymentMethod } from '../lib/onboarding';
+import { isValidPhone } from '../lib/profileCompletion';
 import type { BrandLogoRole } from './BrandLogo';
 
 export function ProfileOnboarding({ role }: { role: BrandLogoRole }) {
@@ -52,8 +53,13 @@ export function ProfileOnboarding({ role }: { role: BrandLogoRole }) {
 
   async function finish() {
     if (!user) return;
-    if (!fullName.trim() || !phone.trim()) {
-      setNotice({ title: 'Completa tus datos', message: 'El nombre completo y el teléfono son obligatorios.' });
+    if (!fullName.trim() || !isValidPhone(phone, role)) {
+      setNotice({
+        title: 'Revisa tus datos',
+        message: role === 'conductor'
+          ? 'El nombre y un teléfono de Puerto Rico con área 787 o 939 son obligatorios.'
+          : 'El nombre y un teléfono válido de Puerto Rico, Estados Unidos o internacional son obligatorios.',
+      });
       return;
     }
 
@@ -67,6 +73,7 @@ export function ProfileOnboarding({ role }: { role: BrandLogoRole }) {
         paymentMethod,
         avatarUri,
         'image/jpeg',
+        role,
       );
       if (result.error) {
         console.error('[Dame Pon] completar onboarding falló:', result.error);
