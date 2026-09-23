@@ -343,7 +343,10 @@ export async function saveDriverSetup(
     return serviceError('save-driver', existingDriver.error);
   }
 
-  let driverResult = existingDriver;
+  let driverResult: { data: Driver | null; error: SupabaseErrorLike | null } = {
+    data: existingDriver.data as Driver | null,
+    error: existingDriver.error,
+  };
   if (!existingDriver.data) {
     const municipality = await supabase
       .from('municipios')
@@ -357,7 +360,7 @@ export async function saveDriverSetup(
         error: 'No pudimos preparar tu perfil de conductor.\n\nSelecciona un municipio válido del catálogo.',
       };
     }
-    driverResult = await supabase
+    const insertedDriver = await supabase
       .from('drivers')
       .insert({
         id: userId,
@@ -369,6 +372,10 @@ export async function saveDriverSetup(
       })
       .select(DRIVER_COLUMNS)
       .single();
+    driverResult = {
+      data: insertedDriver.data as Driver | null,
+      error: insertedDriver.error,
+    };
   }
 
   if (driverResult.data && !driverResult.data.municipio_base) {
