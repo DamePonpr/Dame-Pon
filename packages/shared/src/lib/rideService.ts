@@ -343,34 +343,33 @@ export async function saveDriverSetup(
     return serviceError('save-driver', existingDriver.error);
   }
 
-  let driverResult = existingDriver.data
-    ? existingDriver
-    : await (async () => {
-      const municipality = await supabase
-        .from('municipios')
-        .select('nombre')
-        .eq('nombre', baseMunicipality.trim())
-        .maybeSingle();
-      if (municipality.error) return municipality as typeof existingDriver;
-      if (!municipality.data) {
-        return {
-          data: null,
-          error: { message: 'Selecciona un municipio válido del catálogo.' },
-        } as typeof existingDriver;
-      }
-      return supabase
-        .from('drivers')
-        .insert({
-          id: userId,
-          license_number: draft.licensePlate.trim().toUpperCase() || null,
-          municipio_base: municipality.data.nombre,
-          approval_status: 'pending_documents',
-          status: 'pendiente',
-          is_online: false,
-        })
-        .select(DRIVER_COLUMNS)
-        .single();
-    })();
+  let driverResult = existingDriver;
+  if (!existingDriver.data) {
+    const municipality = await supabase
+      .from('municipios')
+      .select('nombre')
+      .eq('nombre', baseMunicipality.trim())
+      .maybeSingle();
+    if (municipality.error) return serviceError('save-driver', municipality.error);
+    if (!municipality.data) {
+      return {
+        data: null,
+        error: 'No pudimos preparar tu perfil de conductor.\n\nSelecciona un municipio válido del catálogo.',
+      };
+    }
+    driverResult = await supabase
+      .from('drivers')
+      .insert({
+        id: userId,
+        license_number: draft.licensePlate.trim().toUpperCase() || null,
+        municipio_base: municipality.data.nombre,
+        approval_status: 'pending_documents',
+        status: 'pendiente',
+        is_online: false,
+      })
+      .select(DRIVER_COLUMNS)
+      .single();
+  }
 
   if (driverResult.data && !driverResult.data.municipio_base) {
     const baseResult = await supabase

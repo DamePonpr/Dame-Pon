@@ -41,7 +41,8 @@ export function BrandLogo({
   const imageApi = Image as typeof Image & {
     resolveAssetSource?: (source: unknown) => unknown;
   };
-  const resolvedLogoSource = imageApi.resolveAssetSource?.(logoSource) ?? logoSource;
+  const resolvedLogoSource = imageApi.resolveAssetSource?.(colors.isDark ? darkMark : lightMark)
+    ?? (colors.isDark ? darkMark : lightMark);
 
   useEffect(() => {
     console.info('[Dame Pon] BrandLogo asset resolved', {
@@ -72,7 +73,7 @@ export function BrandLogo({
     >
       <Image
         accessible={false}
-        source={logoSource}
+        source={colors.isDark ? darkMark : lightMark}
         onError={(event) => {
           console.error('[Dame Pon] BrandLogo asset failed to load', {
             role,
