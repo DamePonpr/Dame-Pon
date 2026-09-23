@@ -48,7 +48,9 @@ export function isValidPassengerPhone(phone: string | null | undefined) {
     return isValidNanpNationalNumber(nationalNumber);
   }
 
-  return hasInternationalPrefix(phone) && /^[2-9]\d{9,14}$/.test(digits);
+  return hasInternationalPrefix(phone)
+    && !digits.startsWith('999')
+    && /^[2-9]\d{9,14}$/.test(digits);
 }
 
 export function isValidPhone(phone: string | null | undefined, role: PhoneRole = 'pasajero') {
