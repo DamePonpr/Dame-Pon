@@ -1,45 +1,78 @@
-# [Project name]
+# Dame Pon
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Dame Pon es una app de viajes compartidos tipo ride-hailing para Puerto Rico. El producto incluye dos apps móviles Expo/React Native —una para pasajeros y otra para conductores— y un API server Express.
 
-## Run & Operate
+## Estructura del monorepo
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+El repositorio usa pnpm workspaces.
 
-## Stack
+- `artifacts/dame-pon-pasajero/` — app móvil para pasajeros.
+- `artifacts/dame-pon-conductor/` — app móvil para conductores.
+- `artifacts/api-server/` — API server Express. En producción escucha en el puerto `8080`; el health check es `GET /api/healthz`.
+- `supabase/migrations/` — migraciones de esquema, políticas y funciones de base de datos.
+- `supabase/functions/trip-push/` — función Edge que envía notificaciones push mediante Expo.
+- `.github/workflows/android-apk.yml` — builds Android de preview.
+- `.github/workflows/keepalive-supabase.yml` — actividad periódica contra la API pública de Supabase, cada dos días.
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+## Backend y datos
 
-## Where things live
+El backend usa el proyecto Supabase **Dame Pon**, en la región `us-east-1`:
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- **Auth** para autenticación.
+- **Postgres** como base de datos, con Row Level Security (RLS).
+- **Realtime** para cambios de viajes y actividad en vivo.
+- **Storage** con dos buckets: `driver-documents` es privado y `profile-media` es público.
+- La función Edge `trip-push` envía notificaciones push a través de Expo.
 
-## Architecture decisions
+Las tablas principales son `profiles` (roles `pasajero`, `conductor` y `admin`), `drivers`, `vehicles`, `trips`, `trip_offers`, `ratings`, `payments`, `fare_rules`, `municipios` (78 municipios), `incidents`, `support_cases`, `driver_documents`, `vehicle_documents`, `driver_agreement_acceptances`, `driver_activation_codes` y `keepalive_ping`.
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+En `drivers`, `approval_status` y `status_kind` representan estados actuales; el campo `status` se conserva por compatibilidad con código heredado.
 
-## Product
+## Ciclo de viaje
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+El flujo de negocio es:
 
-## User preferences
+`requested` → `offered` → `accepted` → `arrived` → `in_progress` → `completed`
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+El viaje también puede terminar como `cancelled`. Las transiciones protegidas se realizan mediante las funciones RPC `accept_trip`, `start_trip`, `complete_trip` y `cancel_trip`. `start_trip` valida el PIN del pasajero.
 
-## Gotchas
+## Variables de entorno y secretos
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- `EXPO_PUBLIC_SUPABASE_URL` — URL del proyecto Supabase.
+- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — llave pública publishable para las apps; no usar una llave `secret` en el cliente.
+- `DATABASE_URL` — conexión PostgreSQL usada por el API server.
 
-## Pointers
+No pegues secretos ni valores de credenciales en el repositorio. Configura secretos en el gestor de Secrets del entorno correspondiente.
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+## Comandos útiles
+
+Desde la raíz del monorepo:
+
+- `pnpm run typecheck` — comprueba tipos en los paquetes.
+- `pnpm --filter @workspace/dame-pon-pasajero run verify:supabase-config` — valida la configuración pública de Supabase para la app del pasajero.
+- `pnpm --filter @workspace/dame-pon-pasajero run verify:trip-realtime` — comprueba la configuración y resiliencia de Realtime para viajes.
+- `pnpm --filter @workspace/dame-pon-pasajero run verify:rls-hardening` — verifica reglas de seguridad RLS.
+- `pnpm --filter @workspace/api-server run dev` — compila e inicia el API server en modo desarrollo.
+
+El API de producción se compila con `pnpm --filter @workspace/api-server run build` y se inicia desde `artifacts/api-server/dist/index.mjs`, con `PORT=8080`.
+
+## Builds Android
+
+GitHub Actions, mediante `android-apk.yml`, genera APKs de preview firmados con la llave debug. Antes de distribuir en Play Store, hay que configurar la firma de producción.
+
+El workflow `keepalive-supabase.yml` realiza actividad a través de la API pública de Supabase cada dos días. Una consulta SQL administrativa por sí sola no cuenta como tráfico de API para este propósito.
+
+## Consideraciones importantes
+
+- `trip-push` filtra conductores por `drivers.status = 'aprobado'`, además de las demás reglas de elegibilidad. Ese campo heredado todavía afecta el despacho de notificaciones.
+- La vista `passenger_trips` usa `security_invoker`; sus consultas respetan los permisos y RLS del usuario que la consulta.
+- Las funciones trigger de Postgres son funciones internas: no son ejecutables directamente mediante la API.
+- En Supabase Auth falta activar la protección contra contraseñas filtradas; se configura en el dashboard de Supabase.
+- Las tablas de respaldo de los esquemas `respaldo_20260920` y `respaldo_20260922` son temporales.
+
+## Pendientes conocidos
+
+- Crear/configurar un usuario administrador.
+- Cargar las tarifas reales; actualmente solo existe una regla de ejemplo.
+- Integrar pagos con tarjeta.
+- Configurar firma de producción para publicar en Play Store.
