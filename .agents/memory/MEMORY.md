@@ -13,3 +13,4 @@
 - [GitHub Actions release uploads](github-actions-release.md) — configure gh's Git credential helper before pushing with the workspace token.
 - [Expo DevTools environment warning](expo-devtools-environment.md) — missing libglib only prevents the optional RN DevTools helper; Metro, previews, and builds still work.
 - [Supabase MCP migration versions](supabase-mcp-migration-versions.md) — applyMigration records its generated version; verify listMigrations instead of assuming the local filename timestamp.
+- [Supabase inactivity keepalive](supabase-inactivity-keepalive.md) — scheduled admin SQL does not count as project activity; keepalive must reach the public Supabase API.
