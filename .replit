@@ -27,3 +27,11 @@ packages = ["eas-cli"]
 
 [userenv.shared]
 EXPO_PUBLIC_SUPABASE_URL = "https://byexltskjqrorbfspshe.supabase.co"
+
+[[ports]]
+localPort = 8080
+externalPort = 80
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
