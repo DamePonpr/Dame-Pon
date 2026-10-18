@@ -61,6 +61,52 @@ jobs:
             rm -f "$response_file" "$curl_error_file"
           }
 
+          record_keepalive_ping() {
+            local response_file
+            local curl_error_file
+            local http_code
+            local curl_status
+            local row
+
+            response_file="$(mktemp)"
+            curl_error_file="$(mktemp)"
+
+            if http_code="$(curl -fsS --retry 2 --retry-delay 5 \
+              --request POST \
+              --output "$response_file" \
+              --write-out '%{http_code}' \
+              "https://byexltskjqrorbfspshe.supabase.co/rest/v1/rpc/record_keepalive_ping" \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+              -H "Content-Type: application/json" \
+              -H "Prefer: return=representation" \
+              --data '{}' \
+              2>"$curl_error_file")"; then
+              curl_status=0
+            else
+              curl_status=$?
+            fi
+
+            if [[ "$curl_status" -ne 0 || "$http_code" != "200" ]]; then
+              echo "::error::Supabase keepalive RPC failed: expected HTTP 200, received ${http_code:-no HTTP status} (curl exit ${curl_status})."
+              if [[ -s "$curl_error_file" ]]; then
+                cat "$curl_error_file"
+              fi
+              rm -f "$response_file" "$curl_error_file"
+              return 1
+            fi
+
+            if ! row="$(jq -er 'select(type == "array" and length == 1) | .[0] | select(.id != null and .creado_en != null) | [.id, .creado_en] | @tsv' "$response_file")"; then
+              echo "::error::Supabase keepalive RPC returned HTTP 200 without a ping record."
+              rm -f "$response_file" "$curl_error_file"
+              return 1
+            fi
+
+            echo "Supabase keepalive RPC: HTTP ${http_code}; latest row ${row}"
+            rm -f "$response_file" "$curl_error_file"
+          }
+
+          record_keepalive_ping
           check_http_200 "Supabase REST keepalive" \
             "https://byexltskjqrorbfspshe.supabase.co/rest/v1/keepalive_ping?select=id&limit=1"
           check_http_200 "Supabase Auth settings" \
