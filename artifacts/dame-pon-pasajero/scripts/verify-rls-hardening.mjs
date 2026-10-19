@@ -19,6 +19,7 @@ const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const clients = [];
 const createdTripIds = [];
+let passengerForCleanup = null;
 
 function fail(step, detail) {
   throw new Error(`[FAIL] ${step}: ${detail}`);
@@ -81,7 +82,36 @@ async function signIn(label, email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   checkError(`autenticación de ${label}`, error);
   if (!data.user || !data.session) fail(`autenticación de ${label}`, 'No se devolvió una sesión.');
-  return { supabase, user: data.user };
+  const actor = { supabase, user: data.user };
+  if (label === 'pasajero') passengerForCleanup = actor;
+  return actor;
+}
+
+async function cleanupCreatedTrips() {
+  if (!passengerForCleanup) return;
+  for (const tripId of createdTripIds) {
+    try {
+      const current = await passengerForCleanup.supabase
+        .from('trips')
+        .select('status')
+        .eq('id', tripId)
+        .maybeSingle();
+      checkError('consultar viaje para limpieza', current.error);
+      if (!['requested', 'offered', 'accepted', 'arrived'].includes(current.data?.status)) continue;
+
+      const cancelled = await passengerForCleanup.supabase
+        .rpc('cancel_trip', { p_trip_id: tripId })
+        .maybeSingle();
+      checkError('cancelar viaje de prueba', cancelled.error);
+      if (cancelled.data?.status !== 'cancelled') {
+        throw new Error('El RPC no confirmó el estado cancelled.');
+      }
+      console.log(`[LIMPIEZA] viaje ${tripId} cancelado`);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : errorText(error) || String(error);
+      console.log(`[LIMPIEZA] no se pudo cancelar ${tripId}: ${reason}`);
+    }
+  }
 }
 
 async function expectDenied(step, request) {
@@ -371,5 +401,6 @@ try {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 } finally {
+  await cleanupCreatedTrips();
   await Promise.all(clients.map((supabase) => supabase.auth.signOut()));
 }

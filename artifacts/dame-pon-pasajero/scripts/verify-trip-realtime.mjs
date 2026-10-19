@@ -19,6 +19,7 @@ const created = { tripId: null };
 const clients = [];
 const channels = [];
 const observations = [];
+let passengerForCleanup = null;
 
 function fail(step, detail) {
   throw new Error(`[FAIL] ${step}: ${detail}`);
@@ -51,7 +52,36 @@ async function signIn(label, email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   checkError(`autenticación de ${label}`, error);
   if (!data.user || !data.session) fail(`autenticación de ${label}`, 'Supabase no devolvió una sesión.');
-  return { supabase, user: data.user, network };
+  const actor = { supabase, user: data.user, network };
+  if (label === 'pasajero') passengerForCleanup = actor;
+  return actor;
+}
+
+async function cleanupCreatedTrip() {
+  if (!passengerForCleanup || !created.tripId) return;
+  const tripId = created.tripId;
+  try {
+    // Restablecer el acceso HTTP si la prueba falló durante la desconexión simulada.
+    passengerForCleanup.network.online = true;
+    const current = await passengerForCleanup.supabase
+      .from('trips')
+      .select('status')
+      .eq('id', tripId)
+      .maybeSingle();
+    checkError('consultar viaje para limpieza', current.error);
+    if (!['requested', 'offered', 'accepted', 'arrived'].includes(current.data?.status)) return;
+
+    const cancelled = await passengerForCleanup.supabase
+      .rpc('cancel_trip', { p_trip_id: tripId })
+      .maybeSingle();
+    checkError('cancelar viaje de prueba', cancelled.error);
+    if (cancelled.data?.status !== 'cancelled') {
+      throw new Error('El RPC no confirmó el estado cancelled.');
+    }
+    console.log(`[LIMPIEZA] viaje ${tripId} cancelado`);
+  } catch (error) {
+    console.log(`[LIMPIEZA] no se pudo cancelar ${tripId}: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 function deferredEvent(label) {
@@ -405,6 +435,7 @@ try {
   process.exitCode = 1;
 } finally {
   observations.forEach((observation) => observation.cancel());
+  await cleanupCreatedTrip();
   await Promise.all(channels.map((channel) => channel.unsubscribe()));
   await Promise.all(clients.map((supabase) => supabase.auth.signOut()));
 }
