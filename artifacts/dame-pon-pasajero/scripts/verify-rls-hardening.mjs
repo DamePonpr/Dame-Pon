@@ -328,9 +328,26 @@ async function run() {
   console.log('[OK] conductor aprobado y en línea aceptó el viaje');
 
   const secondAcceptance = await driver.supabase.rpc('accept_trip', { p_trip_id: activeTripId }).maybeSingle();
-  checkError('no reasignar viaje aceptado', secondAcceptance.error);
   if (secondAcceptance.data) fail('no reasignar viaje aceptado', 'Una segunda aceptación devolvió una asignación.');
-  console.log('[OK] una segunda aceptación no roba ni reasigna el viaje');
+  if (secondAcceptance.error && secondAcceptance.error.code !== '42501') {
+    fail('no reasignar viaje aceptado', errorText(secondAcceptance.error));
+  }
+  const tripAfterSecondAcceptance = await passenger.supabase
+    .from('trips')
+    .select('status,driver_id')
+    .eq('id', activeTripId)
+    .single();
+  checkError('consultar viaje tras segunda aceptación', tripAfterSecondAcceptance.error);
+  if (
+    tripAfterSecondAcceptance.data?.status !== 'accepted'
+    || tripAfterSecondAcceptance.data?.driver_id !== driver.user.id
+  ) {
+    fail('no reasignar viaje aceptado', 'El viaje no conservó el estado accepted y el conductor original.');
+  }
+  const secondAcceptanceVariant = secondAcceptance.error
+    ? `rechazada con 42501 (${errorText(secondAcceptance.error)})`
+    : 'sin fila y sin error';
+  console.log(`[OK] una segunda aceptación no roba ni reasigna el viaje: ${secondAcceptanceVariant}; estado y conductor original conservados`);
 
   const assignedLocation = await passenger.supabase
     .from('drivers')
@@ -386,12 +403,20 @@ async function run() {
     driver.supabase.rpc('accept_trip', { p_trip_id: raceTripId }).maybeSingle(),
     driver.supabase.rpc('accept_trip', { p_trip_id: raceTripId }).maybeSingle(),
   ]);
-  race.forEach((response, index) => checkError(`aceptación concurrente ${index + 1}`, response.error));
+  race.forEach((response, index) => {
+    if (response.error && (response.error.code !== '42501' || response.data)) {
+      fail(`aceptación concurrente ${index + 1}`, errorText(response.error));
+    }
+  });
   const winners = race.filter((response) => response.data);
   if (winners.length !== 1 || winners[0].data.driver_id !== driver.user.id) {
     fail('aceptación atómica', 'La carrera no produjo exactamente un ganador.');
   }
-  console.log('[OK] aceptación atómica: exactamente una llamada ganó la carrera');
+  const loser = race.find((response) => !response.data);
+  const loserVariant = loser.error
+    ? `rechazada con 42501 (${errorText(loser.error)})`
+    : 'sin fila y sin error';
+  console.log(`[OK] aceptación atómica: exactamente una llamada ganó la carrera; perdedora ${loserVariant}`);
 }
 
 try {
