@@ -56,3 +56,17 @@ mtime_ms = 1794142496386
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:958b6dd8-c887-47a2-9c58-38201b1b4b6b/b52cceb4-b30c-4aaf-86a2-ccd1f7fb4afa/8edbcc7c-0871-4139-934b-2171dfb6b015"
 storage_version_token = "1794142539606644"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "305z3CbpMDrOAYw7KS_kX"
+uri = "file://generated-artifacts/Dame-Pon-proyecto-2026-11-08.zip"
+type = "unspecified"
+title = "Proyecto Dame Pon (ZIP)"
+description = "Copia del código y documentación actuales del monorepo, sin dependencias, builds, archivos .env ni llaves de firma."
+logical_id = "0a393e01-aefd-4790-bbf6-fdc4c27d8500"
+content_hash = "sha256:62d19b6506961a52ee061c8e4d1963a395eec382583ca94efdf7effc41518273"
+size = 9554303
+mtime_ms = 1794143306539
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:958b6dd8-c887-47a2-9c58-38201b1b4b6b/0a393e01-aefd-4790-bbf6-fdc4c27d8500/878dd6b8-0679-46cf-8969-2c264e627fdb"
+storage_version_token = "1794143320246863"
+content_type = "application/octet-stream"
