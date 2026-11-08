@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDriverPresence } from '../context/DriverPresenceContext';
 import {
   acceptTrip,
   cancelTrip,
   getDriverActiveTrip,
-  getDriverLocation,
   getDriverSetup,
   getMunicipalities,
   getOpenTrips,
@@ -12,10 +12,8 @@ import {
   isLikelySessionError,
   saveDriverSetup,
   setDriverActiveMunicipality,
-  setDriverAvailability,
   subscribeToOpenTrips,
   subscribeToTrips,
-  updateDriverLocation,
   updateTripStatus,
   type DriverLocation,
   type DriverSetup,
@@ -42,9 +40,10 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [participantDetails, setParticipantDetails] = useState<TripParticipantDetails | null>(null);
-  const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
+  const presence = useDriverPresence();
+  const driverLocation: DriverLocation | null = presence.snapshot.location;
   const [ratingAverage, setRatingAverage] = useState<number | null>(null);
-  const [isOnline, setIsOnline] = useState(false);
+  const isOnline = presence.online;
   const [error, setError] = useState('');
   const [vehicle, setVehicle] = useState<VehicleDraft>(emptyVehicle);
   const [completion, setCompletion] = useState<Trip | null>(null);
@@ -67,7 +66,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
       const [setupResult, tripResult, openResult, municipalityResult, ratingResult] = await Promise.all([
         getDriverSetup(userId),
         getDriverActiveTrip(userId),
-        getOpenTrips(),
+        isOnline ? getOpenTrips() : Promise.resolve({ data: [], error: null }),
         getMunicipalities(),
         getReceivedRatingAverage(userId),
       ]);
@@ -94,20 +93,11 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
       ));
       setMunicipalities(municipalityResult.data ?? []);
       setRatingAverage(ratingResult.data);
-      setIsOnline(Boolean(setupResult.data?.driver?.is_online));
-      if (setupResult.data?.driver && Number.isFinite(setupResult.data.driver.current_lat) && Number.isFinite(setupResult.data.driver.current_lng)) {
-        setDriverLocation({
-          latitude: Number(setupResult.data.driver.current_lat),
-          longitude: Number(setupResult.data.driver.current_lng),
-        });
-      } else {
-        setDriverLocation(null);
-      }
     } finally {
       refreshInFlight.current = false;
       setLoading(false);
     }
-  }, [handleError, userId]);
+  }, [handleError, userId, isOnline]);
 
   const orderedMunicipalities = useMemo(() => orderMunicipalitiesForDriver(
     municipalities,
@@ -132,18 +122,20 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
   const toggleOnline = useCallback(async (value: boolean) => {
     if (!userId) return;
     setActionLoading(true);
-    const result = await setDriverAvailability(userId, value);
-    setActionLoading(false);
-    if (result.error) {
-      handleError(result.error);
-      return;
+    try {
+      await presence.toggle(value);
+    } finally {
+      setActionLoading(false);
     }
-    setIsOnline(value);
     void refresh();
-  }, [handleError, refresh, userId]);
+  }, [presence.toggle, refresh, userId]);
 
   const accept = useCallback(async (trip: Trip) => {
     if (!userId) return;
+    if (!presence.online) {
+      setError('Necesitas GPS conectado y una ubicación reciente para aceptar un viaje.');
+      return;
+    }
     setActionLoading(true);
     const result = await acceptTrip(trip.id, userId);
     setActionLoading(false);
@@ -153,7 +145,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
     }
     setActiveTrip(result.data);
     void refresh();
-  }, [handleError, refresh, userId]);
+  }, [handleError, refresh, userId, presence.online]);
 
   const updateStatus = useCallback(async (
     status: 'in_progress' | 'completed',
@@ -245,7 +237,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
     loading,
     actionLoading,
     setup,
-    trips,
+    trips: isOnline ? trips : [],
     municipalities,
     activeTrip,
     participantDetails,
@@ -253,6 +245,7 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
     driverLocation,
     ratingAverage,
     isOnline,
+    tracking: presence.snapshot,
     error,
     vehicle,
     completion,
@@ -268,11 +261,5 @@ export function useDriverHome(userId: string | undefined, onSessionExpired: () =
     clearCompletion: () => setCompletion(null),
     retry: refresh,
     isTripInActiveMunicipality,
-    updateLocation: async (location: DriverLocation) => {
-      if (!userId) return;
-      setDriverLocation(location);
-      const result = await updateDriverLocation(userId, location);
-      if (result.error) handleError(result.error);
-    },
   };
 }

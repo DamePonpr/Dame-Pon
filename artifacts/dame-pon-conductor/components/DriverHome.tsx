@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Linking, Modal, Platform, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -52,7 +52,7 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
         <DriverDocumentsPanel userId={userId} />
         <View style={[styles.onlineCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.onlineCopy}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>En línea</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{home.isOnline ? 'Conductor disponible' : 'No disponible'}</Text>
             <Text style={[styles.cardCaption, { color: colors.mutedForeground }]}>
               {!documents.isFullyApproved
                 ? 'La disponibilidad se habilita cuando todos tus documentos estén aprobados.'
@@ -62,9 +62,23 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
             </Text>
           </View>
           <View style={styles.switchWrap}>
-            <Switch value={home.isOnline} onValueChange={(value) => void home.toggleOnline(value)} disabled={home.actionLoading || !documents.isFullyApproved} trackColor={{ false: colors.border, true: colors.star }} thumbColor={home.isOnline ? colors.primaryForeground : colors.mutedForeground} />
+            <Switch testID="driver-availability" accessibilityLabel="Compartir GPS y disponibilidad" value={home.tracking.enabled} onValueChange={(value) => void home.toggleOnline(value)} disabled={!home.tracking.enabled && (home.actionLoading || !documents.isFullyApproved)} trackColor={{ false: colors.border, true: colors.star }} thumbColor={home.tracking.enabled ? colors.primaryForeground : colors.mutedForeground} />
           </View>
         </View>
+        <Text accessibilityLiveRegion="polite" style={[styles.cardCaption, { color: colors.mutedForeground }]}>{home.tracking.message}</Text>
+        <Text style={[styles.cardCaption, { color: colors.mutedForeground }]}>
+          {home.tracking.lastPublishedAt ? `Última confirmación: ${new Date(home.tracking.lastPublishedAt).toLocaleTimeString('es-PR')}. ` : ''}
+          Solo primer plano: al minimizar o cerrar sesión se detiene el GPS y quedas No disponible.
+        </Text>
+        {home.tracking.state === 'permission_denied' && Platform.OS !== 'web' ? (
+          <AppButton label="Abrir ajustes de ubicación" variant="secondary" onPress={async () => {
+            try { await Linking.openSettings(); } catch { void home.retry(); }
+          }} />
+        ) : home.tracking.state === 'permission_denied' ? (
+          <Text style={[styles.cardCaption, { color: colors.mutedForeground }]}>
+            Permite la ubicación en los permisos de este sitio del navegador y vuelve a activar Disponible.
+          </Text>
+        ) : null}
         {home.error ? <Text style={[styles.error, { color: colors.destructive }]}>{home.error}</Text> : null}
 
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Pueblo activo</Text>

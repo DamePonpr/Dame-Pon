@@ -9,6 +9,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "@workspace/dame-pon-shared/context/AuthContext";
+import { DriverPresenceProvider } from "../context/DriverPresenceContext";
 import { ThemeProvider } from "@workspace/dame-pon-shared/context/ThemeContext";
 import { ErrorBoundary } from "@workspace/dame-pon-shared/components/ErrorBoundary";
 import { GlobalErrorHandler } from "@workspace/dame-pon-shared/components/GlobalErrorHandler";
@@ -55,6 +56,7 @@ export default function RootLayout() {
         <ErrorBoundary>
           <GlobalErrorHandler>
             <AuthProvider appRole="conductor">
+              <DriverPresenceProvider>
               <PushNotificationRegistration />
               <QueryClientProvider client={queryClient}>
                 <GestureHandlerRootView style={{ flex: 1 }}>
@@ -63,6 +65,7 @@ export default function RootLayout() {
                   </KeyboardProvider>
                 </GestureHandlerRootView>
               </QueryClientProvider>
+              </DriverPresenceProvider>
             </AuthProvider>
           </GlobalErrorHandler>
         </ErrorBoundary>

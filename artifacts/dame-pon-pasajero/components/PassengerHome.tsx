@@ -94,6 +94,16 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
               pickupLocation={null}
             />
           </View>
+          {home.activeTrip?.driver_id ? (
+            <View accessibilityLiveRegion="polite">
+              <Text style={[styles.sectionCaption, { color: colors.mutedForeground }]}>{home.driverPresence.label}</Text>
+              <Text style={[styles.sectionCaption, { color: colors.mutedForeground }]}>
+                {home.driverPresence.updatedAt
+                  ? `Última ubicación: ${new Date(home.driverPresence.updatedAt).toLocaleTimeString('es-PR')}`
+                  : 'Aún no hay una ubicación GPS confirmada.'}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.recentHeader}>

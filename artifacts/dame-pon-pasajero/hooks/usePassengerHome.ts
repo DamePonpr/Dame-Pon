@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
+import { useAssignedDriverPresence } from './useAssignedDriverPresence';
 import type { LocationValue } from '@workspace/dame-pon-shared/types/type';
 import {
   cancelTrip,
-  getDriverLocation,
   getPassengerActiveTrip,
   getTripHistory,
   isLikelySessionError,
   isActiveTripStatus,
   rateTrip,
   requestTrip,
-  subscribeToDriverLocation,
   subscribeToTrips,
-  type DriverLocation,
   type Trip,
   type TripHistoryItem,
   type TripParticipantDetails,
@@ -32,7 +30,8 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [participantDetails, setParticipantDetails] = useState<TripParticipantDetails | null>(null);
   const [pickup, setPickup] = useState<LocationValue | null>(null);
-  const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
+  const presence = useAssignedDriverPresence(userId, activeTrip);
+  const driverLocation = presence.location;
   const [error, setError] = useState('');
   const [completion, setCompletion] = useState<CompletionState | null>(null);
   const refreshInFlight = useRef(false);
@@ -46,6 +45,7 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
   }, [onSessionExpired]);
 
   const loadPickup = useCallback(async () => {
+    try {
     const permission = await Location.requestForegroundPermissionsAsync();
     if (permission.status !== 'granted') {
       setError('Activa tu ubicación para mostrar el mapa y pedir un Pon.');
@@ -68,6 +68,9 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
       longitude: current.coords.longitude,
       address,
     });
+    } catch {
+      setError('No pudimos leer tu ubicación. Revisa el GPS y los permisos; la consulta de tu conductor seguirá reintentando.');
+    }
   }, []);
 
   const refresh = useCallback(async () => {
@@ -89,12 +92,8 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
        if (activeTrip?.driver_id) {
          const details = await getTripParticipantDetails(activeTrip.id);
         setParticipantDetails(details.data);
-         const location = await getDriverLocation(activeTrip.driver_id);
-        if (location.error) handleError(location.error);
-        setDriverLocation(location.data);
       } else {
         setParticipantDetails(null);
-        setDriverLocation(null);
       }
     } finally {
       refreshInFlight.current = false;
@@ -116,16 +115,6 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
     };
   }, [loadPickup, refresh, userId]);
 
-  useEffect(() => {
-    if (!activeTrip?.driver_id) return;
-    const unsubscribe = subscribeToDriverLocation(activeTrip.driver_id, () => {
-      void getDriverLocation(activeTrip.driver_id!).then((result) => {
-        if (result.error) handleError(result.error);
-        setDriverLocation(result.data);
-      });
-    });
-    return unsubscribe;
-  }, [activeTrip?.driver_id, handleError]);
 
   const selectDestination = useCallback(async (destination: LocationValue) => {
     if (!userId) return;
@@ -185,6 +174,7 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
     participantDetails,
     pickup,
     driverLocation,
+    driverPresence: presence,
     error,
     completion,
     selectDestination,

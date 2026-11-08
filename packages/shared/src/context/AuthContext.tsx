@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '../lib/supabase';
 import type { UserRole } from '../lib/roles';
@@ -37,6 +37,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   expireSession: () => Promise<void>;
   clearAuthIssue: () => void;
+  registerBeforeSignOut: (cleanup: () => Promise<void>) => () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -144,6 +145,11 @@ export function AuthProvider({ children, appRole }: { children: React.ReactNode;
   const [isLoading, setIsLoading] = useState(true);
   const [authIssue, setAuthIssue] = useState<AuthIssue>(null);
   const hydrationVersion = useRef(0);
+  const logoutCleanups = useRef(new Set<() => Promise<void>>());
+  const registerBeforeSignOut = useCallback((cleanup: () => Promise<void>) => {
+    logoutCleanups.current.add(cleanup);
+    return () => { logoutCleanups.current.delete(cleanup); };
+  }, []);
   const hydrateSessionRef = useRef<((candidate: Session | null) => Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -276,6 +282,7 @@ export function AuthProvider({ children, appRole }: { children: React.ReactNode;
         return { error: result.error };
       },
       signOut: async () => {
+        await Promise.allSettled([...logoutCleanups.current].map((cleanup) => cleanup()));
         hydrationVersion.current += 1;
         setSession(null);
         setProfile(null);
@@ -284,6 +291,7 @@ export function AuthProvider({ children, appRole }: { children: React.ReactNode;
         await supabase.auth.signOut();
       },
       expireSession: async () => {
+        await Promise.allSettled([...logoutCleanups.current].map((cleanup) => cleanup()));
         hydrationVersion.current += 1;
         setAuthIssue('session_expired');
         setSession(null);
@@ -291,8 +299,9 @@ export function AuthProvider({ children, appRole }: { children: React.ReactNode;
         await supabase.auth.signOut({ scope: 'local' });
       },
       clearAuthIssue: () => setAuthIssue(null),
+      registerBeforeSignOut,
     }),
-    [appRole, authIssue, isLoading, profile, session],
+    [appRole, authIssue, isLoading, profile, session, registerBeforeSignOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

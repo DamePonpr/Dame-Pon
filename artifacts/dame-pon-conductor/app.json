@@ -13,8 +13,7 @@
     "android": {
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION"
+        "ACCESS_FINE_LOCATION"
       ],
       "package": "com.damepon.conductor",
       "adaptiveIcon": {
@@ -38,8 +37,7 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Dame Pon Conductor usa tu ubicación para recibir solicitudes y llevar el viaje al pasajero.",
-          "locationAlwaysAndWhenInUsePermission": "Dame Pon Conductor usa tu ubicación en segundo plano para mantener tu disponibilidad durante un viaje activo.",
-          "isAndroidBackgroundLocationEnabled": true
+          "isAndroidBackgroundLocationEnabled": false
         }
       ],
       [

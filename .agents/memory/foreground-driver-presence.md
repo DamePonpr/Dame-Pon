@@ -1,0 +1,36 @@
+---
+name: Foreground driver presence and coordinated activation
+description: Honest foreground-only behavior, freshness semantics and rollout constraints for GPS presence.
+---
+
+Do not infer working background GPS from Android permissions alone. Without an
+implemented compatible background task, keep foreground tracking explicit and
+make minimizing the app stop availability; require explicit reactivation.
+
+**Why:** The user requires real device GPS, not simulated background support.
+The installed app must not claim to be available after tracking has stopped.
+
+**How to apply:** Own tracking at the authenticated-session level, not the home
+screen lifetime. Stop watchers before sign-out removes credentials. A missing
+network acknowledgement is not a confirmed remote offline transition.
+Make confirmed offline cleanup idempotent across sign-out and provider unmount:
+both lifecycle paths can run for the same session, including after logout.
+
+Use a short server-confirmed GPS freshness lease, not generic record update
+time or a permanently persisted online bit.
+
+**Why:** A killed process or disconnected phone cannot reliably publish its own
+offline state; municipality/document edits must not refresh location age.
+
+**How to apply:** Expire safe availability and passenger markers without a
+background heartbeat, and preserve authenticated periodic reconciliation.
+
+Coordinate stricter server presence requirements with compatible app releases.
+Do not activate those requirements independently without explicit approval.
+
+**Why:** Existing app versions without the new GPS publisher cannot satisfy the
+freshness requirement. The user chose coordinated rather than immediate activation.
+
+**How to apply:** Distinguish prepared client/migration code from active backend
+behavior in reports. Unit tests and browser fixtures do not prove physical GPS
+or live RLS authorization; require controlled backend and Android-device checks.
