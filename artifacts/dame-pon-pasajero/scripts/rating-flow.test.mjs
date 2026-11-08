@@ -4,7 +4,7 @@ import {
   averageReceivedRating,
   findUnratedCompletedTrip,
   ratingSummaryForUser,
-} from '../lib/ratingLogic.js';
+} from '../../../packages/shared/src/lib/ratingLogic.js';
 
 const driverId = 'driver-user';
 const passengerId = 'passenger-user';
