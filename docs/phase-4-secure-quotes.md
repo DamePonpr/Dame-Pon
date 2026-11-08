@@ -207,3 +207,16 @@ siendo compatible; no se declara apto para cobrar.
   impidieron alcanzar ese modo. No se interpreta como un pase. Los RPC, HTTP y
   contratos de ambos puntos de entrada sí tienen comprobaciones locales; falta
   completar el recorrido de interfaz requerido y Android físico.
+
+### Reintento posterior al preparar administración
+
+Se reintentó el modo obligatorio mediante export web temporal y backend de
+fixtures aislado en loopback, sin cambiar flags reales. El navegador de pruebas
+se reinició antes de crear el contexto/navegar: no hubo solicitudes ni escrituras.
+Siguen **sin aprobarse en navegador** la confirmación única obligatoria,
+expiración/error y confirm-ride/book-ride/Payment. Ver
+`phase-5-admin-console.md` para el procedimiento y sus límites.
+
+Se corrigió únicamente el borrador de elegibilidad vehicular: el enum histórico
+es `active`, no `approved`. La prueba SQL ahora usa el enum real en vez de texto;
+no se aplicó la corrección a ningún backend remoto.

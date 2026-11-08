@@ -5,6 +5,203 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface AdminConfig {
+  enabled: boolean;
+  supabaseUrl?: string;
+  publishableKey?: string;
+}
+
+export type AdminSessionRole = typeof AdminSessionRole[keyof typeof AdminSessionRole];
+
+
+export const AdminSessionRole = {
+  admin: 'admin',
+} as const;
+
+export type AdminSessionSchemaVersion = typeof AdminSessionSchemaVersion[keyof typeof AdminSessionSchemaVersion];
+
+
+export const AdminSessionSchemaVersion = {
+  'phase5-v1': 'phase5-v1',
+} as const;
+
+export interface AdminSession {
+  actorId: string;
+  role: AdminSessionRole;
+  schemaVersion: AdminSessionSchemaVersion;
+}
+
+export interface AdminOverview {
+  /** @minimum 0 */
+  driversPending: number;
+  /** @minimum 0 */
+  incidentsOpen: number;
+  /** @minimum 0 */
+  supportOpen: number;
+  /** @minimum 0 */
+  tripsActive: number;
+  asOf: string;
+}
+
+export interface AdminAssignee {
+  id: string;
+  name: string;
+}
+
+export type AdminSection = typeof AdminSection[keyof typeof AdminSection];
+
+
+export const AdminSection = {
+  drivers: 'drivers',
+  vehicles: 'vehicles',
+  incidents: 'incidents',
+  support: 'support',
+  trips: 'trips',
+  pricing: 'pricing',
+} as const;
+
+export type AdminRecordMetadata = {[key: string]: string};
+
+export interface AdminRecord {
+  id: string;
+  title: string;
+  status: string;
+  /** @minimum 0 */
+  revision: number;
+  secondary?: string;
+  /** @nullable */
+  assigneeId?: string | null;
+  metadata?: AdminRecordMetadata;
+}
+
+export interface AdminPage {
+  items: AdminRecord[];
+  /** @minimum 0 */
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export type AdminDocumentKind = typeof AdminDocumentKind[keyof typeof AdminDocumentKind];
+
+
+export const AdminDocumentKind = {
+  driver: 'driver',
+  vehicle: 'vehicle',
+} as const;
+
+export interface AdminDocument {
+  id: string;
+  kind: AdminDocumentKind;
+  type: string;
+  status: string;
+  /** @minimum 0 */
+  revision: number;
+  /** @nullable */
+  expiresOn?: string | null;
+}
+
+export interface AdminAuditEvent {
+  id: string;
+  actorId: string;
+  action: string;
+  reason: string;
+  createdAt: string;
+  fromStatus?: string;
+  toStatus?: string;
+}
+
+export interface AdminDetail {
+  record: AdminRecord;
+  documents: AdminDocument[];
+  events: AdminAuditEvent[];
+}
+
+export type AdminActionInputSection = typeof AdminActionInputSection[keyof typeof AdminActionInputSection];
+
+
+export const AdminActionInputSection = {
+  drivers: 'drivers',
+  vehicles: 'vehicles',
+  incidents: 'incidents',
+  support: 'support',
+  documents: 'documents',
+} as const;
+
+export type AdminActionInputAction = typeof AdminActionInputAction[keyof typeof AdminActionInputAction];
+
+
+export const AdminActionInputAction = {
+  approve: 'approve',
+  reject: 'reject',
+  suspend: 'suspend',
+  activate: 'activate',
+  out_of_service: 'out_of_service',
+  retire: 'retire',
+  triage: 'triage',
+  review: 'review',
+  resolve: 'resolve',
+  close: 'close',
+  reopen: 'reopen',
+  assign: 'assign',
+} as const;
+
+export type AdminActionInputDocumentKind = typeof AdminActionInputDocumentKind[keyof typeof AdminActionInputDocumentKind];
+
+
+export const AdminActionInputDocumentKind = {
+  driver: 'driver',
+  vehicle: 'vehicle',
+} as const;
+
+export interface AdminActionInput {
+  section: AdminActionInputSection;
+  recordId: string;
+  action: AdminActionInputAction;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  reason: string;
+  /** @minimum 0 */
+  expectedRevision: number;
+  idempotencyKey: string;
+  documentKind?: AdminActionInputDocumentKind;
+  /** @nullable */
+  assigneeId?: string | null;
+}
+
+export interface AdminActionResult {
+  recordId: string;
+  auditId: string;
+}
+
+export type AdminDocumentInputKind = typeof AdminDocumentInputKind[keyof typeof AdminDocumentInputKind];
+
+
+export const AdminDocumentInputKind = {
+  driver: 'driver',
+  vehicle: 'vehicle',
+} as const;
+
+export interface AdminDocumentInput {
+  id: string;
+  kind: AdminDocumentInputKind;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  reason: string;
+  /** @minimum 0 */
+  expectedRevision: number;
+  idempotencyKey: string;
+}
+
+export interface AdminDocumentLink {
+  url: string;
+  expiresAt: string;
+}
+
 export interface QuotePoint {
   /**
      * @minimum 17.8
@@ -95,6 +292,20 @@ export interface RideQuote {
 export interface HealthStatus {
   status: string;
 }
+
+export type GetAdminRecordsParams = {
+section: AdminSection;
+/**
+ * @minimum 0
+ * @maximum 100000
+ */
+offset?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
 
 export type ConfirmRideQuote200 = {
   tripId: string;

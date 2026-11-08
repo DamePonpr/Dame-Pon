@@ -203,9 +203,9 @@ begin
   if new.fare_final is not null and new.fare_final is distinct from q.total_cents::numeric/100
     then raise exception 'immutable_trip_quote' using errcode='42501'; end if;
   if new.driver_id is not null and (tg_op='INSERT' or old.driver_id is distinct from new.driver_id) then
-    if (select count(*) from public.vehicles where driver_id=new.driver_id and status::text='approved')<>1
+    if (select count(*) from public.vehicles where driver_id=new.driver_id and status::text='active')<>1
       or not exists(select 1 from public.vehicles where driver_id=new.driver_id
-        and status::text='approved' and vehicle_type::text=q.vehicle_type)
+        and status::text='active' and vehicle_type::text=q.vehicle_type)
       then raise exception 'quoted_vehicle_required' using errcode='42501'; end if;
   end if;
   if new.status::text='completed' then new.fare_final:=q.total_cents::numeric/100; end if;

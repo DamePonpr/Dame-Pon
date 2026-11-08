@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/admin/"
+title = "Dame Pon Administración"
+description = "Panel restringido de operaciones de Dame Pon: revisión de conductores y documentos privados, vehículos, incidencias y soporte; tarifas solo lectura, sin publicar ni cobrar."
+version = "1.0.0"
+id = "artifacts/dame-pon-admin"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/admin/" ]
+localPort = 20885
+
+[services.development]
+run = "pnpm --filter @workspace/dame-pon-admin run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/dame-pon-admin", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/dame-pon-admin/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20885"
+BASE_PATH = "/admin/"

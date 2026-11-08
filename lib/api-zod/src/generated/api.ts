@@ -8,6 +8,169 @@
 import * as zod from 'zod';
 
 
+export const GetAdminConfigResponse = zod.object({
+  "enabled": zod.boolean(),
+  "supabaseUrl": zod.string().optional(),
+  "publishableKey": zod.string().optional()
+})
+
+
+export const GetAdminSessionResponse = zod.object({
+  "actorId": zod.string().uuid(),
+  "role": zod.enum(['admin']),
+  "schemaVersion": zod.enum(['phase5-v1'])
+})
+
+
+export const getAdminOverviewResponseDriversPendingMin = 0;
+
+export const getAdminOverviewResponseIncidentsOpenMin = 0;
+
+export const getAdminOverviewResponseSupportOpenMin = 0;
+
+export const getAdminOverviewResponseTripsActiveMin = 0;
+
+
+
+export const GetAdminOverviewResponse = zod.object({
+  "driversPending": zod.number().int().min(getAdminOverviewResponseDriversPendingMin),
+  "incidentsOpen": zod.number().int().min(getAdminOverviewResponseIncidentsOpenMin),
+  "supportOpen": zod.number().int().min(getAdminOverviewResponseSupportOpenMin),
+  "tripsActive": zod.number().int().min(getAdminOverviewResponseTripsActiveMin),
+  "asOf": zod.string()
+})
+
+
+export const GetAdminAssigneesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string()
+})
+export const GetAdminAssigneesResponse = zod.array(GetAdminAssigneesResponseItem)
+
+
+export const getAdminRecordsQueryOffsetDefault = 0;
+export const getAdminRecordsQueryOffsetMin = 0;
+export const getAdminRecordsQueryOffsetMax = 100000;
+
+export const getAdminRecordsQueryLimitDefault = 25;
+export const getAdminRecordsQueryLimitMax = 100;
+
+
+
+export const GetAdminRecordsQueryParams = zod.object({
+  "section": zod.enum(['drivers', 'vehicles', 'incidents', 'support', 'trips', 'pricing']),
+  "offset": zod.coerce.number().int().min(getAdminRecordsQueryOffsetMin).max(getAdminRecordsQueryOffsetMax).default(getAdminRecordsQueryOffsetDefault),
+  "limit": zod.coerce.number().int().min(1).max(getAdminRecordsQueryLimitMax).default(getAdminRecordsQueryLimitDefault)
+})
+
+export const getAdminRecordsResponseItemsItemRevisionMin = 0;
+
+export const getAdminRecordsResponseTotalMin = 0;
+
+
+
+export const GetAdminRecordsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "revision": zod.number().int().min(getAdminRecordsResponseItemsItemRevisionMin),
+  "secondary": zod.string().optional(),
+  "assigneeId": zod.string().uuid().nullish(),
+  "metadata": zod.record(zod.string(), zod.string()).optional()
+})),
+  "total": zod.number().int().min(getAdminRecordsResponseTotalMin),
+  "offset": zod.number().int(),
+  "limit": zod.number().int()
+})
+
+
+export const GetAdminDetailParams = zod.object({
+  "section": zod.enum(['drivers', 'vehicles', 'incidents', 'support', 'trips', 'pricing']),
+  "id": zod.coerce.string().uuid()
+})
+
+export const getAdminDetailResponseRecordRevisionMin = 0;
+
+export const getAdminDetailResponseDocumentsItemRevisionMin = 0;
+
+
+
+export const GetAdminDetailResponse = zod.object({
+  "record": zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "revision": zod.number().int().min(getAdminDetailResponseRecordRevisionMin),
+  "secondary": zod.string().optional(),
+  "assigneeId": zod.string().uuid().nullish(),
+  "metadata": zod.record(zod.string(), zod.string()).optional()
+}),
+  "documents": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['driver', 'vehicle']),
+  "type": zod.string(),
+  "status": zod.string(),
+  "revision": zod.number().int().min(getAdminDetailResponseDocumentsItemRevisionMin),
+  "expiresOn": zod.string().nullish()
+})),
+  "events": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "actorId": zod.string().uuid(),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "createdAt": zod.string(),
+  "fromStatus": zod.string().optional(),
+  "toStatus": zod.string().optional()
+}))
+})
+
+
+export const runAdminActionBodyReasonMin = 10;
+export const runAdminActionBodyReasonMax = 1000;
+
+export const runAdminActionBodyExpectedRevisionMin = 0;
+
+
+
+export const RunAdminActionBody = zod.object({
+  "section": zod.enum(['drivers', 'vehicles', 'incidents', 'support', 'documents']),
+  "recordId": zod.string().uuid(),
+  "action": zod.enum(['approve', 'reject', 'suspend', 'activate', 'out_of_service', 'retire', 'triage', 'review', 'resolve', 'close', 'reopen', 'assign']),
+  "reason": zod.string().min(runAdminActionBodyReasonMin).max(runAdminActionBodyReasonMax),
+  "expectedRevision": zod.number().int().min(runAdminActionBodyExpectedRevisionMin),
+  "idempotencyKey": zod.string().uuid(),
+  "documentKind": zod.enum(['driver', 'vehicle']).optional(),
+  "assigneeId": zod.string().uuid().nullish()
+})
+
+export const RunAdminActionResponse = zod.object({
+  "recordId": zod.string().uuid(),
+  "auditId": zod.string().uuid()
+})
+
+
+export const openAdminDocumentBodyReasonMin = 10;
+export const openAdminDocumentBodyReasonMax = 1000;
+
+export const openAdminDocumentBodyExpectedRevisionMin = 0;
+
+
+
+export const OpenAdminDocumentBody = zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['driver', 'vehicle']),
+  "reason": zod.string().min(openAdminDocumentBodyReasonMin).max(openAdminDocumentBodyReasonMax),
+  "expectedRevision": zod.number().int().min(openAdminDocumentBodyExpectedRevisionMin),
+  "idempotencyKey": zod.string().uuid()
+})
+
+export const OpenAdminDocumentResponse = zod.object({
+  "url": zod.string(),
+  "expiresAt": zod.string()
+})
+
+
 /**
  * @summary Cotización fija autoritativa, sin cobro
  */

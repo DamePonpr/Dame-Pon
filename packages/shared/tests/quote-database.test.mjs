@@ -27,7 +27,9 @@ before(()=>{
   run('pg_ctl',['-D',join(dir,'data'),'-l',join(dir,'log'),'-o',`-k ${dir} -h '' -p 55438 -c max_connections=12`,'-w','start']);ready=true;
   sql(readFileSync(new URL('./fixtures/gps-baseline.sql',import.meta.url),'utf8'));
   sql(`alter table public.municipios add column id text unique;`);
-  sql(`create table public.vehicles(driver_id uuid,vehicle_type text,status text);`);
+  // Real enum from A1: vehicle approval is "active", never "approved".
+  sql(`create type public.vehicle_status as enum ('pending','active','out_of_service','retired');
+    create table public.vehicles(driver_id uuid,vehicle_type text,status public.vehicle_status);`);
   const historical=readFileSync(new URL('../../../supabase/migrations/20260920120000_openride_adoption_layer_a1.sql',import.meta.url),'utf8');
   sql(historical.match(/create type public\.openride_trip_result as \([\s\S]*?\n    \);/)[0]);
   for(const name of ['accept_trip','start_trip','complete_trip','cancel_trip']) sql(historical.match(new RegExp(`create or replace function public\\.${name}\\([\\s\\S]*?\\n\\$\\$;`))[0]);
@@ -49,7 +51,7 @@ beforeEach(()=>{
     insert into public.municipios(nombre,id) values('Ponce','Ponce');
     insert into public.drivers(id,approval_status,status,status_kind,is_online) values('${D}','approved','aprobado','online',true);`);
   sql(`insert into public.quote_enforcement_cohorts(passenger_id,enrolled_by,reason) values('${P}','${ADMIN}','SYNTHETIC LOCAL PILOT ONLY')`);
-  sql(`insert into public.vehicles values('${D}','sedan','approved')`);
+  sql(`insert into public.vehicles values('${D}','sedan','active')`);
   // Synthetic LOCAL admin and synthetic rates only. Not an application account.
   const policy={commercialApproval:true,municipio_id:null,vehicle_type:'sedan',currency:'USD',algorithm:'fixed-route-v1',
     minimum_policy:'floor_total',night_policy:'explicitly_not_applicable',base_cents:10,per_km_cents:7,per_min_cents:3,minimum_cents:11,
