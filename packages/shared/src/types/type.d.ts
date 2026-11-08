@@ -13,6 +13,8 @@ export interface GoogleInputProps {
   containerStyle?: StyleProp<ViewStyle>;
   textInputBackgroundColor?: string;
   handlePress: (location: LocationValue) => void;
+  onSelectionCleared?: () => void;
+  placeholder?: string;
 }
 
 export interface ButtonProps extends TouchableOpacityProps {

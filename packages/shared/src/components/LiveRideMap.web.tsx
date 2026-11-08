@@ -2,6 +2,7 @@ import React from 'react';
 import { Feather } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 import { useColors } from '../hooks/useColors';
+import type { RoadRoute,RoadPoint } from '../lib/roadRouting';
 
 interface Coordinate {
   latitude: number;
@@ -13,6 +14,9 @@ interface LiveRideMapProps {
   driverLocation: Coordinate | null;
   pickupLocation: Coordinate | null;
   driverVehicleColor?: string | null;
+  route?:RoadRoute|null;
+  routePoints?:{origin:RoadPoint;destination:RoadPoint}|null;
+  cameraBottomPadding?:number;
 }
 
 export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation }: LiveRideMapProps) {

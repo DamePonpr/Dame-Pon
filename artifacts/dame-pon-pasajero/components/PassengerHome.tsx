@@ -14,6 +14,9 @@ import { usePassengerHome } from '@/hooks/usePassengerHome';
 import { isActiveTripStatus } from '@workspace/dame-pon-shared/lib/rideService';
 import type { Profile } from '@workspace/dame-pon-shared/context/AuthContext';
 import type { LocationValue } from '@workspace/dame-pon-shared/types/type';
+import { useRoadRoute } from '@workspace/dame-pon-shared/hooks/useRoadRoute';
+import { isPuertoRicoPoint, tripRoutePoints } from '@workspace/dame-pon-shared/lib/roadRouting';
+import { RoadRouteCard } from '@workspace/dame-pon-shared/components/RoadRouteCard';
 
 export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: {
   profile: Profile;
@@ -25,6 +28,10 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
   const insets = useSafeAreaInsets();
   const home = usePassengerHome(userId, onSessionExpired);
   const [destination, setDestination] = useState<LocationValue | null>(null);
+  const tripPoints=tripRoutePoints(home.activeTrip);
+  const origin=tripPoints?.origin ?? home.pickup;
+  const target=tripPoints?.destination ?? destination;
+  const road=useRoadRoute(`${userId}:${home.activeTrip?.id??'draft'}`,origin,target);
   const firstName = profile.full_name?.trim().split(' ')[0] || 'de nuevo';
 
   if (home.completion) {
@@ -49,15 +56,27 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>¿A dónde vas hoy?</Text>
         </View>
 
+        {!home.activeTrip ? <View style={{gap:8,paddingHorizontal:20}}>
+        <Text style={[styles.sectionCaption,{color:colors.mutedForeground}]}>
+          Confirma dos puntos concretos. Las búsquedas se envían a Photon y los extremos de la ruta a OSRM/FOSSGIS.
+        </Text>
+        <GoogleTextInput placeholder="Buscar origen en Puerto Rico" initialLocation={home.pickup?.address}
+          handlePress={home.choosePickup} onSelectionCleared={()=>home.choosePickup(null)}/>
+        <Text style={[styles.sectionCaption,{color:colors.mutedForeground}]}>{home.locationMessage}</Text>
+        <AppButton label="Usar mi GPS como origen" variant="secondary" onPress={home.retryLocation}/>
         <GoogleTextInput
+          placeholder="Buscar destino en Puerto Rico"
           icon={icons.search}
           initialLocation={destination?.address}
-          handlePress={(value) => {
-            setDestination(value);
-            void home.selectDestination(value);
-          }}
+          handlePress={setDestination}
+          onSelectionCleared={()=>setDestination(null)}
           textInputBackgroundColor={colors.card}
         />
+        <RoadRouteCard state={road} retry={road.retry}/>
+        <AppButton label="Confirmar y solicitar Pon" testID="confirm-road-trip"
+          disabled={road.status!=='ready'||!destination||!home.pickup} loading={home.actionLoading}
+          onPress={()=>{if(destination) void home.selectDestination(destination,road.route);}}/>
+        </View> : <View style={{paddingHorizontal:20}}><RoadRouteCard state={road} retry={road.retry}/></View>}
         {home.actionLoading ? <Text style={[styles.helper, { color: colors.mutedForeground }]}>Solicitando tu Pon…</Text> : null}
         {home.error ? <Text style={[styles.error, { color: colors.destructive }]}>{home.error}</Text> : null}
 
@@ -80,18 +99,20 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
         <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Tu ubicación</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Origen del viaje</Text>
               <Text style={[styles.sectionCaption, { color: colors.mutedForeground }]}>
-                {home.pickup?.address ?? 'Activa tu ubicación para comenzar'}
+                {home.activeTrip?.pickup_address ?? home.pickup?.address ?? 'Selecciona un origen o usa tu GPS'}
               </Text>
             </View>
             <Feather name="map-pin" size={19} color={colors.primary} />
           </View>
           <View style={styles.mapFrame}>
             <LiveRideMap
-              passengerLocation={home.pickup}
+              passengerLocation={null}
               driverLocation={home.driverLocation}
-              pickupLocation={null}
+              pickupLocation={isPuertoRicoPoint(origin)?origin:null}
+              route={road.route}
+              routePoints={origin&&target ? {origin,destination:target} : null}
             />
           </View>
           {home.activeTrip?.driver_id ? (

@@ -3,18 +3,24 @@ import {
   Camera,
   Map as MapLibreMap,
   Marker,
+  GeoJSONSource,
+  Layer,
   type CameraRef,
   type LngLat,
   type LngLatBounds,
 } from '@maplibre/maplibre-react-native';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '../hooks/useColors';
+import { isPuertoRicoPoint, type RoadRoute, type RoadPoint } from '../lib/roadRouting';
 
 interface LiveRideMapProps {
   passengerLocation: Coordinate | null;
   driverLocation: Coordinate | null;
   pickupLocation: Coordinate | null;
   driverVehicleColor?: string | null;
+  route?:RoadRoute|null;
+  routePoints?:{origin:RoadPoint;destination:RoadPoint}|null;
+  cameraBottomPadding?:number;
 }
 
 interface Coordinate {
@@ -59,7 +65,7 @@ function calculateBearing(previous: Coordinate, current: Coordinate) {
   return (bearing + 360) % 360;
 }
 
-export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation, driverVehicleColor }: LiveRideMapProps) {
+export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation, driverVehicleColor,route,routePoints,cameraBottomPadding=32 }: LiveRideMapProps) {
   const colors = useColors();
   const cameraRef = useRef<CameraRef>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -68,10 +74,11 @@ export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation,
   const previousDriverLocation = useRef<Coordinate | null>(null);
   const mapStyle = colors.isDark ? OPENFREEMAP_DARK_STYLE : OPENFREEMAP_LIGHT_STYLE;
   const locations = useMemo(
-    () => [passengerLocation, driverLocation, pickupLocation].filter(
-      (location): location is Coordinate => location !== null,
-    ),
-    [driverLocation, passengerLocation, pickupLocation],
+    () => [...[passengerLocation, driverLocation, pickupLocation,routePoints?.origin,routePoints?.destination].filter(
+      (location): location is Coordinate => isPuertoRicoPoint(location),
+    ),...(route?.coordinates.map(([longitude,latitude])=>({longitude,latitude}))??[])],
+    [driverLocation, passengerLocation, pickupLocation,route,routePoints?.origin.latitude,routePoints?.origin.longitude,
+      routePoints?.destination.latitude,routePoints?.destination.longitude],
   );
   const initialLocation = locations[0];
 
@@ -95,10 +102,10 @@ export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation,
       return;
     }
     cameraRef.current?.fitBounds(getBounds(locations), {
-      padding: { top: 90, right: 48, bottom: 360, left: 48 },
+      padding: { top: 32, right: 32, bottom: cameraBottomPadding, left: 32 },
       duration: 650,
     });
-  }, [locations, mapReady]);
+  }, [locations, mapReady,cameraBottomPadding]);
 
   return (
     <View style={styles.container}>
@@ -122,6 +129,17 @@ export function LiveRideMap({ passengerLocation, driverLocation, pickupLocation,
             zoom: initialLocation ? 14 : 8,
           }}
         />
+        {route ? <GeoJSONSource id="road-route" data={{type:'Feature',properties:{},
+          geometry:{type:'LineString',coordinates:route.coordinates}}}>
+          <Layer id="road-route-line" type="line" paint={{'line-color':colors.primary,'line-width':5}}
+            layout={{'line-join':'round','line-cap':'round'}}/>
+        </GeoJSONSource> : null}
+        {routePoints && !pickupLocation && isPuertoRicoPoint(routePoints.origin) ? <Marker id="route-origin" lngLat={toLngLat(routePoints.origin)}>
+          <View style={[styles.pickupMarker,{backgroundColor:colors.primaryForeground,borderColor:colors.primary}]}><Text style={{color:colors.primary}}>A</Text></View>
+        </Marker> : null}
+        {routePoints && isPuertoRicoPoint(routePoints.destination) ? <Marker id="route-destination" lngLat={toLngLat(routePoints.destination)}>
+          <View style={[styles.pickupMarker,{backgroundColor:colors.primary,borderColor:colors.primaryForeground}]}><Text style={{color:colors.primaryForeground}}>B</Text></View>
+        </Marker> : null}
         {passengerLocation ? (
           <Marker
             id="passenger-location"

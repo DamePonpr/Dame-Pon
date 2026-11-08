@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { Linking, Modal, Platform, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Linking, Modal, Platform, Pressable, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -14,6 +14,9 @@ import type { MunicipalityDecision } from '@workspace/dame-pon-shared/lib/munici
 import { MunicipalityPicker } from '@workspace/dame-pon-shared/components/MunicipalityPicker';
 import { DriverDocumentsPanel } from './DriverDocumentsPanel';
 import { useDriverDocuments } from '../hooks/useDriverDocuments';
+import { useRoadRoute } from '@workspace/dame-pon-shared/hooks/useRoadRoute';
+import { tripRoutePoints } from '@workspace/dame-pon-shared/lib/roadRouting';
+import { RoadRouteCard } from '@workspace/dame-pon-shared/components/RoadRouteCard';
 
 export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
   profile: Profile;
@@ -23,8 +26,11 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const viewport=useWindowDimensions();
   const home = useDriverHome(userId, onSessionExpired);
   const documents = useDriverDocuments(userId);
+  const points=tripRoutePoints(home.activeTrip);
+  const road=useRoadRoute(`${userId}:${home.activeTrip?.id??'no-trip'}`,points?.origin??null,points?.destination??null);
   const [passengerPin, setPassengerPin] = useState('');
   const [pinPromptVisible, setPinPromptVisible] = useState(false);
   const activeMunicipality = home.setup?.driver?.municipio_activo ?? home.setup?.driver?.municipio_base;
@@ -37,7 +43,8 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
     <RideLayout
       title="Dame Pon"
       snapPoints={['45%', '90%']}
-      map={<LiveRideMap passengerLocation={null} driverLocation={home.driverLocation} pickupLocation={null} />}
+      map={<LiveRideMap passengerLocation={null} driverLocation={home.driverLocation} pickupLocation={null}
+        route={road.route} routePoints={points} cameraBottomPadding={Math.round(viewport.height*.45)+24}/>}
     >
       <View style={[styles.sheetContent, { paddingBottom: insets.bottom + 72 + 28 }]}>
         <View style={styles.sheetHeader}>
@@ -118,6 +125,7 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
             <Text style={[styles.routeText, { color: colors.mutedForeground }]} numberOfLines={2}>
               {home.activeTrip.pickup_address || home.activeTrip.municipio_origen || 'Origen'} → {home.activeTrip.dropoff_address || home.activeTrip.municipio_destino || 'Destino'}
             </Text>
+            <RoadRouteCard state={road} retry={road.retry}/>
             <View style={styles.tripActions}>
               <AppButton
                 label={home.activeTrip.status === 'accepted' || home.activeTrip.status === 'arrived' ? 'Iniciar viaje' : 'Completar viaje'}

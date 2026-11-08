@@ -15,3 +15,4 @@
 - [Supabase MCP migration versions](supabase-mcp-migration-versions.md) — applyMigration records its generated version; verify listMigrations instead of assuming the local filename timestamp.
 - [Supabase inactivity keepalive](supabase-inactivity-keepalive.md) — scheduled admin SQL does not count as project activity; keepalive must reach the public Supabase API.
 - [Foreground GPS presence](foreground-driver-presence.md) — do not claim background support; coordinate freshness enforcement with compatible app releases.
+- [Road routing boundaries](road-routing-scope.md) — route estimates are not fares; community providers need bounded usage and separate fleet-capacity validation.

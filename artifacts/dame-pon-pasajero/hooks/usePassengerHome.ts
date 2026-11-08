@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { useAssignedDriverPresence } from './useAssignedDriverPresence';
 import type { LocationValue } from '@workspace/dame-pon-shared/types/type';
+import { isPuertoRicoPoint, routeMatches, type RoadRoute } from '@workspace/dame-pon-shared/lib/roadRouting';
 import {
   cancelTrip,
   getPassengerActiveTrip,
@@ -30,6 +31,8 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [participantDetails, setParticipantDetails] = useState<TripParticipantDetails | null>(null);
   const [pickup, setPickup] = useState<LocationValue | null>(null);
+  const [locationMessage,setLocationMessage] = useState('');
+  const pickupGeneration=useRef(0);
   const presence = useAssignedDriverPresence(userId, activeTrip);
   const driverLocation = presence.location;
   const [error, setError] = useState('');
@@ -45,33 +48,60 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
   }, [onSessionExpired]);
 
   const loadPickup = useCallback(async () => {
+    const version=++pickupGeneration.current;
+    let timer:ReturnType<typeof setTimeout>|undefined;
     try {
+    setLocationMessage('Leyendo GPS para el origen… También puedes elegirlo manualmente.');
     const permission = await Location.requestForegroundPermissionsAsync();
+    if(version!==pickupGeneration.current) return;
     if (permission.status !== 'granted') {
-      setError('Activa tu ubicación para mostrar el mapa y pedir un Pon.');
+      setLocationMessage('Permiso de ubicación denegado. Puedes buscar y seleccionar un origen manual.');
       return;
     }
-    const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    let address = 'Tu ubicación actual';
-    try {
-      const places = await Location.reverseGeocodeAsync({
-        latitude: current.coords.latitude,
-        longitude: current.coords.longitude,
-      });
-      const place = places[0];
-      address = [place?.name, place?.city, place?.region].filter(Boolean).join(', ') || address;
-    } catch {
-      // Coordinates are enough to request a trip.
+    if(!await Location.hasServicesEnabledAsync()) {
+      if(version===pickupGeneration.current) setLocationMessage('GPS desactivado. Elige un origen manual o activa la ubicación.');
+      return;
+    }
+    const current=await Promise.race([
+      Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced}),
+      new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('slow')),10_000);}),
+    ]);
+    if(version!==pickupGeneration.current) return;
+    if(!isPuertoRicoPoint(current.coords) || Date.now()-current.timestamp>30_000
+      || current.timestamp>Date.now()+10_000 || !Number.isFinite(current.coords.accuracy)
+      || current.coords.accuracy===null || current.coords.accuracy<0 || current.coords.accuracy>100) {
+      setLocationMessage('No hay GPS preciso y reciente en Puerto Rico. Selecciona un origen manual.');
+      return;
     }
     setPickup({
       latitude: current.coords.latitude,
       longitude: current.coords.longitude,
-      address,
+      address:'Ubicación GPS seleccionada',
     });
-    } catch {
-      setError('No pudimos leer tu ubicación. Revisa el GPS y los permisos; la consulta de tu conductor seguirá reintentando.');
-    }
+    setLocationMessage('Origen GPS. Confirma que corresponde al punto donde esperas.');
+    clearTimeout(timer);
+    try {
+      // Existing Expo/OS reverse geocoder: optional label, never inferred route.
+      const places=await Promise.race([
+        Location.reverseGeocodeAsync({latitude:current.coords.latitude,longitude:current.coords.longitude}),
+        new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('label timeout')),3_000);}),
+      ]);
+      if(version!==pickupGeneration.current) return;
+      const place=places[0];
+      const address=[place?.name,place?.street,place?.city,place?.region].filter(Boolean).join(', ');
+      if(address) setPickup({latitude:current.coords.latitude,longitude:current.coords.longitude,address});
+    } catch { /* Keep the real GPS point if reverse geocoding is unavailable. */ }
+    } catch(error) {
+      if(version===pickupGeneration.current) setLocationMessage(error instanceof Error && error.message==='slow'
+        ? 'El GPS tarda demasiado. Selecciona un origen manual o reintenta.'
+        : 'No pudimos leer el GPS. Puedes seleccionar un origen manual.');
+    } finally {clearTimeout(timer);}
   }, []);
+  const choosePickup=useCallback((value:LocationValue|null)=>{
+    ++pickupGeneration.current;
+    setPickup(value);
+    setLocationMessage(value ? 'Origen elegido. Confirma la dirección antes de solicitar.' : 'Selecciona una sugerencia para confirmar el origen.');
+  },[]);
 
   const refresh = useCallback(async () => {
     if (!userId || refreshInFlight.current) return;
@@ -111,32 +141,38 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
     const unsubscribe = subscribeToTrips(userId, 'pasajero', () => void refresh());
     return () => {
       cancelled = true;
+      ++pickupGeneration.current;
       unsubscribe();
     };
   }, [loadPickup, refresh, userId]);
 
 
-  const selectDestination = useCallback(async (destination: LocationValue) => {
+  const requesting=useRef(false);
+  const selectDestination = useCallback(async (destination: LocationValue, route:RoadRoute|null) => {
     if (!userId) return;
-    if (!pickup) {
-      setError('Necesitamos tu ubicación antes de solicitar el viaje.');
+    if(activeTrip || requesting.current) return;
+    if (!pickup || !isPuertoRicoPoint(pickup) || !isPuertoRicoPoint(destination)
+      || !routeMatches(route,pickup,destination) || !route || Date.now()-route.calculatedAt>=5*60_000) {
+      setError('Confirma origen, destino y una ruta reciente antes de solicitar el viaje.');
       return;
     }
+    requesting.current=true;
     setActionLoading(true);
     setError('');
+    try {
     const result = await requestTrip(
       userId,
       destination.address,
       { address: pickup.address, latitude: pickup.latitude, longitude: pickup.longitude },
       { latitude: destination.latitude, longitude: destination.longitude },
     );
-    setActionLoading(false);
     if (result.error) {
       handleError(result.error);
       return;
     }
     setActiveTrip(result.data);
-  }, [handleError, pickup, userId]);
+    } finally {requesting.current=false;setActionLoading(false);}
+  }, [activeTrip,handleError, pickup, userId]);
 
   const cancel = useCallback(async () => {
     if (!userId || !activeTrip) return;
@@ -173,6 +209,9 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
     activeTrip,
     participantDetails,
     pickup,
+    choosePickup,
+    locationMessage,
+    retryLocation:loadPickup,
     driverLocation,
     driverPresence: presence,
     error,
