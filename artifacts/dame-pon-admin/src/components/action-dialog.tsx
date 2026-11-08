@@ -244,7 +244,10 @@ export function OpenDocumentDialog({ doc, open, onOpenChange }: { doc: AdminDocu
     const t = window.setInterval(() => {
       const n = Date.now();
       setNow(n);
-      if (n >= link.expiresAt) setLink(null);
+      if (n >= link.expiresAt) {
+        setLink(null);
+        setError('El enlace temporal expiró. Solicita acceso de nuevo.');
+      }
     }, 500);
     return () => window.clearInterval(t);
   }, [link]);

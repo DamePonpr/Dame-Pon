@@ -3,6 +3,10 @@ import { supabase } from './supabase';
 import { quoteMatches,type FareQuote,type QuoteRequest } from './quotePolicy';
 
 export const quotesRequired=()=>process.env.EXPO_PUBLIC_REQUIRE_SERVER_QUOTES==='true';
+export class QuoteClientError extends Error {
+  code:string;
+  constructor(message:string,code:string){super(message);this.code=code;}
+}
 export async function quoteApi(path:string,body:unknown,signal?:AbortSignal):Promise<any> {
   const configured=process.env.EXPO_PUBLIC_QUOTE_API_URL?.replace(/\/$/,'');
   const base=configured??(Platform.OS==='web'?'/api':null);
@@ -19,8 +23,8 @@ export async function quoteApi(path:string,body:unknown,signal?:AbortSignal):Pro
       headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.data.session.access_token}`},
       body:JSON.stringify(body)});
     const value=await response.json();
-    if(!response.ok) throw new Error(value.code==='quote_expired'?'La cotización venció. Solicita otra.'
-      :'Cotización no disponible. No se ha cobrado ni inventado un precio.');
+    if(!response.ok) throw new QuoteClientError(value.code==='quote_expired'?'La cotización venció. Solicita otra.'
+      :'Cotización no disponible. No se ha cobrado ni inventado un precio.',typeof value.code==='string'?value.code:'quote_unavailable');
     return value;
   } catch(error) {
     if(controller.signal.aborted) throw new Error('La cotización tardó demasiado o fue cancelada. Reintenta sin realizar cobros.');

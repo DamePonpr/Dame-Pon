@@ -14,20 +14,14 @@ El único ajuste funcional a un borrador anterior corrige la elegibilidad del
 vehículo: el enum histórico real usa `active`, no `approved`. Su prueba local
 ahora utiliza ese enum en vez de texto libre.
 
-### Reintento de interfaz de Fase 4
+### Verificación actualizada de la interfaz
 
-Se exportó una copia web temporal con cotización obligatoria únicamente para
-pruebas, servida por `scripts/src/serve-ui-fixture.mjs` en loopback. Este servidor
-no tiene proxy ni credenciales y rechaza escrituras; el plan del navegador
-interceptaba Auth, REST/RPC, WebSocket y proveedores externos con fixtures.
-
-El trabajador del navegador se reinició **antes de crear el contexto y antes de
-navegar**. No hubo solicitudes ni escrituras remotas. Se detuvo el servidor de
-pruebas, sin repetir indefinidamente el intento.
-**NO quedaron aprobados en navegador**: cotización obligatoria, confirmación
-única, expiración/error ni la alternativa confirm-ride/book-ride/Payment.
-Los contratos y las pruebas locales anteriores siguen pasando; eso no sustituye
-esta prueba de interfaz. No se cambió la configuración real para forzar el modo.
+El bloqueo anterior de navegador fue superado con Chromium local y servidores
+aislados en `127.0.0.1`; las identidades, rutas y respuestas eran ficticias y el
+navegador solo permitió conexiones loopback. Los resultados detallados y las
+capturas por escenario están en `docs/ui-verification-phase4-phase5.md` y
+`generated-artifacts/ui-evidence/`. Esto no activa ni sustituye la autenticación,
+RLS o Storage reales.
 
 ## Áreas implementadas
 
@@ -160,7 +154,7 @@ Mantener las operaciones afectadas deshabilitadas hasta resolver la causa.
 
 ## Verificaciones ejecutadas
 
-- **165 pruebas locales aprobadas, cero fallos**, incluyendo 19 nuevas de
+- **170 pruebas locales aprobadas, cero fallos**, incluyendo 19 nuevas de
   administración: PostgreSQL desechable (RLS/RPC/Storage metadata), HTTP loopback,
   JWT/Storage simulados, revisión/autoría, idempotencia y concurrencia.
 - Comando: `node --experimental-strip-types --test --test-concurrency=1
@@ -177,3 +171,18 @@ Mantener las operaciones afectadas deshabilitadas hasta resolver la causa.
 - Aviso conocido de Expo: falta libglib para RN DevTools opcional; Metro corre.
 - No se ejecutaron verificadores que escriben en Supabase remoto, ni migraciones,
   ni inspección real de documentos, ni pruebas en dispositivo físico.
+
+### Resultado de navegador con servicios de prueba
+
+- Acceso admin sintético permitido; usuario sintético no administrador denegado.
+- Aprobación/rechazo/suspensión de conductor y estados de vehículo con motivo y
+  eventos auditados de fixture; conflicto por revisión antigua sin evento nuevo.
+- Solicitud de URL documental efímera, expiración visible, error sin revelar
+  enlace, y recuperación con un nuevo enlace de prueba. No se abrió Storage real.
+- Incidentes y soporte: asignación, cambios de estado e historial ficticios.
+  Viajes y tarifas/cotizaciones permanecieron sin controles de escritura.
+- A 390×844, el panel no tuvo overflow horizontal y mantuvo separadas las
+  secciones de conductores y viajes.
+- Esta simulación no autentica JWT contra Supabase ni prueba RLS, RPC, Storage,
+  revocación real de rol, staging autorizado o dispositivos físicos. La API local
+  sigue devolviendo `enabled:false` fuera del harness.

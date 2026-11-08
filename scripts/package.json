@@ -5,10 +5,16 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:ui:prepare": "node ui-verification/prepare.mjs",
+    "test:ui:fixtures": "node --test ui-verification/fixtures.test.mjs ../packages/shared/tests/quote-client.test.mjs",
+    "test:ui:passenger": "node ui-verification/passenger-quote-browser.mjs",
+    "test:ui:admin": "node ui-verification/admin-playwright.mjs",
+    "test:ui:cdp-admin": "node ui-verification/admin-browser.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "playwright": "^1.65.0",
     "tsx": "catalog:"
   }
 }

@@ -57,7 +57,9 @@ export default defineConfig({
         'attached_assets',
       ),
     },
-    dedupe: ['react', 'react-dom'],
+    // pnpm peer variants can otherwise split the generated hooks' context from
+    // this app's QueryClientProvider in the production bundle.
+    dedupe: ['react', 'react-dom', '@tanstack/react-query'],
   },
   root: path.resolve(import.meta.dirname),
   build: {

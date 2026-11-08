@@ -33,5 +33,9 @@ export function useFareQuote(userId:string,origin:QuotePoint|null,destination:Qu
     loading:required?current?.loading??!!(origin&&destination):false,
     message:!required?'Sin cotización comercial en la app. No se realiza ningún cobro.'
       :expired?'La cotización venció. Solicita una nueva.':current?.message??'Preparando cotización…',
-    retry:()=>setAttempt(n=>n+1)};
+    retry:()=>setAttempt(n=>n+1),
+    // Only definitive server expiry invalidates. A lost response must retain the
+    // quote/key so retry can recover the same already-created trip.
+    invalidate:()=>setState(previous=>previous.key===key?{...previous,quote:null,until:0,
+      message:'La cotización venció. Solicita una nueva.',loading:false}:previous)};
 }

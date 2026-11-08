@@ -80,7 +80,8 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
         <FareQuoteCard fare={fare}/>
         <AppButton label="Confirmar y solicitar Pon" testID="confirm-road-trip"
           disabled={road.status!=='ready'||!destination||!home.pickup||(fare.required&&!fare.quote)} loading={home.actionLoading}
-          onPress={()=>{if(destination) void home.selectDestination(destination,road.route,fare.quote);}}/>
+          onPress={()=>{if(destination) void home.selectDestination(destination,road.route,fare.quote)
+            .then(result=>{if(result?.errorCode==='quote_expired')fare.invalidate();});}}/>
         </View> : <View style={{paddingHorizontal:20}}><RoadRouteCard state={road} retry={road.retry}/></View>}
         {home.actionLoading ? <Text style={[styles.helper, { color: colors.mutedForeground }]}>Solicitando tu Pon…</Text> : null}
         {home.error ? <Text style={[styles.error, { color: colors.destructive }]}>{home.error}</Text> : null}

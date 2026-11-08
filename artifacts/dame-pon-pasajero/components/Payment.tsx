@@ -34,6 +34,7 @@ export default function Payment(_props: PaymentProps) {
     );
     setLoading(false);
     if (result.error) {
+      if(result.errorCode==='quote_expired')fare.invalidate();
       setNotice({ title: "No se pudo solicitar", message: result.error });
       return;
     }

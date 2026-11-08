@@ -123,6 +123,7 @@ export interface TripParticipantDetails {
 interface ServiceResult<T> {
   data: T | null;
   error: string | null;
+  errorCode?: 'quote_expired';
 }
 
 interface SupabaseErrorLike {
@@ -587,7 +588,8 @@ export async function requestTrip(
       const stored=await supabase.from('passenger_trips').select(PASSENGER_TRIP_COLUMNS).eq('id',confirmation.tripId).single();
       if(stored.error) return serviceError('request-trip',stored.error);
       return {data:stored.data as Trip,error:null};
-    } catch(error) {return {data:null,error:error instanceof Error?error.message:'Cotización no disponible.'};}
+    } catch(error) {return {data:null,error:error instanceof Error?error.message:'Cotización no disponible.',
+      ...(error&&typeof error==='object'&&'code' in error&&error.code==='quote_expired'?{errorCode:'quote_expired' as const}:{})};}
   }
   if (!Number.isFinite(pickup.latitude) || !Number.isFinite(pickup.longitude)) {
     return {

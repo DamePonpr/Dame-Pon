@@ -19,3 +19,4 @@
 - [Commercial quote approval](commercial-quote-approval.md) — example rates are not authorized prices; supported minimum/night policies still require explicit business approval.
 - [OpenAPI codegen compatibility](openapi-codegen-compatibility.md) — match the consumer’s Zod major explicitly; avoid model names colliding with generated operation types.
 - [Local SQL verification](local-sql-fixtures.md) — use real enum semantics; run database-heavy suites serially, separate from concurrent builds.
+- [Expo UI test gates](expo-ui-test-gates.md) — inspect exported branches instead of trusting Expo environment overrides; normalize only disposable test bundles.

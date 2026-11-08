@@ -170,9 +170,10 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
     );
     if (result.error) {
       handleError(result.error);
-      return;
+      return result;
     }
     setActiveTrip(result.data);
+    return result;
     } finally {requesting.current=false;setActionLoading(false);}
   }, [activeTrip,handleError, pickup, userId]);
 

@@ -195,27 +195,29 @@ siendo compatible; no se declara apto para cobrar.
 
 ## Resultado de la verificación local
 
-- Suite completa: **146 pruebas aprobadas, 0 fallos**, incluidas las anteriores.
+- Suite completa (última repetición): **170 pruebas aprobadas, 0 fallos**, incluidas las anteriores.
 - `pnpm run typecheck`: aprobado; build del API y `/api/healthz` local correctos.
 - Exportación Android e iOS de ambas aplicaciones: cuatro bundles completados.
   Son exports locales, no APK instalados ni releases publicados.
-- Navegador con fixtures: modo por defecto sin precio, selección de ruta y una
-  confirmación legacy que produce exactamente un INSERT interceptado; ninguna
-  llamada a cotizaciones ni escritura real.
-- No quedó verificado en navegador el modo de cotización obligatoria ni Payment:
-  un reinicio del entorno y luego un timeout al transformar el bundle de prueba
-  impidieron alcanzar ese modo. No se interpreta como un pase. Los RPC, HTTP y
-  contratos de ambos puntos de entrada sí tienen comprobaciones locales; falta
-  completar el recorrido de interfaz requerido y Android físico.
+- Navegador Chromium con Playwright y API/Auth/REST/OSRM de prueba en loopback:
+  cotización y desglose ficticios, bloqueo sin ruta/cotización, fallo y
+  recuperación, expiración, y recuperación después de un 409 `quote_expired`.
+  La confirmación rechazada no creó viaje y deshabilitó el botón hasta obtener
+  una cotización nueva.
+- Doble toque: un `POST /api/quotes/confirm` y un viaje ficticio. Cuatro
+  confirmaciones concurrentes y un reintento tras perder la respuesta devolvieron
+  el mismo ID de prueba. Al completar el fixture, el historial mostró el importe
+  acordado de USD 9.87 (solo prueba), `payment_status=pending` y cero solicitudes
+  a pagos/cargos.
+- La ruta find-ride → confirm-ride → book-ride/Payment llegó a “Solicitud enviada”
+  sin crear cargos. El build de prueba con la compuerta apagada siguió el
+  `POST /rest/v1/trips` legacy, sin confirmar cotización. No representa una
+  aprobación comercial ni un precio vigente.
 
-### Reintento posterior al preparar administración
-
-Se reintentó el modo obligatorio mediante export web temporal y backend de
-fixtures aislado en loopback, sin cambiar flags reales. El navegador de pruebas
-se reinició antes de crear el contexto/navegar: no hubo solicitudes ni escrituras.
-Siguen **sin aprobarse en navegador** la confirmación única obligatoria,
-expiración/error y confirm-ride/book-ride/Payment. Ver
-`phase-5-admin-console.md` para el procedimiento y sus límites.
+La actualización y el estado por escenario, con capturas en
+`generated-artifacts/ui-evidence/`, están en
+`docs/ui-verification-phase4-phase5.md`. Se trata de navegación real con datos
+ficticios, no de RLS/RPC real ni de pagos.
 
 Se corrigió únicamente el borrador de elegibilidad vehicular: el enum histórico
 es `active`, no `approved`. La prueba SQL ahora usa el enum real en vez de texto;
