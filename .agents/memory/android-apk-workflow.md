@@ -12,3 +12,9 @@ The two matrix builds must upload their APKs first; a separate release job shoul
 **Why:** GitHub Actions reached the native build only after these issues were surfaced one at a time; local workspace resolution can hide missing direct dependencies and older native APIs.
 
 **How to apply:** When changing Expo or React Native versions, run the GitHub Android workflow from a clean checkout and inspect the first failing step before changing app code. Preserve the direct Babel declarations, recheck whether the clipboard patches are still needed after dependency upgrades, and keep release creation after both matrix jobs succeed.
+
+For local preview APKs on Replit, avoid the default `androidenv.androidPkgs.androidsdk`: it includes many historical platforms, NDKs, and emulator images. Compose only the required SDK platform and build-tools version, and pin the app's `buildToolsVersion` to the installed version.
+
+**Why:** The default SDK composition planned hundreds of gigabytes of dependencies, and Gradle cannot auto-install a mismatched build-tools version into the immutable `/nix/store`.
+
+**How to apply:** Build a minimal `composeAndroidPackages` output with emulator, system images, NDK, and CMake disabled. Point `ANDROID_HOME` to that output and set the exact matching `buildToolsVersion` in Gradle.

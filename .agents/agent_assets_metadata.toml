@@ -42,3 +42,17 @@ mtime_ms = 1790084701669
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:958b6dd8-c887-47a2-9c58-38201b1b4b6b/7244c3a7-8c1b-4a46-a266-5acbee4c1ed9/c53f19ef-aed8-4f87-bf8d-03776a1d25ff"
 storage_version_token = "1790086687272959"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "dnXVjai6MV5JIWcMhVdLZ"
+uri = "file://generated-artifacts/admin-preview-apk/app/build/outputs/apk/debug/app-debug.apk"
+type = "unspecified"
+title = "Dame Pon Administración · APK de vista previa"
+description = "Instalador Android firmado en modo debug. Incluye la interfaz y muestra Administración inactiva; no conecta con Supabase ni habilita operaciones."
+logical_id = "b52cceb4-b30c-4aaf-86a2-ccd1f7fb4afa"
+content_hash = "sha256:3aa1ca722a82e6b6a40949c34536eb0df8fb7b56f779fe52b0b78d074047d85e"
+size = 1461696
+mtime_ms = 1794142496386
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:958b6dd8-c887-47a2-9c58-38201b1b4b6b/b52cceb4-b30c-4aaf-86a2-ccd1f7fb4afa/8edbcc7c-0871-4139-934b-2171dfb6b015"
+storage_version_token = "1794142539606644"
+content_type = "application/octet-stream"
