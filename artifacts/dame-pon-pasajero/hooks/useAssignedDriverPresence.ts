@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { loadAssignedDriverPresence, type AssignedDriverPresence } from '@workspace/dame-pon-shared/lib/presenceService';
-import { assignedTripScope, locationFreshness } from '@workspace/dame-pon-shared/lib/driverTracking';
-import { subscribeToDriverLocation, type Trip } from '@workspace/dame-pon-shared/lib/rideService';
+import { assignedTripScope, assignedPresenceView } from '@workspace/dame-pon-shared/lib/driverTracking';
+import type { Trip } from '@workspace/dame-pon-shared/lib/rideService';
 
 export function useAssignedDriverPresence(userId: string | undefined, trip: Trip | null) {
   const [record, setRecord] = useState<AssignedDriverPresence | null>(null);
@@ -38,8 +38,9 @@ export function useAssignedDriverPresence(userId: string | undefined, trip: Trip
       }
     };
     void refresh();
-    // This subscription already reconciles through REST every 10 s if Realtime is silent.
-    const unsubscribe = subscribeToDriverLocation(driverId, () => void refresh());
+    // Private driver rows are not published to Realtime. Poll only the
+    // assignment-scoped, expiring RPC; never subscribe to a drivers payload.
+    const reconcile = setInterval(() => void refresh(), 10_000);
     const appState = AppState.addEventListener('change', (state) => {
       if (state === 'active') void refresh();
     });
@@ -47,18 +48,13 @@ export function useAssignedDriverPresence(userId: string | undefined, trip: Trip
     return () => {
       active = false;
       clearInterval(timer);
-      unsubscribe();
+      clearInterval(reconcile);
       appState.remove();
     };
   }, [scope, tripId, driverId]);
 
   const current = loadedScope === scope && tripId && driverId ? record : null;
-  const freshness = locationFreshness(current?.location_updated_at, Boolean(current?.is_online), connected && loadedScope === scope, clock);
-  const coordinates = current && Number.isFinite(current.latitude) && Number.isFinite(current.longitude)
-    && Math.abs(current.latitude!) <= 90 && Math.abs(current.longitude!) <= 180;
-  const location = freshness === 'fresh' && coordinates
-    ? { latitude: current.latitude!, longitude: current.longitude! }
-    : null;
+  const { freshness, location } = assignedPresenceView(current, connected && loadedScope === scope, clock);
   const label = freshness === 'fresh' ? 'GPS del conductor conectado'
     : freshness === 'stale' ? 'Ubicación del conductor obsoleta; esperando una lectura reciente'
       : freshness === 'offline' ? 'El conductor no está compartiendo ubicación'

@@ -34,3 +34,15 @@ freshness requirement. The user chose coordinated rather than immediate activati
 **How to apply:** Distinguish prepared client/migration code from active backend
 behavior in reports. Unit tests and browser fixtures do not prove physical GPS
 or live RLS authorization; require controlled backend and Android-device checks.
+
+Never restore assigned-passenger SELECT or Realtime publication of private driver
+rows as a shortcut for GPS. Use an assignment-scoped minimal RPC instead.
+
+**Why:** RLS filters rows, not fields; the private row also contains license and
+review information. Polling is preferable to exposing that row for Realtime.
+
+**How to apply:** Keep own-driver access; expire passenger coordinates on the
+server and client. Keep strict dispatch gating off until compatible clients
+and notification filtering are ready. Fence presence by Auth session, server
+generation and sequence: a local queue alone cannot order timed-out HTTP requests
+or prevent an old device's cleanup from stopping a new session.

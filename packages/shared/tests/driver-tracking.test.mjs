@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { createDriverTracker, validGpsFix, shouldPublishGps, locationFreshness, assignedTripScope } from '../src/lib/driverTracking.ts';
+import { createDriverTracker, validGpsFix, shouldPublishGps, locationFreshness, assignedTripScope, assignedPresenceView } from '../src/lib/driverTracking.ts';
 
 function fixture(overrides = {}) {
   let time = 1_800_000_000_000;
@@ -9,6 +9,7 @@ function fixture(overrides = {}) {
   let onError;
   let removed = 0;
   const writes = [];
+  let sessionCount = 0;
   const states = [];
   const fix = (changes = {}) => ({ latitude: 18.4, longitude: -66.1, timestamp: time, accuracy: 10, ...changes });
   const tracker = createDriverTracker({
@@ -16,6 +17,7 @@ function fixture(overrides = {}) {
     permission: async () => true,
     servicesEnabled: async () => true,
     getFix: async () => fix(),
+    openSession: async () => ({ id: `session-${++sessionCount}`, sequence: 0 }),
     watch: async (next, error) => { onFix = next; onError = error; return { remove: () => removed++ }; },
     publish: async (value, start) => { writes.push({ value, start }); },
     onChange: (state) => states.push(state),
@@ -89,6 +91,43 @@ test('No disponible elimina el watcher y descarta callbacks tardíos', async () 
   assert.equal(f.writes.at(-1).value, null);
   assert.equal(f.removed(), 1);
   assert.equal(f.tracker.getSnapshot().location, null);
+});
+
+test('reserva de sesión que llega después de Offline solo se revoca, nunca publica GPS', async () => {
+  const allocation = deferred();
+  const calls = [];
+  const f = fixture({
+    openSession: () => allocation.promise,
+    publish: async (fix, _start, session) => calls.push({ fix, id: session.id }),
+  });
+  const starting = f.tracker.start();
+  await flush();
+  await f.tracker.stop();
+  allocation.resolve({ id: 'late-token', sequence: 0 });
+  await starting;
+  assert.deepEqual(calls, [{ fix: null, id: 'late-token' }]);
+  assert.equal(f.tracker.getSnapshot().enabled, false);
+});
+
+test('no se modifica disponibilidad legacy al montar/resetear sin sesión GPS propia', async () => {
+  const f = fixture();
+  await f.tracker.stop();
+  assert.equal(f.writes.length, 0);
+});
+
+test('baja antigua fallida no impide intentar la baja de una sesión nueva', async () => {
+  const closed = [];
+  const f = fixture({publish:async(fix,_start,session)=>{
+    if (fix) return;
+    closed.push(session.id);
+    if (session.id==='session-1') throw Object.assign(new Error('auth anterior'),{code:'42501'});
+  }});
+  await f.tracker.start();
+  await f.tracker.stop();
+  await f.tracker.start();
+  await f.tracker.stop();
+  assert.deepEqual(closed,['session-1','session-1','session-2']);
+  assert.equal(f.tracker.getSnapshot().enabled,false);
 });
 
 test('limpieza de logout y desmontaje es idempotente: una sola baja confirmada', async () => {
@@ -236,7 +275,10 @@ test('GPS puede volver a iniciarse tras una baja sin reutilizar la lectura anter
 });
 
 test('baja sin red conserva estado local detenido y advierte que la baja remota no se confirmó', async () => {
-  const f = fixture({ publish: async () => { throw new Error('sin red'); } });
+  let disconnected = false;
+  const f = fixture({ publish: async () => { if (disconnected) throw new Error('sin red'); } });
+  await f.tracker.start();
+  disconnected = true;
   await f.tracker.stop();
   assert.equal(f.tracker.getSnapshot().state, 'offline');
   assert.match(f.tracker.getSnapshot().message, /[Nn]o pudimos confirmar/);
@@ -291,7 +333,7 @@ test('frescura: desconexión, offline, fecha ausente, futura y obsoleta no se mu
 test('autorización SQL: ubicación limitada al pasajero asignado y viajes activos; sin driver_id de escritura', () => {
   const sql = readFileSync(new URL('../../../supabase/migrations/20261108020000_driver_foreground_presence.sql', import.meta.url), 'utf8');
   assert.match(sql, /t\.id = p_trip_id and t\.passenger_id = \(select auth\.uid\(\)\)/);
-  assert.match(sql, /t\.status::text in \('accepted','arrived','in_progress'\)/);
+  assert.match(sql, /t\.status::text in \('accepted','arrived','in_progress','aceptado','en_curso'\)/);
   assert.match(sql, /v_uid uuid := auth\.uid\(\)/);
   assert.match(sql, /where id = v_uid for update/);
   assert.match(sql, /role = 'conductor'/);
@@ -311,15 +353,26 @@ test('integración: logout se limpia antes de perder sesión; pasajero no public
   assert.match(passenger, /assignedTripScope\(userId, trip\)/);
   assert.match(passenger, /next\?\.driver_id === driverId/);
   assert.match(passenger, /loadedScope === scope/);
-  assert.match(passenger, /freshness === 'fresh'/);
+  assert.match(passenger, /assignedPresenceView\(current,/);
   assert.doesNotMatch(passenger, /publishDriverPresence|updateDriverLocation|\.from\('drivers'\)/);
+  assert.doesNotMatch(passenger, /subscribeToDriverLocation|postgres_changes/);
+});
+
+test('pasajero nunca etiqueta conectado un RPC sin coordenadas o con rango inválido', () => {
+  const now = 1_800_000_000_000;
+  const record = { latitude: 18.4, longitude: -66.1, location_updated_at: new Date(now).toISOString(), is_online: true };
+  assert.equal(assignedPresenceView(record,true,now).freshness,'fresh');
+  for (const patch of [{latitude:null},{longitude:null},{latitude:91},{longitude:Infinity}]) {
+    assert.deepEqual(assignedPresenceView({...record,...patch},true,now),{freshness:'stale',location:null});
+  }
+  assert.equal(assignedPresenceView(record,true,now+45_000).location,null);
 });
 
 test('ámbito del pasajero: únicamente SU viaje asignado activo; cambia al cambiar identidad, viaje o conductor', () => {
   const trip = { id: 'trip-a', passenger_id: 'passenger-a', driver_id: 'driver-a', status: 'accepted' };
   const scope = assignedTripScope('passenger-a', trip);
   assert.deepEqual(scope, { tripId: 'trip-a', driverId: 'driver-a', key: 'passenger-a:trip-a:driver-a' });
-  for (const status of ['arrived', 'in_progress']) assert.ok(assignedTripScope('passenger-a', { ...trip, status }));
+  for (const status of ['arrived', 'in_progress', 'aceptado', 'en_curso']) assert.ok(assignedTripScope('passenger-a', { ...trip, status }));
   for (const status of ['requested', 'offered', 'completed', 'cancelled']) {
     assert.equal(assignedTripScope('passenger-a', { ...trip, status }), null);
   }

@@ -5,6 +5,7 @@ export interface GpsFix {
   timestamp: number;
   accuracy: number | null;
 }
+export interface TrackingSession { id: string; sequence: number }
 export type TrackingState = 'offline' | 'starting' | 'tracking' | 'paused'
   | 'permission_denied' | 'services_disabled' | 'disconnected' | 'error';
 export interface TrackingSnapshot {
@@ -22,7 +23,7 @@ export function assignedTripScope(userId: string | undefined, trip: {
   id: string; passenger_id: string; driver_id: string | null; status: string;
 } | null) {
   if (!userId || !trip || trip.passenger_id !== userId || !trip.driver_id
-    || !['accepted', 'arrived', 'in_progress'].includes(trip.status)) return null;
+    || !['accepted', 'arrived', 'in_progress', 'aceptado', 'en_curso'].includes(trip.status)) return null;
   return { tripId: trip.id, driverId: trip.driver_id, key: `${userId}:${trip.id}:${trip.driver_id}` };
 }
 
@@ -48,8 +49,21 @@ export function locationFreshness(updatedAt: string | null | undefined, online: 
   if (!connected) return 'disconnected' as const;
   if (!online) return 'offline' as const;
   const timestamp = updatedAt ? Date.parse(updatedAt) : NaN;
-  if (!Number.isFinite(timestamp) || timestamp > now + 10_000 || now - timestamp > GPS_STALE_MS) return 'stale' as const;
+  if (!Number.isFinite(timestamp) || timestamp > now + 10_000 || now - timestamp >= GPS_STALE_MS) return 'stale' as const;
   return 'fresh' as const;
+}
+
+export function assignedPresenceView(record: {
+  latitude: number | null; longitude: number | null;
+  location_updated_at: string | null; is_online: boolean;
+} | null, connected: boolean, now: number) {
+  const base = locationFreshness(record?.location_updated_at, Boolean(record?.is_online), connected, now);
+  const valid = record && Number.isFinite(record.latitude) && Number.isFinite(record.longitude)
+    && Math.abs(record.latitude!) <= 90 && Math.abs(record.longitude!) <= 180;
+  const freshness = base === 'fresh' && !valid ? 'stale' : base;
+  const location = freshness === 'fresh' && valid
+    ? { latitude: record.latitude!, longitude: record.longitude! } : null;
+  return { freshness, location };
 }
 
 interface TrackingAdapters {
@@ -57,8 +71,9 @@ interface TrackingAdapters {
   permission: (request: boolean) => Promise<boolean>;
   servicesEnabled: () => Promise<boolean>;
   getFix: () => Promise<GpsFix>;
+  openSession: () => Promise<TrackingSession>;
   watch: (onFix: (fix: GpsFix) => void, onError: (message: string) => void) => Promise<{ remove: () => void }>;
-  publish: (fix: GpsFix | null, start: boolean) => Promise<void>;
+  publish: (fix: GpsFix | null, start: boolean, session: TrackingSession) => Promise<void>;
   onChange: (snapshot: TrackingSnapshot) => void;
 }
 
@@ -73,7 +88,8 @@ export function createDriverTracker(io: TrackingAdapters) {
   let checking = false;
   let retryAt = 0;
   let failures = 0;
-  let offlineConfirmed = false;
+  let session: TrackingSession | null = null;
+  const pendingClosures = new Map<string, TrackingSession>();
   let writes: Promise<void> = Promise.resolve();
   let snapshot: TrackingSnapshot = { enabled: false, state: 'offline', message: 'GPS detenido.', lastPublishedAt: null, location: null };
   const emit = (state: TrackingState, message: string) => {
@@ -85,6 +101,23 @@ export function createDriverTracker(io: TrackingAdapters) {
     writes = task.catch(() => {});
     return task;
   };
+  const closeSession = (closing: TrackingSession | null) => {
+    if (closing) pendingClosures.set(closing.id, closing);
+    return enqueue(async () => {
+      let failure: unknown;
+      for (const value of [...pendingClosures.values()]) {
+        try {
+          await io.publish(null, false, value);
+          pendingClosures.delete(value.id);
+        } catch (error) {
+          // An expired OLD auth session must not prevent revoking the current
+          // token. Report failure, but attempt every pending closure.
+          failure ??= error;
+        }
+      }
+      if (failure) throw failure;
+    });
+  };
 
   const stop = async (state: TrackingState = 'offline', message = 'No disponible. GPS detenido.') => {
     ++generation;
@@ -93,14 +126,12 @@ export function createDriverTracker(io: TrackingAdapters) {
     subscription = null;
     latest = null;
     sent = null;
+    const closing = session;
+    session = null;
     emit(state, message);
     // Serialized AFTER an already-sent online update, before logout removes credentials.
     try {
-      await enqueue(async () => {
-        if (offlineConfirmed) return;
-        await io.publish(null, false);
-        offlineConfirmed = true;
-      });
+      await closeSession(closing);
     } catch (error) {
       emit(state, `${message} No pudimos confirmar la baja en el servidor; la ubicación caducará cuando esté activa la protección de frescura. ${error instanceof Error ? error.message : 'Sin conexión.'}`);
     }
@@ -109,13 +140,13 @@ export function createDriverTracker(io: TrackingAdapters) {
   const publishLatest = async (start = false) => {
     const version = generation;
     const fix = latest;
-    if (!enabled || busy || !fix || io.now() < retryAt || !shouldPublishGps(sent, fix, lastWrite, io.now())) return;
+    const publishingSession = session;
+    if (!enabled || busy || !fix || !publishingSession || io.now() < retryAt || !shouldPublishGps(sent, fix, lastWrite, io.now())) return;
     busy = true;
     try {
       await enqueue(async () => {
         if (version !== generation || !enabled) return;
-        offlineConfirmed = false;
-        await io.publish(fix, start);
+        await io.publish(fix, start, publishingSession);
         if (version !== generation || !enabled) return;
         sent = fix;
         lastWrite = io.now();
@@ -160,6 +191,14 @@ export function createDriverTracker(io: TrackingAdapters) {
       latest = fix;
       await writes;
       if (version !== generation) return;
+      const prepared = await io.openSession();
+      if (version !== generation) {
+        // A late allocation cannot activate itself. Revoke only its own token,
+        // never a newer session that may already be publishing.
+        await closeSession(prepared);
+        return;
+      }
+      session = prepared;
       await publishLatest(true);
       if (version !== generation) return;
       const watcher = await io.watch((value) => {

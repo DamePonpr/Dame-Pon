@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import * as Location from 'expo-location';
 import { useAuth } from '@workspace/dame-pon-shared/context/AuthContext';
 import { createDriverTracker, GPS_STALE_MS, type GpsFix, type TrackingSnapshot } from '@workspace/dame-pon-shared/lib/driverTracking';
-import { publishDriverPresence } from '@workspace/dame-pon-shared/lib/presenceService';
+import { openDriverPresenceSession, publishDriverPresence } from '@workspace/dame-pon-shared/lib/presenceService';
 import { supabase } from '@workspace/dame-pon-shared/lib/supabase';
 
 const initial: TrackingSnapshot = { enabled: false, state: 'offline', message: 'No disponible. Activa Disponible para compartir GPS.', location: null, lastPublishedAt: null };
@@ -58,20 +58,28 @@ export function DriverPresenceProvider({ children }: { children: ReactNode }) {
       },
       servicesEnabled: () => Location.hasServicesEnabledAsync(),
       getFix: currentFix,
+      openSession: async () => {
+        const current = await supabase.auth.getSession();
+        if (current.data.session?.user.id !== userId) throw new Error('La sesión de conductor cambió.');
+        return openDriverPresenceSession();
+      },
       watch: async (onFix, onError) => Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, timeInterval: 5_000, distanceInterval: 0 },
         (value) => onFix(fixFromLocation(value)),
         onError,
       ),
-      publish: async (fix, start) => {
+      publish: async (fix, _start, session) => {
         const current = await supabase.auth.getSession();
-        if (current.data.session?.user.id !== userId) return;
-        await publishDriverPresence(fix, start);
+        if (current.data.session?.user.id !== userId) {
+          throw Object.assign(new Error('La sesión de conductor cambió; no se confirmó la presencia.'), { code: '42501' });
+        }
+        await publishDriverPresence(fix, session);
       },
       onChange: (next) => { if (mounted) setSnapshot(next); },
     });
     trackerRef.current = tracker;
-    // Never resurrect persisted online state after a crash/relaunch.
+    // Local reset only: without an allocated token, do not alter a legacy
+    // driver's availability or stop a different device's presence.
     const reset = tracker.stop();
     const unsubscribeLogout = auth.registerBeforeSignOut(() => tracker.stop());
     const appState = AppState.addEventListener('change', (state) => {

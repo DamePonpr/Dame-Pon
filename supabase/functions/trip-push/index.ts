@@ -80,21 +80,18 @@ Deno.serve(async (request) => {
       if (!Number.isFinite(trip.pickup_lat) || !Number.isFinite(trip.pickup_lng)) {
         return Response.json({ delivered: 0, reason: 'Pickup coordinates unavailable' }, { headers: corsHeaders });
       }
-      const { data: drivers } = await admin
-        .from('drivers')
-        .select('id,current_lat,current_lng')
-        .eq('status', 'aprobado')
-        .eq('is_online', true)
-        .not('current_lat', 'is', null)
-        .not('current_lng', 'is', null);
+      // Pending rollout: deploy only AFTER the additive GPS migration.
+      // Fail closed, never fall back to a stale legacy is_online bit.
+      const { data: drivers, error: presenceError } = await admin.rpc('get_fresh_driver_push_targets');
+      if (presenceError) throw new Error(`No se pudo comprobar presencia GPS para avisos: ${presenceError.message}`);
       recipientIds = (drivers ?? [])
-        .filter((driver) => distanceKm(
+        .filter((driver: { id: string; current_lat: number; current_lng: number }) => distanceKm(
           Number(trip.pickup_lat),
           Number(trip.pickup_lng),
           Number(driver.current_lat),
           Number(driver.current_lng),
         ) <= 20)
-        .map((driver) => driver.id as string);
+        .map((driver: { id: string }) => driver.id);
       title = 'Nuevo viaje disponible cerca';
       message = `${trip.pickup_address} → ${trip.dropoff_address}`;
     } else if (body.action === 'driver_accept') {
