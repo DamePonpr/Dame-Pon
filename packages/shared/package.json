@@ -13,6 +13,8 @@
     "./hooks": "./src/hooks/index.ts",
     "./hooks/*": "./src/hooks/*",
     "./lib": "./src/lib/index.ts",
+    "./lib/quotePolicy": "./src/lib/quotePolicy.ts",
+    "./lib/roadRouting": "./src/lib/roadRouting.ts",
     "./lib/*": "./src/lib/*",
     "./constants": "./src/constants/index.ts",
     "./constants/*": "./src/constants/*",

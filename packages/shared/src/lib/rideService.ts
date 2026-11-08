@@ -1,3 +1,5 @@
+import { quotesRequired,quoteApi } from './quoteClient';
+import { quoteMatches,type FareQuote } from './quotePolicy';
 import { supabase } from '../lib/supabase';
 import type { UserRole } from '../lib/roles';
 import type { Municipality } from '../lib/municipality';
@@ -575,7 +577,18 @@ export async function requestTrip(
     latitude: number;
     longitude: number;
   },
+  quote?: FareQuote|null,
 ): Promise<ServiceResult<Trip>> {
+  if(quotesRequired()) {
+    if(!destination||!quote||!quoteMatches(quote,pickup,{...destination,address:dropoffAddress.trim()}))
+      return {data:null,error:'Cotización no disponible. Confirma una cotización válida del servidor.'};
+    try {
+      const confirmation=await quoteApi('/quotes/confirm',{quoteId:quote.id,idempotencyKey:quote.id});
+      const stored=await supabase.from('passenger_trips').select(PASSENGER_TRIP_COLUMNS).eq('id',confirmation.tripId).single();
+      if(stored.error) return serviceError('request-trip',stored.error);
+      return {data:stored.data as Trip,error:null};
+    } catch(error) {return {data:null,error:error instanceof Error?error.message:'Cotización no disponible.'};}
+  }
   if (!Number.isFinite(pickup.latitude) || !Number.isFinite(pickup.longitude)) {
     return {
       data: null,

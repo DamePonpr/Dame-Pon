@@ -11,6 +11,48 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /quotes:
+    post:
+      operationId: createRideQuote
+      tags: [quotes]
+      security: [{ bearerAuth: [] }]
+      summary: Cotización fija autoritativa, sin cobro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteDraftInput"
+      responses:
+        "200":
+          description: Cotización propia persistida; no se ha creado viaje ni cobrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RideQuote"
+        "503":
+          description: Compuerta apagada, configuración incompleta o sin regla comercial aprobada
+  /quotes/confirm:
+    post:
+      operationId: confirmRideQuote
+      tags: [quotes]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteConfirmationInput"
+      responses:
+        "200":
+          description: Creación o recuperación idempotente del mismo viaje
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tripId]
+                properties:
+                  tripId: { type: string, format: uuid }
   /healthz:
     get:
       operationId: healthCheck
@@ -25,7 +67,51 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
   schemas:
+    QuotePoint:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude, address]
+      properties:
+        latitude: { type: number, minimum: 17.8, maximum: 18.6 }
+        longitude: { type: number, minimum: -68, maximum: -65.1 }
+        address: { type: string, minLength: 3, maxLength: 300 }
+    QuoteDraftInput:
+      type: object
+      additionalProperties: false
+      required: [origin, destination, vehicleType]
+      properties:
+        origin: { $ref: "#/components/schemas/QuotePoint" }
+        destination: { $ref: "#/components/schemas/QuotePoint" }
+        vehicleType: { type: string, enum: [sedan] }
+    QuoteConfirmationInput:
+      type: object
+      additionalProperties: false
+      required: [quoteId, idempotencyKey]
+      properties:
+        quoteId: { type: string, format: uuid }
+        idempotencyKey: { type: string, format: uuid }
+    RideQuote:
+      type: object
+      required: [id, currency, totalCents, origin, destination, vehicleType, expiresAt, serverTime, ruleVersionId, policyVersion, distanceMm, durationMs, breakdown]
+      properties:
+        id: { type: string, format: uuid }
+        currency: { type: string, enum: [USD] }
+        totalCents: { type: integer, minimum: 0, maximum: 99999999 }
+        origin: { $ref: "#/components/schemas/QuotePoint" }
+        destination: { $ref: "#/components/schemas/QuotePoint" }
+        vehicleType: { type: string, enum: [sedan] }
+        expiresAt: { type: string }
+        serverTime: { type: string }
+        ruleVersionId: { type: string, format: uuid }
+        policyVersion: { type: string, enum: [fixed-route-v1] }
+        distanceMm: { type: integer, minimum: 1, maximum: 700000000 }
+        durationMs: { type: integer, minimum: 1, maximum: 86400000 }
+        breakdown: { type: object, additionalProperties: true }
     HealthStatus:
       type: object
       properties:

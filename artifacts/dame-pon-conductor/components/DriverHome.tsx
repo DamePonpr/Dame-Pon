@@ -17,6 +17,7 @@ import { useDriverDocuments } from '../hooks/useDriverDocuments';
 import { useRoadRoute } from '@workspace/dame-pon-shared/hooks/useRoadRoute';
 import { tripRoutePoints } from '@workspace/dame-pon-shared/lib/roadRouting';
 import { RoadRouteCard } from '@workspace/dame-pon-shared/components/RoadRouteCard';
+import { TripFareSummary } from '@workspace/dame-pon-shared/components/TripFareSummary';
 
 export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
   profile: Profile;
@@ -126,6 +127,7 @@ export function DriverHome({ profile, userId, onSignOut, onSessionExpired }: {
               {home.activeTrip.pickup_address || home.activeTrip.municipio_origen || 'Origen'} → {home.activeTrip.dropoff_address || home.activeTrip.municipio_destino || 'Destino'}
             </Text>
             <RoadRouteCard state={road} retry={road.retry}/>
+            <TripFareSummary trip={home.activeTrip}/>
             <View style={styles.tripActions}>
               <AppButton
                 label={home.activeTrip.status === 'accepted' || home.activeTrip.status === 'arrived' ? 'Iniciar viaje' : 'Completar viaje'}

@@ -17,6 +17,9 @@ import type { LocationValue } from '@workspace/dame-pon-shared/types/type';
 import { useRoadRoute } from '@workspace/dame-pon-shared/hooks/useRoadRoute';
 import { isPuertoRicoPoint, tripRoutePoints } from '@workspace/dame-pon-shared/lib/roadRouting';
 import { RoadRouteCard } from '@workspace/dame-pon-shared/components/RoadRouteCard';
+import { useFareQuote } from '@workspace/dame-pon-shared/hooks/useFareQuote';
+import { FareQuoteCard } from '@workspace/dame-pon-shared/components/FareQuoteCard';
+import { TripFareSummary } from '@workspace/dame-pon-shared/components/TripFareSummary';
 
 export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: {
   profile: Profile;
@@ -32,6 +35,7 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
   const origin=tripPoints?.origin ?? home.pickup;
   const target=tripPoints?.destination ?? destination;
   const road=useRoadRoute(`${userId}:${home.activeTrip?.id??'draft'}`,origin,target);
+  const fare=useFareQuote(userId,home.pickup,destination,!home.activeTrip&&!home.completion);
   const firstName = profile.full_name?.trim().split(' ')[0] || 'de nuevo';
 
   if (home.completion) {
@@ -73,9 +77,10 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
           textInputBackgroundColor={colors.card}
         />
         <RoadRouteCard state={road} retry={road.retry}/>
+        <FareQuoteCard fare={fare}/>
         <AppButton label="Confirmar y solicitar Pon" testID="confirm-road-trip"
-          disabled={road.status!=='ready'||!destination||!home.pickup} loading={home.actionLoading}
-          onPress={()=>{if(destination) void home.selectDestination(destination,road.route);}}/>
+          disabled={road.status!=='ready'||!destination||!home.pickup||(fare.required&&!fare.quote)} loading={home.actionLoading}
+          onPress={()=>{if(destination) void home.selectDestination(destination,road.route,fare.quote);}}/>
         </View> : <View style={{paddingHorizontal:20}}><RoadRouteCard state={road} retry={road.retry}/></View>}
         {home.actionLoading ? <Text style={[styles.helper, { color: colors.mutedForeground }]}>Solicitando tu Pon…</Text> : null}
         {home.error ? <Text style={[styles.error, { color: colors.destructive }]}>{home.error}</Text> : null}
@@ -84,6 +89,7 @@ export function PassengerHome({ profile, userId, onSignOut, onSessionExpired }: 
           <View style={[styles.activeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.activeEyebrow, { color: colors.mutedForeground }]}>PON ACTIVO</Text>
             <Text style={[styles.activeTitle, { color: colors.foreground }]}>{tripStatus(home.activeTrip.status)}</Text>
+            <TripFareSummary trip={home.activeTrip}/>
             <Text style={[styles.activeDestination, { color: colors.mutedForeground }]}>{home.activeTrip.dropoff_address}</Text>
             {home.activeTrip.passenger_pin ? (
               <View style={[styles.pinCard, { backgroundColor: colors.secondary }]}>

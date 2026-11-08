@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { useAssignedDriverPresence } from './useAssignedDriverPresence';
 import type { LocationValue } from '@workspace/dame-pon-shared/types/type';
 import { isPuertoRicoPoint, routeMatches, type RoadRoute } from '@workspace/dame-pon-shared/lib/roadRouting';
+import type { FareQuote } from '@workspace/dame-pon-shared/lib/quotePolicy';
 import {
   cancelTrip,
   getPassengerActiveTrip,
@@ -148,7 +149,7 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
 
 
   const requesting=useRef(false);
-  const selectDestination = useCallback(async (destination: LocationValue, route:RoadRoute|null) => {
+  const selectDestination = useCallback(async (destination: LocationValue, route:RoadRoute|null,quote?:FareQuote|null) => {
     if (!userId) return;
     if(activeTrip || requesting.current) return;
     if (!pickup || !isPuertoRicoPoint(pickup) || !isPuertoRicoPoint(destination)
@@ -165,6 +166,7 @@ export function usePassengerHome(userId: string | undefined, onSessionExpired: (
       destination.address,
       { address: pickup.address, latitude: pickup.latitude, longitude: pickup.longitude },
       { latitude: destination.latitude, longitude: destination.longitude },
+      quote,
     );
     if (result.error) {
       handleError(result.error);

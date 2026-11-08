@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../hooks/useColors';
 import type { Trip } from '../lib/rideService';
+import { TripFareSummary } from './TripFareSummary';
 
 interface TripCompletionScreenProps {
   trip: Trip;
@@ -16,6 +17,7 @@ export function TripCompletionScreen({ trip, isDriver, onContinue }: TripComplet
   const municipality = trip.municipio_destino ?? trip.municipio_origen ?? 'tu municipio';
   return (
     <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 18, paddingBottom: insets.bottom + 18 }]}>
+      <TripFareSummary trip={trip}/>
       <View style={[styles.icon, { backgroundColor: colors.secondary }]}>
         <Feather name="check" size={34} color={colors.star} />
       </View>

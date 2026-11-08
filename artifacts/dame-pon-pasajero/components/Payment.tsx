@@ -8,11 +8,14 @@ import { useLocationStore } from "@/store";
 import { requestTrip } from "@workspace/dame-pon-shared/lib/rideService";
 import type { PaymentProps } from "@workspace/dame-pon-shared/types/type";
 import { useColors } from "@workspace/dame-pon-shared/hooks/useColors";
+import { useFareQuote } from "@workspace/dame-pon-shared/hooks/useFareQuote";
+import { FareQuoteCard } from "@workspace/dame-pon-shared/components/FareQuoteCard";
 
-export default function Payment({ amount }: PaymentProps) {
+export default function Payment(_props: PaymentProps) {
   const colors = useColors();
   const { user } = useAuth();
   const { userLocation, destinationLocation } = useLocationStore();
+  const fare=useFareQuote(user?.id??'',userLocation,destinationLocation);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<{ title: string; message: string; action?: boolean } | null>(null);
 
@@ -27,6 +30,7 @@ export default function Payment({ amount }: PaymentProps) {
       destinationLocation.address,
       userLocation,
       { latitude: destinationLocation.latitude, longitude: destinationLocation.longitude },
+      fare.quote,
     );
     setLoading(false);
     if (result.error) {
@@ -41,7 +45,8 @@ export default function Payment({ amount }: PaymentProps) {
       <Text style={[styles.description, { color: colors.mutedForeground }]}>
         El pago se coordina fuera de la app. Este paso solo crea la solicitud protegida del viaje.
       </Text>
-      <CustomButton title={`Confirmar solicitud${amount ? ` · $${amount}` : ""}`} loading={loading} onPress={confirmRide} style={styles.button} />
+      <FareQuoteCard fare={fare}/>
+      <CustomButton title="Confirmar solicitud" disabled={fare.required&&!fare.quote} loading={loading} onPress={confirmRide} style={styles.button} />
       {notice ? (
         <InlineNotice
           title={notice.title}

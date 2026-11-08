@@ -16,3 +16,5 @@
 - [Supabase inactivity keepalive](supabase-inactivity-keepalive.md) — scheduled admin SQL does not count as project activity; keepalive must reach the public Supabase API.
 - [Foreground GPS presence](foreground-driver-presence.md) — do not claim background support; coordinate freshness enforcement with compatible app releases.
 - [Road routing boundaries](road-routing-scope.md) — route estimates are not fares; community providers need bounded usage and separate fleet-capacity validation.
+- [Commercial quote approval](commercial-quote-approval.md) — example rates are not authorized prices; supported minimum/night policies still require explicit business approval.
+- [OpenAPI codegen compatibility](openapi-codegen-compatibility.md) — match the consumer’s Zod major explicitly; avoid model names colliding with generated operation types.
