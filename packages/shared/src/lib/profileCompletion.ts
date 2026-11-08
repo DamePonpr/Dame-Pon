@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 export interface ProfileCompletionInput {
   full_name?: string | null;
   phone?: string | null;
@@ -80,4 +82,104 @@ export function profileMissingFields(profile: ProfileCompletionInput | null | un
 
 export function isProfileComplete(profile: ProfileCompletionInput | null | undefined) {
   return profileMissingFields(profile).length === 0;
+}
+
+export interface RegistrationInput {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  role: PhoneRole;
+  baseMunicipality?: string;
+}
+
+interface RegistrationRequest {
+  email: string;
+  password: string;
+  options: {
+    data: {
+      full_name: string;
+      phone: string;
+      role: PhoneRole;
+      base_municipality?: string;
+    };
+  };
+}
+
+// Reads only: account creation remains in the existing AuthProvider.
+export async function prepareRegistration(
+  client: Pick<SupabaseClient, 'from' | 'rpc'>,
+  input: RegistrationInput,
+  appRole: PhoneRole,
+): Promise<{ request: RegistrationRequest | null; error: string | null }> {
+  const invalid = (error: string) => ({ request: null, error });
+  if (!['pasajero', 'conductor'].includes(appRole) || input.role !== appRole) {
+    return invalid('REGISTRATION_ROLE_MISMATCH');
+  }
+  if (!input.fullName?.trim()) return invalid('INVALID_FULL_NAME');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email?.trim() ?? '')) {
+    return invalid('INVALID_EMAIL');
+  }
+  if (typeof input.password !== 'string' || input.password.length < 6) {
+    return invalid('INVALID_PASSWORD');
+  }
+  const phone = normalizePhoneForRole(input.phone, appRole);
+  if (!phone) return invalid('INVALID_PHONE');
+
+  let baseMunicipality: string | undefined;
+  if (appRole === 'conductor') {
+    const selected = typeof input.baseMunicipality === 'string'
+      ? input.baseMunicipality.normalize('NFC').trim()
+      : '';
+    if (!selected || selected.length > 100) return invalid('INVALID_BASE_MUNICIPALITY');
+    const municipality = await client
+      .from('municipios')
+      .select('nombre')
+      .eq('nombre', selected)
+      .maybeSingle();
+    if (municipality.error) return invalid('MUNICIPALITY_UNAVAILABLE');
+    if (!municipality.data || municipality.data.nombre !== selected) {
+      return invalid('INVALID_BASE_MUNICIPALITY');
+    }
+    baseMunicipality = municipality.data.nombre;
+  }
+
+  const availability = await client.rpc('is_phone_available', { p_phone: phone });
+  if (availability.error) return invalid(availability.error.message);
+  if (availability.data === false) return invalid('PHONE_ALREADY_REGISTERED');
+  if (availability.data !== true) return invalid('PHONE_CHECK_UNAVAILABLE');
+
+  return {
+    error: null,
+    request: {
+      email: input.email.trim(),
+      password: input.password,
+      options: {
+        data: {
+          full_name: input.fullName.trim(),
+          phone,
+          role: appRole,
+          ...(appRole === 'conductor' ? { base_municipality: baseMunicipality } : {}),
+        },
+      },
+    },
+  };
+}
+
+export function registrationErrorMessage(error: string, role: PhoneRole) {
+  const messages: Record<string, string> = {
+    REGISTRATION_ROLE_MISMATCH: 'Esta app solo permite registrar cuentas de su propio rol.',
+    INVALID_FULL_NAME: 'Escribe tu nombre completo.',
+    INVALID_EMAIL: 'Escribe un correo electrónico válido.',
+    INVALID_PASSWORD: 'La contraseña debe tener al menos 6 caracteres.',
+    INVALID_PHONE: role === 'conductor'
+      ? 'Usa un teléfono válido de Puerto Rico con código 787 o 939.'
+      : 'Escribe un teléfono válido; para otros países incluye el código internacional.',
+    INVALID_BASE_MUNICIPALITY: 'Selecciona un municipio base válido del catálogo.',
+    MUNICIPALITY_UNAVAILABLE: 'No pudimos verificar el municipio. Revisa tu conexión y vuelve a intentarlo.',
+    PHONE_ALREADY_REGISTERED: 'Ese teléfono ya está registrado.',
+    PHONE_CHECK_UNAVAILABLE: 'No pudimos verificar el teléfono. Vuelve a intentarlo.',
+    ALREADY_SIGNED_IN: 'Cierra tu sesión antes de registrar otra cuenta.',
+  };
+  return messages[error] ?? error;
 }

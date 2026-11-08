@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '../lib/supabase';
 import type { UserRole } from '../lib/roles';
-import { normalizePhoneForRole } from '../lib/profileCompletion';
+import { normalizePhoneForRole, prepareRegistration } from '../lib/profileCompletion';
 
 export type { UserRole } from '../lib/roles';
 export type AuthIssue = 'session_expired' | 'profile_unavailable' | null;
@@ -91,7 +91,8 @@ function sessionIsExpiring(session: Session) {
 }
 
 async function ensureProfile(user: User): Promise<string | null> {
-  const role = normalizeRole(user.user_metadata?.role) ?? 'pasajero';
+  const role = normalizeRole(user.user_metadata?.role);
+  if (!role) return 'PROFILE_ROLE_UNAVAILABLE';
   const profileFields = {
     full_name: user.user_metadata?.full_name ?? '',
     phone: normalizePhoneForRole(user.user_metadata?.phone, role),
@@ -112,9 +113,13 @@ async function ensureProfile(user: User): Promise<string | null> {
     return existing.error.message;
   }
 
-  const response = existing.data
-    ? await supabase.from('profiles').update(profileFields).eq('id', user.id)
-    : await supabase.from('profiles').insert({ id: user.id, ...profileFields });
+  // Existing profiles (including drivers and their onboarding) are authoritative.
+  if (existing.data) return null;
+  const response = await supabase.from('profiles').insert({
+    id: user.id,
+    role,
+    ...profileFields,
+  });
 
   if (response.error) {
     console.error('[Dame Pon] No se pudo sincronizar profiles:', {
@@ -129,7 +134,7 @@ async function ensureProfile(user: User): Promise<string | null> {
   return null;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children, appRole }: { children: React.ReactNode; appRole: UserRole }) {
   if (supabaseConfigError) {
     throw supabaseConfigError;
   }
@@ -225,31 +230,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       signUp: async ({ email, password, fullName, phone, role, baseMunicipality }) => {
         try {
-          const normalizedPhone = normalizePhoneForRole(phone, role);
-          if (!normalizedPhone) {
-            return { error: 'INVALID_PHONE', needsEmailConfirmation: false };
-          }
-          const availability = await supabase.rpc('is_phone_available', { p_phone: normalizedPhone });
-          if (availability.error) {
-            console.error('[Dame Pon] is_phone_available falló:', availability.error);
-            return { error: availability.error.message, needsEmailConfirmation: false };
-          }
-          if (availability.data === false) {
-            return { error: 'PHONE_ALREADY_REGISTERED', needsEmailConfirmation: false };
+          if (session) return { error: 'ALREADY_SIGNED_IN', needsEmailConfirmation: false };
+          const prepared = await prepareRegistration(
+            supabase, { email, password, fullName, phone, role, baseMunicipality }, appRole,
+          );
+          if (prepared.error || !prepared.request) {
+            return { error: prepared.error, needsEmailConfirmation: false };
           }
 
-          const { data, error } = await supabase.auth.signUp({
-            email: email.trim(),
-            password,
-            options: {
-              data: {
-                full_name: fullName.trim(),
-                phone: normalizedPhone,
-                role,
-                ...(role === 'conductor' ? { base_municipality: baseMunicipality } : {}),
-              },
-            },
-          });
+          const { data, error } = await supabase.auth.signUp(prepared.request);
 
           if (error) {
             console.error('[Dame Pon] signUp falló:', error);
@@ -303,7 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       clearAuthIssue: () => setAuthIssue(null),
     }),
-    [authIssue, isLoading, profile, session],
+    [appRole, authIssue, isLoading, profile, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

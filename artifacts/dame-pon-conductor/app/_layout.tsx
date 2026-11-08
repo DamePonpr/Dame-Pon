@@ -54,7 +54,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <GlobalErrorHandler>
-            <AuthProvider>
+            <AuthProvider appRole="conductor">
               <PushNotificationRegistration />
               <QueryClientProvider client={queryClient}>
                 <GestureHandlerRootView style={{ flex: 1 }}>

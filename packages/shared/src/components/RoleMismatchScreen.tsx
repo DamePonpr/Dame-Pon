@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '../hooks/useColors';
 import type { UserRole } from '../lib/roles';
+import { useAuth } from '../context/AuthContext';
 
 const appLinks: Record<UserRole, { scheme: string; label: string }> = {
   pasajero: { scheme: 'dame-pon-pasajero://', label: 'Dame Pon Pasajero' },
@@ -10,6 +11,7 @@ const appLinks: Record<UserRole, { scheme: string; label: string }> = {
 
 export function RoleMismatchScreen({ expectedRole }: { expectedRole: UserRole }) {
   const colors = useColors();
+  const { signOut } = useAuth();
   const otherRole: UserRole = expectedRole === 'pasajero' ? 'conductor' : 'pasajero';
   const target = appLinks[otherRole];
 
@@ -31,6 +33,9 @@ export function RoleMismatchScreen({ expectedRole }: { expectedRole: UserRole })
       >
         <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>Abrir {target.label}</Text>
       </Pressable>
+      <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.switchAccount}>
+        <Text style={[styles.buttonText, { color: colors.foreground }]}>Cerrar sesión y usar otra cuenta</Text>
+      </Pressable>
     </View>
   );
 }
@@ -42,4 +47,5 @@ const styles = StyleSheet.create({
   body: { fontFamily: 'Jakarta', fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 10, maxWidth: 330 },
   button: { minHeight: 48, borderRadius: 15, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', marginTop: 24 },
   buttonText: { fontFamily: 'Jakarta-SemiBold', fontSize: 14 },
+  switchAccount: { minHeight: 48, justifyContent: 'center', marginTop: 12 },
 });

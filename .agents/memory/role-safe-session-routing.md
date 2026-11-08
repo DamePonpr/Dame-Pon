@@ -7,4 +7,10 @@ The loaded Supabase profile is the authority for panel selection. A home route m
 
 **Why:** A stale `/home/driver` route can survive logout and be reused by a passenger if the screen trusts a hardcoded route prop. A fallback role also masks missing or stale profile data.
 
-**How to apply:** Clear the profile before hydrating a new session, invalidate older hydration requests, clear local driver/trip state on identity changes, guard both home routes, and redirect mismatches to the route derived from the loaded profile.
+**How to apply:** Clear the profile before hydrating a new session, invalidate older hydration requests, and clear local driver/trip state on identity changes. Guard private routes and onboarding before mounting their content. A wrong-app session must offer sign-out or opening the matching app, not redirect to a same-named home route in the wrong distribution.
+
+Passenger and conductor distributions each support only their own registration role. Opening an existing account in the other app must never convert its role or rewrite its existing driver records or documents.
+
+**Why:** The user requires separate single-role apps, not a shared role selector. Existing approved conductors and their documents must survive the registration restrictions unchanged.
+
+**How to apply:** Treat the installed app's role as a registration constraint, never as permission to migrate the loaded Supabase account. Keep authentication and existing data intact; reject incompatible access instead.
